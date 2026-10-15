@@ -155,7 +155,7 @@ function Get-AppIssues($pi) {
     $issues += New-Issue 'medium' "Windows won't reveal where this program lives, even to an Administrator. Fix: Task Manager > Details > right-click '$($pi.Name)' > Open file location, then scan that file with Microsoft Defender."
   }
   if ($scriptHosts -contains $pi.Name.ToLower()) {
-    $issues += New-Issue 'medium' "A Windows scripting tool ($($pi.Name)) is using the network. That's fine if you just ran a script yourself (Claude uses PowerShell too); attackers also abuse these. Fix: Task Manager > Details > right-click a column header > Select columns > 'Command line' to see what it runs. End it if you didn't start it, then run a full Defender scan."
+    $issues += New-Issue 'medium' "A Windows scripting tool ($($pi.Name)) is using the network. That's fine if you or a trusted tool just ran a script; attackers also abuse these. Fix: Task Manager > Details > right-click a column header > Select columns > 'Command line' to see what it runs. End it if you didn't start it, then run a full Defender scan."
   }
   $issues
 }
@@ -345,7 +345,7 @@ const KB = {
   'mshta': ['w','Runs HTML Application (.hta) files.','Rarely used legitimately today; heavily abused by malware.'],
   'wscript': ['w','Windows Script Host (VBScript/JScript).','Commonly abused by malicious email attachments.'],
   'cscript': ['w','Windows Script Host, command-line version.','Commonly abused by malware.'],
-  'pwsh': ['m','PowerShell 7, Microsoft\'s modern scripting shell (installed separately).','Fine when you or a trusted tool runs it (Claude uses it); abused by attackers too.','https://learn.microsoft.com/powershell/'],
+  'pwsh': ['m','PowerShell 7, Microsoft\'s modern scripting shell (installed separately).','Fine when you or a trusted tool runs it; abused by attackers too.','https://learn.microsoft.com/powershell/'],
   'onedrive': ['m','OneDrive cloud storage sync.','Normal. It uploads your synced folders to Microsoft.','https://www.microsoft.com/microsoft-365/onedrive'],
   'ms-teams': ['m','Microsoft Teams chat and meetings.','Normal.','https://www.microsoft.com/microsoft-teams'],
   'teams': ['m','Microsoft Teams chat and meetings.','Normal.','https://www.microsoft.com/microsoft-teams'],
