@@ -1,0 +1,3 @@
+# Live data and logs: contain this PC's connections, never commit them
+NetMonitorOutput/
+*.csv
