@@ -16,14 +16,16 @@ param(
   [string]$OutDir = (Join-Path $PSScriptRoot 'NetMonitorOutput'),
   [int]$ClosedRetentionMinutes = 10,
   [switch]$NoBrowser,
-  [switch]$Once
+  [switch]$Once,
+  [int]$Port = 8765
 )
 
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $htmlPath = Join-Path $OutDir 'dashboard.html'
-$dataPath = Join-Path $OutDir 'data.js'
+$dataPath = Join-Path $OutDir 'data.json'
 $csvPath  = Join-Path $OutDir ('connections-{0:yyyyMMdd}.csv' -f (Get-Date))
+$killLog  = Join-Path $OutDir 'ended-processes.csv'
 $utf8     = New-Object System.Text.UTF8Encoding($false)
 $isAdmin  = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
               [Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -274,6 +276,18 @@ tr[data-tip]{cursor:help}
 .origin{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
 .o-windows{color:var(--out);background:var(--out-bg)}.o-microsoft{color:var(--ext);background:var(--ext-bg)}
 .o-thirdparty{color:var(--lan);background:var(--lan-bg)}.o-unsigned{color:#fff;background:var(--risk)}.o-unknown{color:var(--caution);background:var(--caution-bg)}
+tbody tr{cursor:pointer}
+tbody tr.sel td{background:var(--out-bg)!important;box-shadow:inset 0 1px 0 var(--accent),inset 0 -1px 0 var(--accent)}
+tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0 var(--accent),inset 0 -1px 0 var(--accent)}
+.killbar{margin-left:auto;display:flex;align-items:center;gap:10px}
+#selinfo{color:var(--muted);font-size:13px;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kill{font:inherit;font-weight:600;color:#fff;background:var(--risk);border:0;border-radius:7px;padding:7px 14px;cursor:pointer}
+#kill:disabled{background:var(--lan-bg);color:var(--muted);cursor:not-allowed}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:12;max-width:min(560px,calc(100vw - 32px));
+  background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.3);display:none}
+#toast.bad{border-left-color:var(--risk)}
+#toast p{margin:0 0 4px}#toast p:last-child{margin:0}
 </style>
 </head>
 <body>
@@ -288,11 +302,14 @@ tr[data-tip]{cursor:help}
   <label><input type="checkbox" id="ext"> External only</label>
   <label><input type="checkbox" id="closed"> Show recently closed</label>
   <label><input type="checkbox" id="risky"> Risky only</label>
+  <div class="killbar"><span id="selinfo">Click a row to select a program</span><button id="kill" disabled>End process</button></div>
 </div>
 <div class="wrap" id="view"></div>
 <div id="tip"></div>
 <div id="ainfo"></div>
+<div id="toast"></div>
 <script>
+const TOKEN = '__NETMON_TOKEN__';
 // Plain-English guide to common processes: [kind, what it does, risks, official page]
 // kind: w = built into Windows, m = Microsoft app (not core Windows), t = third-party
 const KB = {
@@ -425,7 +442,7 @@ function table(cols, rows, key) {
 }
 
 function render() {
-  const d = window.NETDATA; if (!d) return;
+  const d = window.NETDATA; if (!d || !d.connections) return;
   const now = new Date(d.generated);
   const active = d.connections.filter(c => !c.Closed), ext = active.filter(c => c.External);
   $('#meta').innerHTML = `${esc(d.host)} · updated ${now.toLocaleTimeString()} · every ${d.interval}s` +
@@ -442,7 +459,7 @@ function render() {
   let out = '';
   if (S.tab === 'conn') {
     const rows = sortRows(filtered(d).map(c => ({...c, rr: RANK[c.Risk] || 0, Dur: (c.Closed ? new Date(c.Closed) : now) - new Date(c.FirstSeen)})), 'conn').map(c =>
-      `<tr${rowAttrs(c.Risk, c.Issues, c.App, c.Closed ? 'closed' : '')}><td>${riskPill(c.Risk)}</td><td><span class="pill ${c.Direction==='Inbound'?'in':'out'}">${c.Direction==='Inbound'?'↓ In':'↑ Out'}</span></td>
+      `<tr${rowAttrs(c.Risk, c.Issues, c.App, [c.Closed ? 'closed' : '', isSel([c.PID], c.App) ? 'sel' : ''].join(' ').trim())}${selData([c.PID], c.App, c.Path)}><td>${riskPill(c.Risk)}</td><td><span class="pill ${c.Direction==='Inbound'?'in':'out'}">${c.Direction==='Inbound'?'↓ In':'↑ Out'}</span></td>
       <td><span class="app" data-ai="${esc(c.App)}" data-svc="${esc(c.Services)}">${esc(appLabel(c))}</span><span class="small" title="${esc(c.Path)}">${esc(c.Path)}</span></td><td class="num">${c.PID}</td>
       <td>${esc(c.RemoteHost || '—')}</td><td class="num">${esc(c.RemoteAddress)}</td><td class="num">${c.RemotePort}</td><td class="num">${c.LocalPort}</td>
       <td><span class="pill ${c.External?'ext':'lan'}">${c.External?'Internet':'Local'}</span></td><td>${c.Closed?'Closed':esc(c.State)}</td><td class="num">${dur(0, c.Dur)}</td></tr>`);
@@ -454,7 +471,7 @@ function render() {
       a.pids.add(c.PID); a.total++; if (c.External) { a.ext++; c.Direction==='Inbound' ? a.extIn++ : a.extOut++; } a.hosts.add(c.RemoteHost || c.RemoteAddress); if (!a.Path) a.Path = c.Path;
       a.rr = Math.max(a.rr, RANK[c.Risk] || 0); if (c.Services) c.Services.split(', ').forEach(s => a.svc.add(s)); [].concat(c.Issues || []).forEach(i => a.issues.set(i.Text, i)); });
     const rows = sortRows(Object.values(g).map(a => ({...a, nhosts:a.hosts.size})), 'apps').map(a => { const r = ['', 'medium', 'high'][a.rr]; return (
-      `<tr${rowAttrs(r, [...a.issues.values()], a.App)}><td>${riskPill(r)}</td><td><a class="link app" data-app="${esc(a.App)}" data-ai="${esc(a.App)}" data-svc="${esc([...a.svc].join(', '))}">${esc(a.label)}</a><span class="small" title="${esc(a.Path)}">${esc(a.Path)}</span></td>
+      `<tr${rowAttrs(r, [...a.issues.values()], a.App, isSel([...a.pids], a.App) ? 'sel' : '')}${selData([...a.pids], a.App, a.Path)}><td>${riskPill(r)}</td><td><a class="link app" data-app="${esc(a.App)}" data-ai="${esc(a.App)}" data-svc="${esc([...a.svc].join(', '))}">${esc(a.label)}</a><span class="small" title="${esc(a.Path)}">${esc(a.Path)}</span></td>
       <td class="num">${[...a.pids].join(', ')}</td><td class="num">${a.total}</td><td class="num">${a.ext}</td><td class="num">${a.extIn}</td><td class="num">${a.extOut}</td>
       <td><span class="small" title="${esc([...a.hosts].join('\n'))}">${esc([...a.hosts].slice(0,6).join(', '))}${a.hosts.size>6?' …':''}</span></td></tr>`); });
     out = table([['rr','Risk'],['App','App'],['pids','PID'],['total','Connections'],['ext','External'],['extIn','Ext. in'],['extOut','Ext. out'],['nhosts','Remote hosts']], rows, 'apps');
@@ -462,12 +479,74 @@ function render() {
     const q = S.q.trim().toLowerCase();
     const rows = sortRows(d.listeners.filter(l => (!S.risky || l.Risk) && (!q || [l.App, l.Description, l.Services, l.LocalPort, l.Protocol].join(' ').toLowerCase().includes(q)))
       .map(l => ({...l, rr: RANK[l.Risk] || 0})), 'listen').map(l =>
-      `<tr${rowAttrs(l.Risk, l.Issues, l.App + ' (port ' + l.LocalPort + ')')}><td>${riskPill(l.Risk)}</td><td><span class="app" data-ai="${esc(l.App)}" data-svc="${esc(l.Services)}">${esc(appLabel(l))}</span><span class="small">${esc(l.Path)}</span></td><td class="num">${l.PID}</td><td>${l.Protocol}</td>
+      `<tr${rowAttrs(l.Risk, l.Issues, l.App + ' (port ' + l.LocalPort + ')', isSel([l.PID], l.App) ? 'sel' : '')}${selData([l.PID], l.App, l.Path)}><td>${riskPill(l.Risk)}</td><td><span class="app" data-ai="${esc(l.App)}" data-svc="${esc(l.Services)}">${esc(appLabel(l))}</span><span class="small">${esc(l.Path)}</span></td><td class="num">${l.PID}</td><td>${l.Protocol}</td>
       <td class="num">${esc(l.LocalAddress)}</td><td class="num">${l.LocalPort}</td><td><span class="pill ${l.Exposed?'in':'lan'}">${l.Exposed?'Reachable from network':'This PC only'}</span></td></tr>`);
     out = table([['rr','Risk'],['App','App'],['PID','PID'],['Protocol','Proto'],['LocalAddress','Address'],['LocalPort','Port'],['Exposed','Exposure']], rows, 'listen');
   }
   $('#view').innerHTML = out;
+  updateKillBar();
 }
+
+// ---- selecting a row and ending its program
+let SEL = null;   // {pids, name, path} of the selected program
+const isSel = (pids, name) => !!SEL && SEL.name === name && pids.some(p => SEL.pids.includes(p));
+const selData = (pids, name, path) => ` data-pids="${pids.join(',')}" data-name="${esc(name)}" data-path="${esc(path || '')}"`;
+// mirrors the script's refusal list so the button can explain itself before you click
+const NO_KILL = {
+  core: ['system','system idle','registry','secure system','memcompression','smss','csrss','wininit','winlogon','services','lsass','lsaiso','fontdrvhost','dwm'],
+  svc: ['svchost'], av: ['msmpeng','nissrv','mpdefendercoreservice','securityhealthservice','smartscreen']
+};
+const NO_KILL_WHY = {
+  core: 'Core part of Windows: ending it would crash or freeze the PC.',
+  svc: 'Runs several Windows services. Stop the specific service in services.msc instead.',
+  av: 'Part of Microsoft Defender: ending it would switch off virus protection.'
+};
+const noKillReason = name => { const n = String(name).toLowerCase(); const k = Object.keys(NO_KILL).find(k => NO_KILL[k].includes(n)); return k ? NO_KILL_WHY[k] : ''; };
+
+function updateKillBar() {
+  const d = window.NETDATA;
+  if (SEL && d) {   // forget programs that have exited
+    const live = new Set([...d.connections.filter(c => !c.Closed).map(c => c.PID), ...d.listeners.map(l => l.PID)]);
+    SEL.pids = SEL.pids.filter(p => live.has(p));
+    if (!SEL.pids.length) SEL = null;
+  }
+  const btn = $('#kill'), info = $('#selinfo');
+  if (!SEL) { info.textContent = 'Click a row to select a program'; info.title = ''; btn.disabled = true; btn.title = ''; return; }
+  info.textContent = `Selected: ${SEL.name}.exe · PID ${SEL.pids.join(', ')}`;
+  info.title = SEL.path || '';
+  const why = noKillReason(SEL.name);
+  btn.disabled = !!why;
+  btn.title = why || 'End this program (asks first)';
+}
+
+let toastTimer = null;
+function toast(results) {
+  const t = $('#toast');
+  t.className = results.some(r => !r.ok) ? 'bad' : '';
+  t.innerHTML = results.map(r => `<p>${esc(r.message)}</p>`).join('');
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 8000);
+}
+
+$('#kill').onclick = async () => {
+  if (!SEL) return;
+  const {pids, name, path} = SEL;
+  const extra = name.toLowerCase() === 'explorer'
+    ? '\n\nThis is your taskbar and desktop. They will disappear until you restart Explorer (Ctrl+Shift+Esc > Run new task > explorer).' : '';
+  if (!confirm(`End ${name}.exe (PID ${pids.join(', ')})?\n\n${path || 'Location hidden'}\n\nAny unsaved work in this program will be lost.${extra}`)) return;
+  const results = [];
+  for (const pid of pids) {
+    try {
+      const r = await fetch('/kill', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-NetMon-Token': TOKEN}, body: JSON.stringify({pid, name})});
+      results.push(await r.json());
+    } catch (e) { results.push({ok: false, message: 'NetMonitor is not running, so nothing was ended.'}); }
+  }
+  toast(results);
+  SEL = null;
+  render();
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && SEL) { SEL = null; render(); } });
 
 // controls
 $('#q').value = S.q; $('#dir').value = S.dir; $('#ext').checked = S.ext; $('#closed').checked = S.closed;
@@ -496,7 +575,13 @@ document.addEventListener('mousemove', e => {
 $('#tabs').onclick = e => { if (e.target.dataset.t) { S.tab = e.target.dataset.t; save(); render(); } };
 $('#view').onclick = e => {
   const th = e.target.closest('th'); if (th) { const s = S.sort[th.dataset.key]; S.sort[th.dataset.key] = [th.dataset.k, s[0] === th.dataset.k ? -s[1] : 1]; save(); render(); return; }
-  const a = e.target.closest('a[data-app]'); if (a) { S.q = a.dataset.app; S.tab = 'conn'; $('#q').value = S.q; save(); render(); }
+  const a = e.target.closest('a[data-app]'); if (a) { S.q = a.dataset.app; S.tab = 'conn'; $('#q').value = S.q; save(); render(); return; }
+  const tr = e.target.closest('tr[data-pids]');
+  if (tr) {
+    const pids = tr.dataset.pids.split(',').map(Number), name = tr.dataset.name;
+    SEL = isSel(pids, name) ? null : {pids, name, path: tr.dataset.path};
+    render();
+  }
 };
 
 // hover popup on app names: built-in or not, what it does, risks, links
@@ -549,21 +634,132 @@ document.addEventListener('mouseover', e => {
   else if (aiOpen) aiTimer = setTimeout(hideAppInfo, 300);
 });
 
-// live reload of data.js (works from file:// without a server)
+// live data from NetMonitor.ps1
 let interval = 3000;
-function poll() {
-  const s = document.createElement('script');
-  s.src = 'data.js?t=' + Date.now();
-  s.onload = () => { s.remove(); if (window.NETDATA) interval = window.NETDATA.interval * 1000; render(); setTimeout(poll, interval); };
-  s.onerror = () => { s.remove(); setTimeout(poll, interval); };
-  document.head.appendChild(s);
+async function poll() {
+  try {
+    const r = await fetch('/data', {headers: {'X-NetMon-Token': TOKEN}, cache: 'no-store'});
+    if (r.ok) { window.NETDATA = await r.json(); if (window.NETDATA.interval) interval = window.NETDATA.interval * 1000; render(); }
+  } catch (e) {
+    $('#meta').innerHTML = '<span class="warn">NetMonitor has stopped. Start NetMonitor.ps1 again, then reload this page.</span>';
+    $('#kill').disabled = true;
+  }
+  setTimeout(poll, interval);
 }
 poll();
 </script>
 </body>
 </html>
 '@
-[IO.File]::WriteAllText($htmlPath, $html, $utf8)
+
+# ---------------------------------------------------------------- local dashboard server
+# Served on http://localhost only. Every request except the page itself must carry a random
+# per-run token that is embedded in the page, so other websites can't read the data or end processes.
+
+$tokenBytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($tokenBytes)
+$token = -join ($tokenBytes | ForEach-Object { $_.ToString('x2') })
+
+# processes the End process button refuses to touch
+$noKill = @{
+  'system' = 'core'; 'system idle' = 'core'; 'registry' = 'core'; 'secure system' = 'core'; 'memcompression' = 'core'
+  'smss' = 'core'; 'csrss' = 'core'; 'wininit' = 'core'; 'winlogon' = 'core'; 'services' = 'core'; 'lsass' = 'core'
+  'lsaiso' = 'core'; 'fontdrvhost' = 'core'; 'dwm' = 'core'
+  'svchost' = 'svc'
+  'msmpeng' = 'av'; 'nissrv' = 'av'; 'mpdefendercoreservice' = 'av'; 'securityhealthservice' = 'av'; 'smartscreen' = 'av'
+}
+$noKillReason = @{
+  core = '{0} is a core part of Windows. Ending it would crash or freeze the PC, so NetMonitor won''t do it.'
+  svc  = 'svchost runs several Windows services at once (hover its name to see them). Stop the specific service instead: press Win+R, type services.msc, find the service and click Stop.'
+  av   = '{0} is part of Microsoft Defender. Ending it would switch off your virus protection, so NetMonitor won''t do it.'
+}
+$dashboardPids = New-Object 'System.Collections.Generic.HashSet[int]'
+
+function Invoke-EndProcess([int]$procId, [string]$name) {
+  if ($procId -eq $PID) { return @{ ok = $false; message = 'That is NetMonitor itself. Press Ctrl+C in its PowerShell window to stop it.' } }
+  if (-not $dashboardPids.Contains($procId)) { return @{ ok = $false; message = "PID $procId is no longer in the dashboard. Nothing was ended." } }
+  $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
+  if (-not $p) { return @{ ok = $true; message = "$name (PID $procId) had already closed." } }
+  if ($p.ProcessName -ne $name) { return @{ ok = $false; message = "PID $procId now belongs to $($p.ProcessName), not $name. Nothing was ended." } }
+  $why = $noKill[$name.ToLower()]
+  if ($why) { return @{ ok = $false; message = ($noKillReason[$why] -f $name) } }
+
+  $path = (Get-ProcInfo $procId).Path
+  try {
+    Stop-Process -Id $procId -Force -ErrorAction Stop
+    $ok = $true; $msg = "Ended $name (PID $procId)."
+  } catch {
+    $ok = $false
+    $msg = if ($_.Exception.Message -match 'denied') { "Windows refused to end $name (PID $procId). Restart NetMonitor as Administrator and try again." }
+           else { "Couldn't end $name (PID $procId): $($_.Exception.Message)" }
+  }
+  [pscustomobject]@{ Time = (Get-Date).ToString('o'); PID = $procId; App = $name; Path = $path; Result = $msg } |
+    Export-Csv -Path $killLog -Append -NoTypeInformation -Encoding UTF8 -Force
+  Write-Host $msg
+  @{ ok = $ok; message = $msg }
+}
+
+function Send-Response($res, [int]$status, [string]$type, [byte[]]$body) {
+  $res.StatusCode = $status
+  $res.ContentType = $type
+  $res.AddHeader('Cache-Control', 'no-store')
+  $res.AddHeader('X-Content-Type-Options', 'nosniff')
+  $res.AddHeader('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'")
+  $res.ContentLength64 = $body.Length
+  $res.OutputStream.Write($body, 0, $body.Length)
+  $res.Close()
+}
+function Send-Json($res, [int]$status, $obj) {
+  Send-Response $res $status 'application/json; charset=utf-8' ($utf8.GetBytes((ConvertTo-Json -InputObject $obj -Compress)))
+}
+
+function Invoke-Request($ctx) {
+  $req = $ctx.Request; $res = $ctx.Response
+  $path = $req.Url.AbsolutePath
+  # only answer requests addressed to this dashboard (blocks DNS-rebinding tricks)
+  if ($req.Url.Host -ne 'localhost' -or $req.Url.Port -ne $Port) { return Send-Json $res 403 @{ ok = $false; message = 'Forbidden' } }
+  if ($req.HttpMethod -eq 'GET' -and $path -eq '/') { return Send-Response $res 200 'text/html; charset=utf-8' $pageBytes }
+
+  # everything else needs the token, and must come from the dashboard page itself
+  $origin = $req.Headers['Origin']
+  if ($req.Headers['X-NetMon-Token'] -ne $token -or ($origin -and $origin -ne "http://localhost:$Port")) {
+    return Send-Json $res 403 @{ ok = $false; message = 'Not allowed. Reload the dashboard.' }
+  }
+  if ($req.HttpMethod -eq 'GET' -and $path -eq '/data') { return Send-Response $res 200 'application/json; charset=utf-8' ($utf8.GetBytes($latestJson)) }
+  if ($req.HttpMethod -eq 'POST' -and $path -eq '/kill') {
+    $body = (New-Object IO.StreamReader($req.InputStream, $utf8)).ReadToEnd() | ConvertFrom-Json
+    return Send-Json $res 200 (Invoke-EndProcess ([int]$body.pid) ([string]$body.name))
+  }
+  Send-Json $res 404 @{ ok = $false; message = 'Not found' }
+}
+
+# answer dashboard requests until $until, in short waits so Ctrl+C still works
+$pendingCtx = $null
+function Wait-ServingRequests([datetime]$until) {
+  while ($true) {
+    $ms = [int]($until - (Get-Date)).TotalMilliseconds
+    if ($ms -le 0) { return }
+    if (-not $script:pendingCtx) { $script:pendingCtx = $listener.GetContextAsync() }
+    if (-not $script:pendingCtx.Wait([Math]::Min($ms, 500))) { continue }
+    $ctx = $script:pendingCtx.Result; $script:pendingCtx = $null
+    try { Invoke-Request $ctx } catch { try { $ctx.Response.StatusCode = 500; $ctx.Response.Close() } catch {} }
+  }
+}
+
+$listener = $null
+if (-not $Once) {
+  foreach ($p in $Port..($Port + 20)) {
+    $l = New-Object System.Net.HttpListener
+    $l.Prefixes.Add("http://localhost:$p/")
+    try { $l.Start(); $listener = $l; $Port = $p; break } catch { $l.Close() }
+  }
+  if (-not $listener) { throw "Couldn't open a local port for the dashboard (tried $Port to $($Port + 20))." }
+}
+$dashUrl    = "http://localhost:$Port/"
+$pageBytes  = $utf8.GetBytes($html.Replace('__NETMON_TOKEN__', $token))
+$latestJson = '{}'
+# old bookmarks to dashboard.html forward to the live dashboard
+[IO.File]::WriteAllText($htmlPath, "<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=""0;url=$dashUrl""><a href=""$dashUrl"">Open the dashboard</a>", $utf8)
 
 # ---------------------------------------------------------------- main loop
 
@@ -576,11 +772,12 @@ $prevTime   = $null
 $browserOpened = $false
 $skipStates = @('Listen', 'Bound', 'TimeWait', 'Closed', 'DeleteTCB')
 
-Write-Host "NetMonitor running. Dashboard: $htmlPath"
+Write-Host "NetMonitor running. Dashboard: $dashUrl"
 Write-Host "CSV log:   $csvPath"
-if (-not $isAdmin) { Write-Host 'Tip: run as Administrator to resolve paths for all processes.' -ForegroundColor Yellow }
+if (-not $isAdmin) { Write-Host 'Tip: run as Administrator to resolve paths for all processes and to end elevated programs.' -ForegroundColor Yellow }
 Write-Host 'Press Ctrl+C to stop.'
 
+try {
 while ($true) {
   $now = Get-Date
 
@@ -754,10 +951,17 @@ while ($true) {
     apps        = $appInfo
     services    = $svcInfo
   }
-  $json = ConvertTo-Json -InputObject $payload -Depth 5 -Compress
-  try { [IO.File]::WriteAllText($dataPath, "window.NETDATA=$json;", $utf8) } catch {}  # browser may hold the file briefly
+  $latestJson = ConvertTo-Json -InputObject $payload -Depth 5 -Compress
 
-  if (-not $browserOpened -and -not $NoBrowser) { Start-Process $htmlPath; $browserOpened = $true }
-  if ($Once) { break }
-  Start-Sleep -Seconds $IntervalSeconds
+  # only processes currently shown in the dashboard may be ended
+  $dashboardPids.Clear()
+  foreach ($r in $conns.Values) { if (-not $r.Closed) { [void]$dashboardPids.Add($r.PID) } }
+  foreach ($l in $listeners) { [void]$dashboardPids.Add($l.PID) }
+
+  if ($Once) { [IO.File]::WriteAllText($dataPath, $latestJson, $utf8); break }   # snapshot for scripting/testing
+  if (-not $browserOpened -and -not $NoBrowser) { Start-Process $dashUrl; $browserOpened = $true }
+  Wait-ServingRequests $now.AddSeconds($IntervalSeconds)
+}
+} finally {
+  if ($listener) { $listener.Stop(); $listener.Close() }
 }
