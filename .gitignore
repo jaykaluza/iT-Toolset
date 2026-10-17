@@ -1,3 +1,7 @@
 # Live data and logs: contain this PC's connections, never commit them
 NetMonitorOutput/
 *.csv
+
+# Python cache
+__pycache__/
+*.pyc
