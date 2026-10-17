@@ -516,7 +516,7 @@ function updateKillBar() {
   info.title = SEL.path || '';
   const why = noKillReason(SEL.name);
   btn.disabled = !!why;
-  btn.title = why || 'End this program (asks first)';
+  btn.title = why || (closesWholeApp(SEL) ? 'Close this program completely, every copy of it (asks first)' : 'End the selected process only (asks first)');
 }
 
 let toastTimer = null;
@@ -529,14 +529,23 @@ function toast(results) {
   toastTimer = setTimeout(() => { t.style.display = 'none'; }, 8000);
 }
 
+// shared by many apps: only the selected process is ended (mirrors the script's list)
+const SHARED_HOSTS = ['powershell','pwsh','cmd','conhost','msedgewebview2','dllhost','rundll32','runtimebroker',
+  'backgroundtaskhost','taskhostw','wscript','cscript','sihost','wudfhost','searchprotocolhost','explorer'];
+const closesWholeApp = s => !!s.path && !SHARED_HOSTS.includes(s.name.toLowerCase());
+
 $('#kill').onclick = async () => {
   if (!SEL) return;
   const {pids, name, path} = SEL;
+  const whole = closesWholeApp(SEL);
   const extra = name.toLowerCase() === 'explorer'
     ? '\n\nThis is your taskbar and desktop. They will disappear until you restart Explorer (Ctrl+Shift+Esc > Run new task > explorer).' : '';
-  if (!confirm(`End ${name}.exe (PID ${pids.join(', ')})?\n\n${path || 'Location hidden'}\n\nAny unsaved work in this program will be lost.${extra}`)) return;
+  const question = whole
+    ? `Close ${name}.exe completely?\n\nEvery running copy of this program will be closed:\n${path}\n\nIt is asked to close normally first; anything still running after 5 seconds is forced closed. Unsaved work may be lost.`
+    : `End ${name}.exe (PID ${pids.join(', ')})?\n\n${path || 'Location hidden'}\n\n${SHARED_HOSTS.includes(name.toLowerCase()) ? 'Many programs use this, so only the selected one will be ended. ' : ''}Any unsaved work in it will be lost.${extra}`;
+  if (!confirm(question)) return;
   const results = [];
-  for (const pid of pids) {
+  for (const pid of (whole ? pids.slice(0, 1) : pids)) {
     try {
       const r = await fetch('/kill', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-NetMon-Token': TOKEN}, body: JSON.stringify({pid, name})});
       results.push(await r.json());
@@ -693,10 +702,54 @@ function Invoke-EndProcess([int]$procId, [string]$name) {
     $msg = if ($_.Exception.Message -match 'denied') { "Windows refused to end $name (PID $procId). Restart NetMonitor as Administrator and try again." }
            else { "Couldn't end $name (PID $procId): $($_.Exception.Message)" }
   }
-  [pscustomobject]@{ Time = (Get-Date).ToString('o'); PID = $procId; App = $name; Path = $path; Result = $msg } |
+  Write-KillLog $procId $name $path $msg
+  @{ ok = $ok; message = $msg }
+}
+
+function Write-KillLog($procIds, [string]$name, [string]$path, [string]$msg) {
+  [pscustomobject]@{ Time = (Get-Date).ToString('o'); PID = ($procIds -join ' '); App = $name; Path = $path; Result = $msg } |
     Export-Csv -Path $killLog -Append -NoTypeInformation -Encoding UTF8 -Force
   Write-Host $msg
-  @{ ok = $ok; message = $msg }
+}
+
+# programs that many apps share: ending every copy could close unrelated things, so only the selected one is ended
+$sharedHosts = @('powershell', 'pwsh', 'cmd', 'conhost', 'msedgewebview2', 'dllhost', 'rundll32', 'runtimebroker',
+                 'backgroundtaskhost', 'taskhostw', 'wscript', 'cscript', 'sihost', 'wudfhost', 'searchprotocolhost', 'explorer')
+
+function Test-Exited($p) { try { $p.HasExited } catch { -not (Get-Process -Id $p.Id -ErrorAction SilentlyContinue) } }
+
+# End the whole app the selected process belongs to: every copy running from the same file.
+# Asks windows to close normally first (so e.g. Chrome saves its tabs), then forces what's left.
+function Invoke-EndProgram([int]$procId, [string]$name) {
+  $path = (Get-ProcInfo $procId).Path
+  if ($sharedHosts -contains $name.ToLower() -or -not $path) { return Invoke-EndProcess $procId $name }
+  if (-not $dashboardPids.Contains($procId)) { return @{ ok = $false; message = "PID $procId is no longer in the dashboard. Nothing was ended." } }
+  $why = $noKill[$name.ToLower()]
+  if ($why) { return @{ ok = $false; message = ($noKillReason[$why] -f $name) } }
+
+  $sel = Get-Process -Id $procId -ErrorAction SilentlyContinue
+  if ($sel -and $sel.ProcessName -ne $name) { return @{ ok = $false; message = "PID $procId now belongs to $($sel.ProcessName), not $name. Nothing was ended." } }
+  $procs = @(Get-Process -Name $name -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID -and $(try { $_.Path -eq $path } catch { $false }) })
+  if (-not $procs.Count) { return @{ ok = $true; message = "$name had already closed." } }
+  $ids = @($procs | ForEach-Object Id)
+
+  foreach ($p in $procs) { try { if ($p.MainWindowHandle -ne [IntPtr]::Zero) { [void]$p.CloseMainWindow() } } catch {} }
+  $deadline = (Get-Date).AddSeconds(5)
+  while ((Get-Date) -lt $deadline -and @($procs | Where-Object { -not (Test-Exited $_) }).Count) { Start-Sleep -Milliseconds 250 }
+
+  $refused = 0
+  foreach ($p in $procs) {
+    if (Test-Exited $p) { continue }
+    try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch { if (-not (Test-Exited $p)) { $refused++ } }
+  }
+  $n = $ids.Count
+  if ($refused) {
+    $msg = "Closed $($n - $refused) of $n $name processes. Windows refused the rest; restart NetMonitor as Administrator and try again."
+  } else {
+    $msg = if ($n -eq 1) { "Closed $name." } else { "Closed $name completely ($n processes)." }
+  }
+  Write-KillLog $ids $name $path $msg
+  @{ ok = ($refused -eq 0); message = $msg }
 }
 
 function Send-Response($res, [int]$status, [string]$type, [byte[]]$body) {
@@ -728,7 +781,7 @@ function Invoke-Request($ctx) {
   if ($req.HttpMethod -eq 'GET' -and $path -eq '/data') { return Send-Response $res 200 'application/json; charset=utf-8' ($utf8.GetBytes($latestJson)) }
   if ($req.HttpMethod -eq 'POST' -and $path -eq '/kill') {
     $body = (New-Object IO.StreamReader($req.InputStream, $utf8)).ReadToEnd() | ConvertFrom-Json
-    return Send-Json $res 200 (Invoke-EndProcess ([int]$body.pid) ([string]$body.name))
+    return Send-Json $res 200 (Invoke-EndProgram ([int]$body.pid) ([string]$body.name))
   }
   Send-Json $res 404 @{ ok = $false; message = 'Not found' }
 }

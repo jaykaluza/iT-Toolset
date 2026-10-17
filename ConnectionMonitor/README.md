@@ -35,7 +35,11 @@ Options:
 
 ## Ending a program
 
-Click any row to select its program (click again or press Esc to clear), then click **End process**. You always get a confirmation prompt showing the program's name, PID and file location, and any unsaved work in it is lost.
+Click any row to select its program (click again or press Esc to clear), then click **End process**. You always get a confirmation prompt first.
+
+- **Most apps (Chrome, Opera, Zoom…) are closed completely.** Many apps run as several processes, and only some of them show up in the dashboard, so ending just one would leave the app running. Instead, every copy running from the same file is closed: each is asked to close normally first (so Chrome, for example, can save its tabs), and anything still running after 5 seconds is forced closed.
+- **Programs shared by many apps** (PowerShell, cmd, Edge WebView2, dllhost and similar) only have the selected process ended, so unrelated things don't close.
+- If Windows hides a program's location (run as Administrator to see it), only the selected process is ended.
 
 Safety checks:
 - The dashboard is served only to this PC (`localhost`), and every request needs a secret key created fresh each time the script starts, so other websites can't trigger it.
