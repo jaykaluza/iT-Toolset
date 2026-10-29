@@ -36,8 +36,13 @@ from concurrent.futures import ThreadPoolExecutor
 if sys.platform != 'win32':
     sys.exit('NetMonitor only runs on Windows.')
 
+APP_NAME = 'My Windows Network/Internet Connection Monitor'
+APP_VERSION = '1.1'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
+FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged NetMonitor.exe
+RESOURCES = getattr(sys, '_MEIPASS', HERE)                # where dashboard.html is
+APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'MyNetworkMonitor')   # logs when run as the app
 
 # ---------------------------------------------------------------- Windows API
 
@@ -195,16 +200,60 @@ def process_names():
     return names
 
 
+class UNICODE_STRING(ctypes.Structure):
+    _fields_ = [('Length', wt.USHORT), ('MaximumLength', wt.USHORT), ('Buffer', ctypes.c_void_p)]
+
+
+class SYSTEM_PROCESS_ID_INFORMATION(ctypes.Structure):
+    _fields_ = [('ProcessId', ctypes.c_void_p), ('ImageName', UNICODE_STRING)]
+
+
+ntdll = ctypes.WinDLL('ntdll')
+ntdll.NtQuerySystemInformation.argtypes = [ctypes.c_ulong, ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
+ntdll.NtQuerySystemInformation.restype = ctypes.c_long
+kernel32.QueryDosDeviceW.argtypes = [wt.LPCWSTR, wt.LPWSTR, wt.DWORD]
+SystemProcessIdInformation = 88
+_device_map = None
+
+
+def _dos_path(nt_path):
+    r"""\Device\HarddiskVolume3\Windows\x.exe -> C:\Windows\x.exe"""
+    global _device_map
+    if _device_map is None:
+        _device_map = {}
+        buf = ctypes.create_unicode_buffer(1024)
+        for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+            if kernel32.QueryDosDeviceW(f'{letter}:', buf, len(buf)):
+                _device_map[buf.value.lower()] = f'{letter}:'
+    for device, drive in _device_map.items():
+        if nt_path.lower().startswith(device + '\\'):
+            return drive + nt_path[len(device):]
+    return ''
+
+
+def _image_name_from_kernel(pid):
+    """Program file of any process, including ones Windows protects from being opened (what Task Manager uses)."""
+    buf = ctypes.create_unicode_buffer(32767)   # MaximumLength is 16-bit, so at most 65534 bytes
+    info = SYSTEM_PROCESS_ID_INFORMATION()
+    info.ProcessId = pid
+    info.ImageName.MaximumLength = ctypes.sizeof(buf)
+    info.ImageName.Buffer = ctypes.addressof(buf)
+    if ntdll.NtQuerySystemInformation(SystemProcessIdInformation, ctypes.byref(info), ctypes.sizeof(info), None) != 0:
+        return ''
+    return _dos_path(ctypes.wstring_at(info.ImageName.Buffer, info.ImageName.Length // 2))
+
+
 def process_path(pid):
     h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
-    if not h:
-        return ''
-    try:
-        buf = ctypes.create_unicode_buffer(32768)
-        size = wt.DWORD(len(buf))
-        return buf.value if kernel32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)) else ''
-    finally:
-        kernel32.CloseHandle(h)
+    if h:
+        try:
+            buf = ctypes.create_unicode_buffer(32768)
+            size = wt.DWORD(len(buf))
+            if kernel32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+                return buf.value
+        finally:
+            kernel32.CloseHandle(h)
+    return '' if pid in (0, 4) else _image_name_from_kernel(pid)
 
 
 def is_running(pid):
@@ -271,6 +320,50 @@ def adapter_counters():
     return out
 
 
+# Windows Filtering Platform: turns the filter ID in a firewall-block event into the rule's name
+class FWPM_DISPLAY_DATA0(ctypes.Structure):
+    _fields_ = [('name', ctypes.c_wchar_p), ('description', ctypes.c_wchar_p)]
+
+
+class FWPM_FILTER0_START(ctypes.Structure):   # only the leading fields of FWPM_FILTER0 are read
+    _fields_ = [('filterKey', ctypes.c_ubyte * 16), ('displayData', FWPM_DISPLAY_DATA0)]
+
+
+try:
+    fwpuclnt = ctypes.WinDLL('fwpuclnt')
+    fwpuclnt.FwpmEngineOpen0.argtypes = [wt.LPCWSTR, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(wt.HANDLE)]
+    fwpuclnt.FwpmEngineOpen0.restype = wt.DWORD
+    fwpuclnt.FwpmFilterGetById0.argtypes = [wt.HANDLE, ctypes.c_uint64, ctypes.POINTER(ctypes.POINTER(FWPM_FILTER0_START))]
+    fwpuclnt.FwpmFilterGetById0.restype = wt.DWORD
+    fwpuclnt.FwpmFreeMemory0.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
+except (OSError, AttributeError):
+    fwpuclnt = None
+RPC_C_AUTHN_WINNT = 10
+_wfp_engine = None
+_filter_names = {}
+
+
+def firewall_rule_name(filter_id):
+    """Name of the firewall rule / filter that blocked a connection ('' if Windows won't say)."""
+    global _wfp_engine
+    if not filter_id or fwpuclnt is None:
+        return ''
+    if filter_id in _filter_names:
+        return _filter_names[filter_id]
+    if _wfp_engine is None:
+        h = wt.HANDLE()
+        _wfp_engine = h if fwpuclnt.FwpmEngineOpen0(None, RPC_C_AUTHN_WINNT, None, None, ctypes.byref(h)) == 0 else False
+    name = ''
+    if _wfp_engine:
+        flt = ctypes.POINTER(FWPM_FILTER0_START)()
+        if fwpuclnt.FwpmFilterGetById0(_wfp_engine, filter_id, ctypes.byref(flt)) == 0 and flt:
+            name = flt.contents.displayData.name or ''
+            p = ctypes.c_void_p(ctypes.cast(flt, ctypes.c_void_p).value)
+            fwpuclnt.FwpmFreeMemory0(ctypes.byref(p))
+    _filter_names[filter_id] = name
+    return name
+
+
 def is_admin():
     try:
         return bool(shell32.IsUserAnAdmin())
@@ -324,6 +417,66 @@ DNS_CACHE_PS = r'''
 Get-DnsClientCache | Where-Object { $_.Type -eq 1 -or $_.Type -eq 28 } | Select-Object Entry, Data | ConvertTo-Json -Compress
 '''
 
+# Connections blocked by Windows Firewall: event 5157 in the Security log, written only when
+# "Filtering Platform Connection" failure auditing is on. Newest first; only events after NM_SINCE.
+BLOCKED_PS = r'''
+$since = [long]$env:NM_SINCE
+$filter = @{ LogName = 'Security'; Id = 5157 }
+if ($since -le 0) { $filter.StartTime = (Get-Date).AddMinutes(-60) }
+try {
+  $events = @(Get-WinEvent -FilterHashtable $filter -MaxEvents 500 -ErrorAction Stop | Where-Object { $_.RecordId -gt $since })
+} catch {
+  if ($_.FullyQualifiedErrorId -like 'NoMatchingEventsFound*') { '[]'; return }
+  ConvertTo-Json -InputObject @{ error = $_.Exception.Message } -Compress; return
+}
+$out = foreach ($e in $events) {
+  $d = @{}
+  foreach ($n in ([xml]$e.ToXml()).Event.EventData.Data) { $d[[string]$n.Name] = [string]$n.'#text' }
+  [pscustomobject]@{ Id = $e.RecordId; Time = $e.TimeCreated.ToString('o'); ProcessId = $d['ProcessID']; FilterId = $d['FilterRTID']
+                     Application = $d['Application']; Direction = $d['Direction']; Local = $d['SourceAddress']
+                     LocalPort = $d['SourcePort']; Remote = $d['DestAddress']; RemotePort = $d['DestPort']; Protocol = $d['Protocol'] }
+}
+ConvertTo-Json -InputObject @($out) -Compress
+'''
+
+# Is "Filtering Platform Connection" failure auditing on? (GUID works on every Windows language)
+AUDIT_PS = r'''
+$csv = auditpol /get /subcategory:'{0CCE9226-69AE-11D9-BED3-505054503030}' /r 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $csv) { ConvertTo-Json -InputObject @{ ok = $false; setting = '' } -Compress; return }
+$row = @($csv | Where-Object { $_ } | ConvertFrom-Csv)[0]
+ConvertTo-Json -InputObject @{ ok = $true; setting = [string]@($row.PSObject.Properties)[4].Value } -Compress
+'''
+PROTOCOLS = {'1': 'ICMP', '6': 'TCP', '17': 'UDP', '58': 'ICMPv6'}
+
+# Apps blocked from the dashboard: Windows Firewall rules in their own "NetMonitor" group, so only
+# NetMonitor's rules are ever listed or removed. Program paths come in via environment variables.
+FW_GROUP = 'NetMonitor'
+FW_LIST_PS = r'''
+$out = foreach ($r in @(Get-NetFirewallRule -Group 'NetMonitor' -ErrorAction SilentlyContinue)) {
+  [pscustomobject]@{ Program = [string]($r | Get-NetFirewallApplicationFilter).Program; Direction = [string]$r.Direction; Name = [string]$r.DisplayName }
+}
+ConvertTo-Json -InputObject @($out) -Compress
+'''
+FW_BLOCK_PS = r'''
+try {
+  foreach ($dir in 'Outbound', 'Inbound') {
+    New-NetFirewallRule -DisplayName ('NetMonitor block: {0} ({1})' -f $env:NM_NAME, $dir.ToLower()) -Group 'NetMonitor' `
+      -Direction $dir -Action Block -Program $env:NM_PATH -Profile Any -ErrorAction Stop `
+      -Description 'Created by My Windows Network/Internet Connection Monitor (Block app). Use Unblock in its Blocked tab to remove.' | Out-Null
+  }
+  ConvertTo-Json -InputObject @{ ok = $true } -Compress
+} catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
+'''
+FW_UNBLOCK_PS = r'''
+try {
+  $rules = @(Get-NetFirewallRule -Group 'NetMonitor' -ErrorAction SilentlyContinue |
+             Where-Object { ($_ | Get-NetFirewallApplicationFilter).Program -eq $env:NM_PATH })
+  $names = @($rules | ForEach-Object { [string]$_.DisplayName })
+  if ($rules.Count) { $rules | Remove-NetFirewallRule -ErrorAction Stop }
+  ConvertTo-Json -InputObject @{ ok = $true; removed = $names } -Compress
+} catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
+'''
+
 PUBLIC_NETWORK_PS = r'''
 ConvertTo-Json @(Get-NetConnectionProfile | Where-Object NetworkCategory -eq 'Public').Count
 '''
@@ -333,8 +486,12 @@ def file_info(paths):
     """{path: {Status, Publisher, Company, Product, Description}} via Get-AuthenticodeSignature."""
     paths = sorted(paths)
     out = {}
-    for i in range(0, len(paths), 40):
-        for row in run_powershell(FILE_INFO_PS, {'NM_PATHS': json.dumps(paths[i:i + 40])}):
+    batches = [paths[i:i + 12] for i in range(0, len(paths), 12)]
+    # signature checks are slow (catalog lookups), so run a few PowerShell helpers side by side
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = pool.map(lambda batch: run_powershell(FILE_INFO_PS, {'NM_PATHS': json.dumps(batch)}), batches)
+    for rows in results:
+        for row in rows:
             if isinstance(row, dict) and isinstance(row.get('Path'), str):
                 out[row['Path']] = row
     for p in paths:
@@ -476,7 +633,10 @@ class Monitor:
         self.out_dir = args.outdir
         os.makedirs(self.out_dir, exist_ok=True)
         self.csv_path = os.path.join(self.out_dir, f'connections-{dt.date.today():%Y%m%d}.csv')
-        self.kill_log = os.path.join(self.out_dir, 'ended-processes.csv')
+        # activity log lives next to NetMonitor.exe (or NetMonitor.py) and keeps the last 10 days
+        self.activity_log = os.path.join(os.path.dirname(sys.executable) if FROZEN else HERE, 'activity-log.txt')
+        self.activity_pruned = 0.0
+        self.prune_activity_log()
         self.lock = threading.RLock()
         self.names = {}
         self.proc_cache = {}
@@ -489,9 +649,26 @@ class Monitor:
         self.svc_refreshed = 0.0
         self.dns_refreshed = 0.0
         self.prev_counters, self.prev_time = None, None
-        self.on_public = bool(next(iter(run_powershell(PUBLIC_NETWORK_PS)), 0))
+        self.sig_queue, self.sig_busy = set(), False   # program files waiting for a signature check
+        self.blocked, self.blocked_since = {}, 0       # firewall-blocked connections, grouped
+        self.blocked_status, self.blocked_error = 'unknown', ''
+        self.blocked_busy, self.blocked_refreshed = False, 0.0
+        self.audit_on, self.audit_checked = None, 0.0
+        self.fw_blocked, self.fw_busy, self.fw_refreshed = [], False, 0.0   # apps blocked from the dashboard
+        self.seen_names = {}
+        # when each app was unblocked, so its earlier blocked attempts aren't listed again after a restart
+        self.unblocked_file = os.path.join(self.out_dir, 'unblocked.json')
+        try:
+            with open(self.unblocked_file, encoding='utf-8') as f:
+                self.unblocked = {k: v for k, v in json.load(f).items() if isinstance(v, str)}
+        except (OSError, ValueError, AttributeError):
+            self.unblocked = {}
+        self.on_public = False
+        threading.Thread(target=self._check_public_network, daemon=True).start()
         self.latest_json = '{}'
         self.dashboard_pids = frozenset()
+        self.last_client = time.time()     # when a dashboard last asked for data
+        self.stop = threading.Event()      # set by the dashboard's Stop monitor button
 
     # ---- background lookups
 
@@ -517,6 +694,185 @@ class Monitor:
                 svc_path[pid] = exe
         self.svc_map, self.svc_path, self.svc_info = svc_map, svc_path, svc_info
         self.svc_refreshed = time.time()
+
+    def refresh_blocked(self):
+        """Read new firewall-block events (5157) from the Security log and group repeats."""
+        try:
+            if not self.admin:
+                self.blocked_status = 'admin'
+                return
+            if time.time() - self.audit_checked > 60:
+                row = next(iter(run_powershell(AUDIT_PS)), {})
+                setting = str(row.get('setting', '')).strip().lower()
+                # auditpol's wording is English-only: anything else means "can't tell", decided by whether events appear
+                self.audit_on = True if 'failure' in setting else False if setting in ('no auditing', 'success') else None
+                self.audit_checked = time.time()
+            rows = run_powershell(BLOCKED_PS, {'NM_SINCE': str(self.blocked_since)})
+            if rows and isinstance(rows[0], dict) and 'error' in rows[0]:
+                self.blocked_status, self.blocked_error = 'error', str(rows[0]['error'])
+                return
+            with self.lock:
+                for ev in rows:
+                    if isinstance(ev, dict):
+                        self._add_blocked(ev)
+                cutoff = dt.datetime.now().astimezone() - dt.timedelta(hours=1)
+                for key in [k for k, b in self.blocked.items() if dt.datetime.fromisoformat(b['LastSeen']) < cutoff]:
+                    del self.blocked[key]
+                if len(self.blocked) > 500:   # keep the most recent
+                    for key in sorted(self.blocked, key=lambda k: self.blocked[k]['LastSeen'])[:len(self.blocked) - 500]:
+                        del self.blocked[key]
+            if self.audit_on is not None:
+                self.blocked_status = 'on' if self.audit_on else 'off'
+            else:
+                self.blocked_status = 'on' if self.blocked else 'unknown'
+        finally:
+            self.blocked_busy = False
+            self.blocked_refreshed = time.time()
+
+    # ---- Block app: Windows Firewall rules for one program file
+
+    def refresh_fw(self):
+        try:
+            if not self.admin:
+                return
+            by_path = {}
+            for row in run_powershell(FW_LIST_PS):
+                prog = str(row.get('Program') or '') if isinstance(row, dict) else ''
+                if not prog or prog.lower() == 'any':
+                    continue
+                entry = by_path.setdefault(prog.lower(), {'Path': prog, 'Directions': [], 'Rules': []})
+                entry['Directions'].append(str(row.get('Direction') or ''))
+                entry['Rules'].append(str(row.get('Name') or ''))
+            names = {n.lower(): n for n in getattr(self, 'names', {}).values()}
+            for entry in by_path.values():
+                base = os.path.splitext(os.path.basename(entry['Path']))[0]
+                entry['App'] = names.get(base.lower(), base)
+                entry['Directions'] = sorted(set(entry['Directions']))
+            self.fw_blocked = sorted(by_path.values(), key=lambda e: e['App'].lower())
+        finally:
+            self.fw_busy = False
+            self.fw_refreshed = time.time()
+
+    def block_app(self, pid, name):
+        if not self.admin:
+            return {'ok': False, 'message': 'Blocking apps needs administrator rights. Start NetMonitor as Administrator.'}
+        with self.lock:
+            path = self.proc_cache.get(pid, {}).get('Path', '')
+            in_dashboard = pid in self.dashboard_pids
+        if pid in (os.getpid(), os.getppid()) or (FROZEN and path.lower() == sys.executable.lower()):
+            return {'ok': False, 'message': "NetMonitor can't block itself."}
+        if not in_dashboard:
+            return {'ok': False, 'message': f'PID {pid} is no longer in the dashboard. Nothing was blocked.'}
+        if process_names().get(pid) not in (None, name):
+            return {'ok': False, 'message': f'PID {pid} now belongs to a different program. Nothing was blocked.'}
+        why = NO_KILL.get(name.lower())
+        if why == 'av':
+            return {'ok': False, 'message': f"{name} is part of Microsoft Defender. Blocking it would stop virus-protection updates, so NetMonitor won't do it."}
+        if why or pid == 4:
+            return {'ok': False, 'message': f"{name} is a core part of Windows. Blocking it could cut off networking for the whole PC, so NetMonitor won't do it."}
+        if name.lower() in SHARED_HOSTS:
+            return {'ok': False, 'message': f"{name} is used by many different programs, so blocking it would cut off more than one app. NetMonitor won't block it."}
+        if not path:
+            return {'ok': False, 'message': f"Windows didn't reveal where {name} lives, so it can't be blocked by its file."}
+        if any(e['Path'].lower() == path.lower() for e in self.fw_blocked):
+            return {'ok': True, 'message': f'{name} is already blocked.'}
+        row = next(iter(run_powershell(FW_BLOCK_PS, {'NM_PATH': path, 'NM_NAME': name})), {})
+        if not row.get('ok'):
+            return {'ok': False, 'message': f"Windows Firewall didn't accept the block for {name}. {row.get('error', '')}".strip()}
+        self.refresh_fw()
+        msg = (f"Blocked {name} with Windows Firewall rules 'NetMonitor block: {name} (outbound)' and "
+               f"'NetMonitor block: {name} (inbound)': it can't connect in or out.")
+        self.log_action('BLOCKED', [pid], name, path, msg)
+        # close it too, so connections it already had open end now rather than when it next reconnects
+        closed = self.end_program(pid, name)
+        if closed.get('ok'):
+            return {'ok': True, 'message': f'{msg} {closed["message"]} If you start it again it stays blocked until you unblock it.'}
+        return {'ok': False, 'message': f'{msg} But it could not be closed: {closed["message"]}'}
+
+    def unblock_app(self, path):
+        if not self.admin:
+            return {'ok': False, 'message': 'Unblocking apps needs administrator rights. Start NetMonitor as Administrator.'}
+        entry = next((e for e in self.fw_blocked if e['Path'].lower() == str(path).lower()), None)
+        if not entry:   # only NetMonitor's own rules can be removed from here
+            return {'ok': False, 'message': 'That app is not in the list of apps NetMonitor blocked.'}
+        row = next(iter(run_powershell(FW_UNBLOCK_PS, {'NM_PATH': entry['Path']})), {})
+        if not row.get('ok'):
+            return {'ok': False, 'message': f"Windows Firewall didn't remove the block for {entry['App']}. {row.get('error', '')}".strip()}
+        self.refresh_fw()
+        with self.lock:   # its earlier blocked attempts came from this block, so clear them from the list
+            for key in [k for k, b in self.blocked.items() if b['Path'] and b['Path'].lower() == entry['Path'].lower()]:
+                del self.blocked[key]
+            cutoff = dt.datetime.now().astimezone() - dt.timedelta(hours=2)
+            self.unblocked = {k: v for k, v in self.unblocked.items() if dt.datetime.fromisoformat(v) > cutoff}
+            self.unblocked[entry['Path'].lower()] = now_iso()
+            try:
+                with open(self.unblocked_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.unblocked, f)
+            except OSError:
+                pass
+        removed = row.get('removed') or []
+        removed = [removed] if isinstance(removed, str) else removed
+        rules = ' and '.join(f"'{r}'" for r in removed) or 'its NetMonitor rules'
+        msg = f"Unblocked {entry['App']}: removed Windows Firewall {'rule' if len(removed) == 1 else 'rules'} {rules}; it can connect again."
+        self.log_action('UNBLOCKED', [], entry['App'], entry['Path'], msg)
+        return {'ok': True, 'message': msg}
+
+    def set_audit(self, enable):
+        """Turn Windows' blocked-connection recording on or off (the dashboard's button). Only this one setting."""
+        if not self.admin:
+            return {'ok': False, 'message': 'Changing this needs administrator rights. Start NetMonitor as Administrator.'}
+        auditpol = os.path.join(WINDIR, 'System32', 'auditpol.exe')
+        try:
+            r = subprocess.run([auditpol, '/set', '/subcategory:{0CCE9226-69AE-11D9-BED3-505054503030}',
+                                '/failure:enable' if enable else '/failure:disable'],
+                               capture_output=True, timeout=30, creationflags=CREATE_NO_WINDOW)
+        except (OSError, subprocess.SubprocessError) as e:
+            return {'ok': False, 'message': f"Couldn't run Windows' auditpol tool: {e}"}
+        if r.returncode != 0:
+            detail = (r.stdout or r.stderr or b'').decode('utf-8', 'replace').strip()
+            return {'ok': False, 'message': f'Windows refused the change. {detail}'.strip()}
+        self.audit_on, self.audit_checked = enable, time.time()
+        self.blocked_status = 'on' if enable else 'off'
+        self.blocked_refreshed = 0.0   # read the log again on the next refresh
+        msg = ('Blocked-connection recording is on. Blocked connections will appear here as they happen.' if enable
+               else 'Blocked-connection recording is off.')
+        print(msg)
+        return {'ok': True, 'message': msg}
+
+    def _add_blocked(self, ev):
+        self.blocked_since = max(self.blocked_since, int(ev.get('Id') or 0))
+        app = str(ev.get('Application') or '')
+        path = _dos_path(app) if app.lower().startswith('\\device\\') else app
+        name = os.path.splitext(os.path.basename(path or app))[0] or 'System'
+        # the log writes paths in lowercase; use the program's own spelling if it has been seen running
+        name = getattr(self, 'seen_names', {}).get(name.lower(), name)
+        direction = 'Inbound' if ev.get('Direction') == '%%14592' else 'Outbound'
+        remote, rport, lport = str(ev.get('Remote') or ''), int(ev.get('RemotePort') or 0), int(ev.get('LocalPort') or 0)
+        proto = PROTOCOLS.get(str(ev.get('Protocol')), str(ev.get('Protocol') or ''))
+        when = str(ev.get('Time') or now_iso())
+        unblocked_at = self.unblocked.get(path.lower())
+        if unblocked_at and dt.datetime.fromisoformat(when) <= dt.datetime.fromisoformat(unblocked_at):
+            return   # blocked by a NetMonitor rule that has since been removed
+        # outbound blocks repeat from new local ports, inbound ones target the same local port
+        key = (name.lower(), direction, remote, rport if direction == 'Outbound' else lport, proto)
+        b = self.blocked.get(key)
+        if not b:
+            b = self.blocked[key] = {'App': name, 'Path': path if ':' in path else '',
+                                     'Direction': direction, 'RemoteAddress': remote, 'RemotePort': rport,
+                                     'LocalPort': lport, 'Protocol': proto, 'External': is_external(remote),
+                                     'Count': 0, 'FirstSeen': when, 'LastSeen': when, 'PID': 0}
+        b['Count'] += 1
+        b['FirstSeen'], b['LastSeen'] = min(b['FirstSeen'], when), max(b['LastSeen'], when)
+        if when >= b['LastSeen']:
+            b['PID'], b['LocalPort'] = int(ev.get('ProcessId') or 0), lport
+            try:
+                b['Rule'] = firewall_rule_name(int(ev.get('FilterId') or 0)) or b.get('Rule', '')
+            except (ValueError, OSError):
+                b.setdefault('Rule', '')
+        b.setdefault('Rule', '')
+
+    def _check_public_network(self):
+        self.on_public = bool(next(iter(run_powershell(PUBLIC_NETWORK_PS)), 0))
 
     def refresh_dns_cache(self):
         for row in run_powershell(DNS_CACHE_PS):
@@ -549,17 +905,39 @@ class Monitor:
             path = '' if pid in (0, 4) else (process_path(pid) or self.svc_path.get(pid, ''))
             self.proc_cache[pid] = {'Name': name, 'Path': path, 'Description': 'Windows kernel' if pid == 4 else '',
                                     'Company': '', 'Product': '', 'Signature': '', 'Publisher': '', 'Origin': ''}
-        unknown = {self.proc_cache[p]['Path'] for p in new} - set(self.file_cache) - {''}
+        # signature checks are slow, so they run in the background and fill in when done
+        unknown = {self.proc_cache[p]['Path'] for p in new} - set(self.file_cache) - self.sig_queue - {''}
         if unknown:
-            self.file_cache.update(file_info(unknown))
+            self.sig_queue |= unknown
+            if not self.sig_busy:
+                self.sig_busy = True
+                threading.Thread(target=self._check_signatures, daemon=True).start()
         for pid in new:
-            info = self.proc_cache[pid]
-            fi = self.file_cache.get(info['Path'])
-            if fi:
-                info.update(Signature=fi.get('Status') or 'Unknown', Publisher=fi.get('Publisher') or '',
-                            Company=fi.get('Company') or '', Product=fi.get('Product') or '',
-                            Description=fi.get('Description') or info['Description'])
-            info['Origin'] = origin_of(info)
+            self._apply_file_info(self.proc_cache[pid])
+
+    def _apply_file_info(self, info):
+        fi = self.file_cache.get(info['Path'])
+        if fi:
+            info.update(Signature=fi.get('Status') or 'Unknown', Publisher=fi.get('Publisher') or '',
+                        Company=fi.get('Company') or '', Product=fi.get('Product') or '',
+                        Description=fi.get('Description') or info['Description'])
+        info['Origin'] = 'checking' if info['Path'] and not fi else origin_of(info)
+
+    def _check_signatures(self):
+        while True:
+            with self.lock:
+                batch = self.sig_queue - set(self.file_cache)
+                if not batch:
+                    self.sig_queue.clear()
+                    self.sig_busy = False
+                    return
+            results = file_info(batch)   # slow; runs outside the lock so the dashboard keeps refreshing
+            with self.lock:
+                self.file_cache.update(results)
+                self.sig_queue -= set(results)
+                for info in self.proc_cache.values():
+                    if info['Path'] in results:
+                        self._apply_file_info(info)
 
     # ---- one refresh
 
@@ -571,10 +949,18 @@ class Monitor:
         now = dt.datetime.now().astimezone()
         stamp = now.isoformat()
         self.names = process_names()
+        self.seen_names.update({n.lower(): n for n in self.names.values()})   # proper spelling, even after a program closes
         for pid in [p for p in self.proc_cache if p not in self.names]:   # PIDs get reused
             del self.proc_cache[pid]
         if time.time() - self.svc_refreshed >= 30:
-            self.refresh_services()
+            self.svc_refreshed = time.time()
+            threading.Thread(target=self.refresh_services, daemon=True).start()
+        if time.time() - self.fw_refreshed >= 15 and not self.fw_busy:
+            self.fw_busy = True
+            threading.Thread(target=self.refresh_fw, daemon=True).start()
+        if time.time() - self.blocked_refreshed >= 10 and not self.blocked_busy:
+            self.blocked_busy = True
+            threading.Thread(target=self.refresh_blocked, daemon=True).start()
         if time.time() - self.dns_refreshed >= 10:
             threading.Thread(target=self.refresh_dns_cache, daemon=True).start()
             self.dns_refreshed = time.time()
@@ -600,20 +986,29 @@ class Monitor:
                 continue
             info = self.proc_cache[pid]
             direction = 'Inbound' if lport in listen_ports else 'Outbound'
-            issues = app_issues(info, self.admin)
+            issues = []   # issues about this connection itself; the app's own issues are added below
             if external and direction == 'Inbound':
                 issues.append(issue('high', f"A computer on the internet ({raddr}) is connected INTO '{info['Name']}'. Unexpected unless you run a server or game host. Fix: end the app in Task Manager, then Windows Security > Firewall & network protection > Allow an app through firewall > untick it. Also check your router's port-forwarding settings."))
             if external and rport in BAD_PORTS:
                 issues.append(issue('high', f"Talking to the internet on port {rport}, which is {BAD_PORTS[rport]}. Fix: unless you recognise this, end '{info['Name']}' in Task Manager and run a full Defender scan (Windows Security > Virus & threat protection > Scan options > Full scan)."))
             if external and rport in (21, 23):
                 issues.append(issue('medium', f'Uses an unencrypted login protocol (port {rport}), so passwords can be read in transit. Fix: use an SFTP or SSH client instead.'))
-            r = {'Risk': risk_level(issues), 'Issues': issues, 'Publisher': info['Publisher'], 'Direction': direction,
-                 'External': external, 'App': info['Name'], 'Description': info['Description'],
-                 'Services': self.svc_map.get(pid, ''), 'Path': info['Path'], 'PID': pid, 'Protocol': 'TCP',
+            r = {'Risk': '', 'Issues': [], 'Publisher': '', 'Direction': direction,
+                 'External': external, 'App': info['Name'], 'Description': '',
+                 'Services': '', 'Path': '', 'PID': pid, 'Protocol': 'TCP',
                  'LocalAddress': laddr, 'LocalPort': lport, 'RemoteAddress': raddr, 'RemotePort': rport,
-                 'RemoteHost': host, 'State': state, 'FirstSeen': stamp, 'LastSeen': stamp, 'Closed': None}
+                 'RemoteHost': host, 'State': state, 'FirstSeen': stamp, 'LastSeen': stamp, 'Closed': None,
+                 '_conn_issues': issues}
             self.conns[key] = r
             new_rows.append(r)
+
+        # keep each open connection's app details and risk current (signature checks finish in the background)
+        for r in self.conns.values():
+            info = self.proc_cache.get(r['PID'])
+            if info and not r['Closed']:
+                r['Issues'] = app_issues(info, self.admin) + r['_conn_issues']
+                r.update(Risk=risk_level(r['Issues']), Publisher=info['Publisher'], Description=info['Description'],
+                         Path=info['Path'], Services=self.svc_map.get(r['PID'], r['Services']))
 
         for key, r in list(self.conns.items()):   # mark vanished connections closed, prune old ones
             if key in seen:
@@ -666,21 +1061,75 @@ class Monitor:
             apps[info['Name']] = {k: info[k] for k in ('Origin', 'Path', 'Publisher', 'Signature', 'Company', 'Product', 'Description')}
 
         payload = {'generated': stamp, 'host': socket.gethostname(), 'admin': self.admin, 'interval': self.args.interval,
-                   'rxRate': rx_rate, 'txRate': tx_rate, 'connections': list(self.conns.values()),
-                   'listeners': listeners, 'apps': apps, 'services': self.svc_info}
+                   'rxRate': rx_rate, 'txRate': tx_rate, 'connections': [{k: v for k, v in r.items() if not k.startswith('_')} for r in self.conns.values()],
+                   'listeners': listeners, 'apps': apps, 'services': self.svc_info,
+                   # only attempts by apps blocked from the dashboard, not everything the firewall blocks
+                   'blocked': sorted((b for b in self.blocked.values()
+                                      if b['Path'].lower() in {e['Path'].lower() for e in self.fw_blocked}),
+                                     key=lambda b: b['LastSeen'], reverse=True),
+                   'blockedStatus': self.blocked_status, 'blockedError': self.blocked_error,
+                   'fwBlocked': self.fw_blocked}
         self.latest_json = json.dumps(payload, separators=(',', ':'))
         # only processes currently shown in the dashboard may be ended
         self.dashboard_pids = frozenset([r['PID'] for r in self.conns.values() if not r['Closed']] + [l['PID'] for l in listeners])
 
     # ---- End process
 
-    def log_kill(self, pids, name, path, msg):
-        append_csv(self.kill_log, ['Time', 'PID', 'App', 'Path', 'Result'],
-                   [{'Time': now_iso(), 'PID': ' '.join(map(str, pids)), 'App': name, 'Path': path, 'Result': msg}])
+    def log_action(self, action, pids, name, path, msg):
+        """One line per Block / Unblock / End process in activity-log.txt."""
+        who = name + (f" (PID {', '.join(map(str, pids))})" if pids else '')
+        line = f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {action:<9}  {who}  {path or '(location unknown)'}  {msg}\n"
+        if time.time() - self.activity_pruned > 3600:
+            self.prune_activity_log()
+        try:
+            with open(self.activity_log, 'a', encoding='utf-8') as f:
+                f.write(line)
+        except OSError:
+            # can't write next to the app (e.g. a read-only folder): keep the log with the other logs instead
+            self.activity_log = os.path.join(self.out_dir, 'activity-log.txt')
+            try:
+                with open(self.activity_log, 'a', encoding='utf-8') as f:
+                    f.write(line)
+            except OSError:
+                pass
         print(msg)
 
+    def open_activity_log(self):
+        """Open activity-log.txt in the user's text editor (the dashboard's Activity log button)."""
+        try:
+            if not os.path.exists(self.activity_log):
+                with open(self.activity_log, 'a', encoding='utf-8'):
+                    pass
+        except OSError:
+            self.activity_log = os.path.join(self.out_dir, 'activity-log.txt')
+            with open(self.activity_log, 'a', encoding='utf-8'):
+                pass
+        try:
+            # via Explorer, so the editor runs as the signed-in user rather than with NetMonitor's admin rights
+            subprocess.Popen([os.path.join(WINDIR, 'explorer.exe'), self.activity_log], creationflags=CREATE_NO_WINDOW)
+        except OSError as e:
+            return {'ok': False, 'message': f"Couldn't open the activity log ({self.activity_log}): {e}"}
+        return {'ok': True, 'message': f'Opened the activity log: {self.activity_log}'}
+
+    def prune_activity_log(self, days=10):
+        """Drop activity-log lines older than `days`."""
+        self.activity_pruned = time.time()
+        try:
+            with open(self.activity_log, encoding='utf-8') as f:
+                lines = f.readlines()
+        except OSError:
+            return
+        cutoff = f'{dt.datetime.now() - dt.timedelta(days=days):%Y-%m-%d %H:%M:%S}'
+        keep = [ln for ln in lines if ln[:19] >= cutoff]   # lines start with a sortable timestamp
+        if len(keep) != len(lines):
+            try:
+                with open(self.activity_log, 'w', encoding='utf-8') as f:
+                    f.writelines(keep)
+            except OSError:
+                pass
+
     def end_process(self, pid, name):
-        if pid == os.getpid():
+        if pid in (os.getpid(), os.getppid()):   # the .exe runs as a small launcher plus this process
             return {'ok': False, 'message': 'That is NetMonitor itself. Press Ctrl+C in its window to stop it.'}
         if pid not in self.dashboard_pids:
             return {'ok': False, 'message': f'PID {pid} is no longer in the dashboard. Nothing was ended.'}
@@ -698,7 +1147,7 @@ class Monitor:
             ok, msg = False, f'Windows refused to end {name} (PID {pid}). Restart NetMonitor as Administrator and try again.'
         else:
             ok, msg = True, f'Ended {name} (PID {pid}).'
-        self.log_kill([pid], name, path, msg)
+        self.log_action('ENDED', [pid], name, path, msg)
         return {'ok': ok, 'message': msg}
 
     def end_program(self, pid, name):
@@ -706,6 +1155,8 @@ class Monitor:
         normally first (so e.g. Chrome saves its tabs); whatever is left after 5 seconds is forced."""
         with self.lock:
             path = self.proc_cache.get(pid, {}).get('Path', '')
+            if pid in (os.getpid(), os.getppid()) or (FROZEN and path.lower() == sys.executable.lower()):
+                return {'ok': False, 'message': 'That is NetMonitor itself. Use the Stop monitor button to stop it.'}
             if name.lower() in SHARED_HOSTS or not path:
                 return self.end_process(pid, name)
             if pid not in self.dashboard_pids:
@@ -731,7 +1182,7 @@ class Monitor:
                 msg = f'Closed {n - refused} of {n} {name} processes. Windows refused the rest; restart NetMonitor as Administrator and try again.'
             else:
                 msg = f'Closed {name}.' if n == 1 else f'Closed {name} completely ({n} processes).'
-            self.log_kill(targets, name, path, msg)
+            self.log_action('ENDED', targets, name, path, msg)
             return {'ok': not refused, 'message': msg}
 
 
@@ -780,12 +1231,37 @@ def make_handler(monitor, page_bytes, token, port):
             if not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
             if self.path == '/data':
+                monitor.last_client = time.time()
                 return self.send(200, 'application/json; charset=utf-8', monitor.latest_json.encode('utf-8'))
             self.send_json(404, {'ok': False, 'message': 'Not found'})
 
         def do_POST(self):
             if not self.host_ok() or not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
+            if self.path in ('/block', '/unblock'):
+                try:
+                    length = min(int(self.headers.get('Content-Length', 0)), 10000)
+                    body = json.loads(self.rfile.read(length) or b'{}')
+                    if self.path == '/block':
+                        result = monitor.block_app(int(body['pid']), str(body['name']))
+                    else:
+                        result = monitor.unblock_app(str(body['path']))
+                except (ValueError, KeyError, TypeError):
+                    return self.send_json(400, {'ok': False, 'message': 'Bad request'})
+                return self.send_json(200, result)
+            if self.path == '/openlog':
+                return self.send_json(200, monitor.open_activity_log())
+            if self.path == '/audit':
+                try:
+                    length = min(int(self.headers.get('Content-Length', 0)), 1000)
+                    enable = bool(json.loads(self.rfile.read(length) or b'{}')['enable'])
+                except (ValueError, KeyError, TypeError):
+                    return self.send_json(400, {'ok': False, 'message': 'Bad request'})
+                return self.send_json(200, monitor.set_audit(enable))
+            if self.path == '/quit':
+                self.send_json(200, {'ok': True, 'message': 'NetMonitor has stopped. You can close this tab.'})
+                monitor.stop.set()
+                return None
             if self.path != '/kill':
                 return self.send_json(404, {'ok': False, 'message': 'Not found'})
             try:
@@ -800,7 +1276,7 @@ def make_handler(monitor, page_bytes, token, port):
 
 
 def start_server(monitor, port):
-    with open(os.path.join(HERE, 'dashboard.html'), encoding='utf-8') as f:
+    with open(os.path.join(RESOURCES, 'dashboard.html'), encoding='utf-8') as f:
         page = f.read()
     token = secrets.token_hex(32)
     page_bytes = page.replace('__NETMON_TOKEN__', token).encode('utf-8')
@@ -817,18 +1293,56 @@ def start_server(monitor, port):
 
 # ---------------------------------------------------------------- main
 
+kernel32.CreateMutexW.restype = wt.HANDLE
+kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wt.BOOL, wt.LPCWSTR]
+ERROR_ALREADY_EXISTS = 183
+_instance_mutex = None
+
+
+def another_copy_running():
+    """True if NetMonitor is already running as the app (one copy per Windows session)."""
+    global _instance_mutex
+    _instance_mutex = kernel32.CreateMutexW(None, False, 'Local\\MyWindowsNetworkMonitor')
+    return ctypes.get_last_error() == ERROR_ALREADY_EXISTS
+
+
+def show_error(message):
+    user32.MessageBoxW(None, message, APP_NAME, 0x10)   # MB_ICONERROR
+
+
 def main():
     ap = argparse.ArgumentParser(description='Live Windows connection monitor.')
     ap.add_argument('--interval', type=int, default=3, help='seconds between refreshes (default 3)')
-    ap.add_argument('--outdir', default=os.path.join(HERE, 'NetMonitorOutput'), help='where logs go')
+    ap.add_argument('--outdir', default=None, help='where logs go')
     ap.add_argument('--closed-retention', type=int, default=10, help='minutes closed connections stay visible')
     ap.add_argument('--no-browser', action='store_true', help="don't open the browser")
     ap.add_argument('--once', action='store_true', help='take one snapshot (data.json) and exit')
     ap.add_argument('--port', type=int, default=8765, help='local dashboard port (default 8765)')
+    ap.add_argument('--app', action='store_true', default=FROZEN,
+                    help='app mode (default for NetMonitor.exe): one copy only, logs in %%LOCALAPPDATA%%, '
+                         'stops a few minutes after the dashboard is closed')
+    ap.add_argument('--idle-exit', type=int, default=3, help='app mode: minutes without an open dashboard before stopping')
     args = ap.parse_args()
+    if not args.outdir:
+        args.outdir = os.path.join(APP_DIR if args.app else HERE, 'NetMonitorOutput')
+    url_file = os.path.join(APP_DIR, 'running.url')
+
+    if args.app and not args.once and another_copy_running():
+        # already running: just bring its dashboard back
+        try:
+            with open(url_file, encoding='utf-8') as f:
+                webbrowser.open(f.read().strip())
+        except OSError:
+            show_error('NetMonitor is already running, but its dashboard address could not be found. '
+                       'Wait a minute and try again.')
+        return
 
     monitor = Monitor(args)
     if args.once:
+        monitor.poll()
+        deadline = time.time() + 60   # a snapshot should include signatures and services, so wait for them
+        while (monitor.sig_busy or not monitor.svc_map) and time.time() < deadline:
+            time.sleep(0.5)
         monitor.poll()
         with open(os.path.join(args.outdir, 'data.json'), 'w', encoding='utf-8') as f:
             f.write(monitor.latest_json)
@@ -838,26 +1352,57 @@ def main():
     url = f'http://localhost:{port}/'
     with open(os.path.join(args.outdir, 'dashboard.html'), 'w', encoding='utf-8') as f:   # old bookmarks forward here
         f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open the dashboard</a>')
+    if args.app:
+        os.makedirs(APP_DIR, exist_ok=True)
+        with open(url_file, 'w', encoding='utf-8') as f:
+            f.write(url)
     print(f'NetMonitor running. Dashboard: {url}')
     print(f'CSV log:   {monitor.csv_path}')
     if not monitor.admin:
         print('Tip: run as Administrator to resolve paths for all processes and to end elevated programs.')
-    print('Press Ctrl+C to stop.')
+    print('Press Ctrl+C or use Stop monitor on the dashboard to stop.')
 
     opened = False
     try:
-        while True:
+        while not monitor.stop.is_set():
             start = time.time()
             monitor.poll()
             if not opened and not args.no_browser:
                 webbrowser.open(url)
                 opened = True
-            time.sleep(max(0.2, args.interval - (time.time() - start)))
+                monitor.last_client = time.time()
+            # app mode has no window to close, so it stops once no dashboard has been open for a while
+            if args.app and time.time() - monitor.last_client > args.idle_exit * 60:
+                break
+            monitor.stop.wait(max(0.2, args.interval - (time.time() - start)))
     except KeyboardInterrupt:
-        print('Stopped.')
+        pass
     finally:
+        print('Stopped.')
         server.shutdown()
+        monitor.rdns_pool.shutdown(wait=False, cancel_futures=True)
+        if args.app:
+            try:
+                os.remove(url_file)
+            except OSError:
+                pass
+    if args.app:
+        os._exit(0)   # don't wait for slow hostname lookups still in flight; nothing is left unsaved
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except SystemExit as e:
+        if FROZEN and isinstance(e.code, str):
+            show_error(e.code)
+        raise
+    except Exception:
+        if not FROZEN:
+            raise
+        import traceback
+        os.makedirs(APP_DIR, exist_ok=True)
+        log = os.path.join(APP_DIR, 'error.log')
+        with open(log, 'a', encoding='utf-8') as f:
+            f.write(f'{now_iso()}\n{traceback.format_exc()}\n')
+        show_error(f'NetMonitor stopped because of an unexpected error. Details were saved to:\n{log}')
