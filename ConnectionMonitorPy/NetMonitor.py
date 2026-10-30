@@ -38,7 +38,7 @@ if sys.platform != 'win32':
     sys.exit('NetMonitor only runs on Windows.')
 
 APP_NAME = 'My Windows Network/Internet Connection Monitor'
-APP_VERSION = '1.2'
+APP_VERSION = '1.3'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged NetMonitor.exe
@@ -1309,7 +1309,7 @@ def another_copy_running():
 
 # ---- netmonitor:// link, so a web page's RUN button can start the app (per-user, no admin needed)
 LINK_SCHEME = 'netmonitor'
-LINK_PATTERN = re.compile(r'^netmonitor:(//)?(run)?/?$', re.I)   # the link can only start the app
+LINK_PATTERN = re.compile(r'^netmonitor:(//)?(run|unregister)?/?$', re.I)   # start the app, or remove the link
 
 
 def _link_key(scheme):
@@ -1380,10 +1380,15 @@ def main():
     args = ap.parse_args()
 
     exe = sys.executable if FROZEN else os.path.abspath(__file__)
+    if args.link and not LINK_PATTERN.match(args.link):
+        sys.exit(f'NetMonitor was started from an unsupported link ({args.link[:80]}). Links can only start the app or remove the link.')
+    if args.link and LINK_PATTERN.match(args.link).group(2) and LINK_PATTERN.match(args.link).group(2).lower() == 'unregister':
+        args.unregister_link = True   # a website's "Remove the RUN link" button
     if args.unregister_link:
         unregister_link()
         if FROZEN:
-            user32.MessageBoxW(None, 'The RUN button link was removed. Websites can no longer start NetMonitor.', APP_NAME, 0x40)
+            user32.MessageBoxW(None, 'The RUN button link was removed. Websites can no longer start NetMonitor on this PC.\n\n'
+                                     'Running NetMonitor.exe again sets it up again.', APP_NAME, 0x40)
         print('netmonitor:// link removed.')
         return
     if args.register_link:
@@ -1392,8 +1397,6 @@ def main():
         register_link(exe)
         user32.MessageBoxW(None, 'Done. A RUN button on a web page can now start NetMonitor on this PC.', APP_NAME, 0x40)
         return
-    if args.link and not LINK_PATTERN.match(args.link):
-        sys.exit(f'NetMonitor was started from an unsupported link ({args.link[:80]}). Links can only start the app.')
     # the app sets up its RUN-button link (for this Windows user) whenever it runs from a new location
     if FROZEN and args.app and not link_registered(exe):
         try:

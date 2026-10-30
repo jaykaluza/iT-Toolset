@@ -84,7 +84,8 @@ Options:
 When NetMonitor.exe runs, it registers a `netmonitor://` link for the signed-in Windows user (no administrator rights needed for that part). After that, any web page with a RUN button pointing to `netmonitor://run` starts the app: the browser asks to open it, Windows asks for administrator rights as usual, and the dashboard opens. The link can only start the app; anything else in it is rejected.
 
 - Try it on the [demo page](https://jaykaluza.github.io/iT-Toolset/) (proof of concept, demo sign-in only).
-- Remove the link with `NetMonitor.exe --unregister-link`; add it again by starting the app, or with `NetMonitor.exe --register-link`.
+- Remove the link with the **"click here"** line in the demo page's setup steps (it sends `netmonitor://unregister`, the only other action a link can trigger) or `NetMonitor.exe --unregister-link`; add it again by starting the app, or with `NetMonitor.exe --register-link`.
+- The demo page remembers, per browser, whether this PC has been set up: if not, RUN shows the setup steps instead of trying to start the app.
 
 ## Blocking apps
 

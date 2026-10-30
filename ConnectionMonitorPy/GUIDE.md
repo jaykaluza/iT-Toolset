@@ -17,7 +17,7 @@ A small app that shows, live in your browser, every network connection your Wind
 
 Double-clicking it again while it's running just reopens the dashboard.
 
-**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove this, run `NetMonitor.exe --unregister-link`.
+**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove it, use **"To remove the RUN button link from this PC later, click here"** in the page's setup steps, or run `NetMonitor.exe --unregister-link`. Save NetMonitor.exe in a fixed folder first: if you open it straight from the browser's download bar, it runs from a temporary folder and RUN stops working once the browser deletes it.
 
 ---
 
@@ -31,7 +31,7 @@ Double-clicking it again while it's running just reopens the dashboard.
   - **By app:** one row per app, with its connection counts and the hosts it talks to.
   - **Listening:** ports open for incoming connections and whether other devices can reach them.
   - **Blocked:** apps you've blocked and their attempts to connect (see section 4).
-- **Filters:** search box, In/Out, *External only* (internet connections only), *Show recently closed*, *Risky only*.
+- **Filters:** search box, In/Out, and slide toggles for *External only* (internet connections only), *Show recently closed* and *Risky only* (red = on). Filters start fresh each time the dashboard opens; if they hide everything, a **Clear filters** button appears.
 - **Risk column:** **red** rows need attention, **amber** rows are worth a look. Hover over a coloured row to see what's wrong and how to fix it.
 
 ![By app tab](docs/apps.png)

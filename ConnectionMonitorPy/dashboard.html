@@ -41,7 +41,16 @@ header .sub{color:rgba(255,255,255,.88)}header .warn{color:#fedd5c}
 .tabs button.on{background:var(--brand);color:#fff}
 input[type=search],select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px}
 input[type=search]{min-width:220px}
-label{color:var(--muted);display:flex;gap:5px;align-items:center;cursor:pointer}
+label{color:var(--muted);display:flex;gap:7px;align-items:center;cursor:pointer}
+/* filter checkboxes drawn as slide toggles: red = on */
+.bar label input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:34px;height:18px;margin:0;border-radius:9px;background:#c9c5bb;position:relative;cursor:pointer;transition:background .15s}
+.bar label input[type=checkbox]::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+.bar label input[type=checkbox]:checked{background:var(--brand)}
+.bar label input[type=checkbox]:checked::after{left:18px}
+.bar label input[type=checkbox]:disabled{opacity:.4;cursor:not-allowed}
+.bar label input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar label:has(input:checked){color:var(--text);font-weight:600}
+.clearf{font:inherit;font-weight:600;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:4px;padding:4px 12px;margin-left:8px;cursor:pointer}
 .wrap{padding:0 20px 30px;overflow-x:auto}
 table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
 th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
@@ -211,6 +220,8 @@ const ORIGIN = {
 };
 const S = {tab:'conn', q:'', dir:'all', ext:true, closed:false, risky:false, sort:{conn:['rr',-1],apps:['rr',-1],listen:['rr',-1]}};
 try { Object.assign(S, JSON.parse(localStorage.getItem('netmon') || '{}')); } catch(e) {}
+// filters start fresh each time so the list is never empty for a forgotten reason; tab, sort and External only are remembered
+Object.assign(S, {risky: false, closed: false, q: '', dir: 'all'});
 // settings saved by an older version may lack newer tabs' sort order
 S.sort = Object.assign({conn:['rr',-1], apps:['rr',-1], listen:['rr',-1], blocked:['LastSeen',-1]}, S.sort);
 const save = () => { try { localStorage.setItem('netmon', JSON.stringify(S)); } catch(e) {} };
@@ -245,7 +256,7 @@ function sortRows(rows, key) {
 }
 
 function table(cols, rows, key) {
-  if (!rows.length) return '<div class="empty">Nothing matches the current filters.</div>';
+  if (!rows.length) return emptyMessage();
   const [sk, sd] = S.sort[key];
   return '<table><thead><tr>' + cols.map(c => `<th data-k="${c[0]}" data-key="${key}" class="${c[0]===sk?'sorted'+(sd>0?' asc':''):''}">${c[1]}</th>`).join('') +
     '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
@@ -308,6 +319,23 @@ function render() {
   }
   $('#view').innerHTML = out;
   updateKillBar();
+}
+
+// ---- what to say when filters hide everything
+function emptyMessage() {
+  const on = [];
+  if (S.risky && S.tab !== 'blocked') on.push('Risky only');
+  if (S.ext && S.tab !== 'listen') on.push('External only');
+  if (S.dir !== 'all' && S.tab !== 'listen') on.push(S.dir === 'Inbound' ? 'Inbound only' : 'Outbound only');
+  if (S.q.trim()) on.push(`search "${S.q.trim()}"`);
+  if (!on.length) return '<div class="empty">Nothing to show here right now.</div>';
+  const lead = S.risky && S.tab !== 'blocked' ? 'No risky apps right now. ' : 'Nothing matches the current filters. ';
+  return `<div class="empty">${esc(lead)}Filters on: ${esc(on.join(', '))}.<button class="clearf" data-clear="1">Clear filters</button></div>`;
+}
+function clearFilters() {
+  Object.assign(S, {risky: false, closed: false, ext: false, q: '', dir: 'all'});
+  $('#q').value = ''; $('#dir').value = 'all'; $('#ext').checked = false; $('#closed').checked = false; $('#risky').checked = false;
+  save(); render();
 }
 
 // ---- Blocked tab: apps blocked with the Block app button
@@ -484,6 +512,7 @@ $('#tabs').onclick = e => { if (e.target.dataset.t) { S.tab = e.target.dataset.t
 $('#view').onclick = e => {
   const ab = e.target.closest('button[data-audit]'); if (ab) { setAudit(ab.dataset.audit === 'on'); return; }
   const ub = e.target.closest('button[data-unblock]'); if (ub) { unblockApp(ub.dataset.unblock, ub.dataset.name); return; }
+  if (e.target.closest('button[data-clear]')) { clearFilters(); return; }
   const th = e.target.closest('th[data-key]'); if (th) { const s = S.sort[th.dataset.key]; S.sort[th.dataset.key] = [th.dataset.k, s[0] === th.dataset.k ? -s[1] : 1]; save(); render(); return; }
   const a = e.target.closest('a[data-app]'); if (a) { S.q = a.dataset.app; S.tab = 'conn'; $('#q').value = S.q; save(); render(); return; }
   const tr = e.target.closest('tr[data-pids]');
