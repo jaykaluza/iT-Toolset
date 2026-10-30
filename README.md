@@ -9,6 +9,8 @@ Handy tools that every admin/user should have access to. Small and dependency-fr
 
 Each tool lives in its own folder and is developed and released independently.
 
+**Website demo (proof of concept):** [jaykaluza.github.io/iT-Toolset](https://jaykaluza.github.io/iT-Toolset/) shows how a website could start the monitor with a RUN button. Its source is in `docs/`.
+
 ## Versions
 
 Each tool has its own version numbers and releases on the [Releases](../../releases) page:
