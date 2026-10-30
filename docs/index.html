@@ -71,18 +71,20 @@ a{color:var(--accent)}
         <h3>Windows Network Traffic Monitor</h3>
         <div class="muted">See every connection your PC makes and the app behind it, spot risky apps, and end or block them.</div>
         <div class="muted"><a href="#" id="setupLink">First time on this PC? Set it up</a></div>
+        <div class="muted hidden" id="runStatus">Starting NetMonitor… <a href="#" id="notStarted">Didn't start? Show setup again</a></div>
       </div>
       <button class="run" id="run">RUN</button>
     </div>
     <div class="help" id="help">
-      <b>Didn't start?</b> The app needs a one-time setup on each PC:
+      <b>Set up on this PC (one time):</b>
       <ol>
-        <li>Download <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/NetMonitor.exe">NetMonitor.exe</a> and save it in a folder of its own (for example <code>Documents\NetMonitor</code>).</li>
+        <li>Download <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/NetMonitor.exe">NetMonitor.exe</a> and <b>save it</b> in a folder of its own (for example <code>Documents\NetMonitor</code>). Don't open it straight from your browser's download bar: that runs it from a temporary folder the browser deletes later, and RUN would stop working.</li>
         <li>Check it's genuine: compare <code>Get-FileHash .\NetMonitor.exe</code> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</li>
         <li>Double-click it once and click <b>Yes</b>. That sets up the RUN button on this PC.</li>
-        <li>Come back and click <b>RUN</b>. Your browser will ask to open the app: click <b>Open</b> (tick "always allow" to skip this next time).</li>
+        <li>Click <b>Done, start it now</b> below. Your browser will ask to open the app: click <b>Open</b> (tick "always allow" to skip this next time). From then on, <b>RUN</b> starts it directly.</li>
       </ol>
-      <p class="muted" style="margin:8px 0 0">To remove the RUN button link later, run <code>NetMonitor.exe --unregister-link</code>.</p>
+      <p><button class="btn" id="setupDone">Done, start it now</button></p>
+      <p class="muted" style="margin:8px 0 0"><a href="#" id="removeLink">To remove the RUN button link from this PC later, click here.</a></p>
     </div>
   </section>
 </main>
@@ -109,16 +111,35 @@ function show(user) {
 
 $('#signinForm').onsubmit = e => { e.preventDefault(); const n = $('#name').value.trim(); if (n) { store.set(n); show(n); } };
 $('#signout').onclick = () => { store.set(''); show(''); };
-$('#setupLink').onclick = e => { e.preventDefault(); $('#help').classList.add('show'); };
+// Browsers won't tell a page which apps are installed, so this browser remembers whether
+// NetMonitor has been set up on this PC (set by "Done, start it now", cleared by the remove link).
+const setup = {
+  done: () => { try { return localStorage.getItem('netmonitor-setup') === '1'; } catch (e) { return false; } },
+  set: on => { try { on ? localStorage.setItem('netmonitor-setup', '1') : localStorage.removeItem('netmonitor-setup'); } catch (e) {} }
+};
+const showSetup = () => { $('#runStatus').classList.add('hidden'); $('#help').classList.add('show'); $('#help').scrollIntoView({behavior: 'smooth', block: 'nearest'}); };
+const startApp = () => {
+  $('#help').classList.remove('show');
+  $('#runStatus').classList.remove('hidden');
+  location.href = 'netmonitor://run';   // starts NetMonitor.exe through the link it set up
+};
 
-// RUN: open the netmonitor:// link, which starts NetMonitor.exe if it has been set up on this PC.
-// Browsers can't tell a page whether the link worked, so the setup steps appear if the page keeps focus.
-$('#run').onclick = () => {
-  let left = false;
-  const onBlur = () => { left = true; };
-  window.addEventListener('blur', onBlur, {once: true});
-  location.href = 'netmonitor://run';
-  setTimeout(() => { if (!left && document.hasFocus()) $('#help').classList.add('show'); }, 2500);
+$('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
+
+// RUN: start the app if this PC is set up; otherwise show the one-time setup steps
+$('#run').onclick = () => { setup.done() ? startApp() : showSetup(); };
+
+$('#setupDone').onclick = () => { setup.set(true); startApp(); };
+
+// it was set up, but nothing started (e.g. the link was removed outside the website)
+$('#notStarted').onclick = e => { e.preventDefault(); setup.set(false); showSetup(); };
+
+// Remove the RUN link: asks NetMonitor.exe (via its own link) to unregister itself on this PC
+$('#removeLink').onclick = e => {
+  e.preventDefault();
+  if (!confirm('Remove the RUN link from this PC?\n\nYour browser will ask to open NetMonitor, then Windows asks for administrator rights. NetMonitor removes its link and confirms; it does not start the monitor.\n\nAfterwards the RUN button shows the setup steps again on this PC.')) return;
+  setup.set(false);
+  location.href = 'netmonitor://unregister';
 };
 
 show(store.get());
