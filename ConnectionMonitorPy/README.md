@@ -86,6 +86,7 @@ When NetMonitor.exe runs, it registers a `netmonitor://` link for the signed-in 
 - Try it on the [demo page](https://jaykaluza.github.io/iT-Toolset/) (proof of concept, demo sign-in only).
 - Remove the link with the **"click here"** line in the demo page's setup steps (it sends `netmonitor://unregister`, the only other action a link can trigger) or `NetMonitor.exe --unregister-link`; add it again by starting the app, or with `NetMonitor.exe --register-link`.
 - The demo page remembers, per browser, whether this PC has been set up: if not, RUN shows the setup steps instead of trying to start the app.
+- With several copies on one PC, the RUN link goes to the newest saved copy: a copy only takes it over if there's no link yet, the linked file is gone, the linked copy runs from a temporary download folder, or it's the same version or newer. A copy opened straight from a browser's download bar never takes it from a saved one. `--register-link` forces it.
 
 ## Blocking apps
 

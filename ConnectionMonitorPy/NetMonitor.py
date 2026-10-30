@@ -38,7 +38,7 @@ if sys.platform != 'win32':
     sys.exit('NetMonitor only runs on Windows.')
 
 APP_NAME = 'My Windows Network/Internet Connection Monitor'
-APP_VERSION = '1.3'
+APP_VERSION = '1.4'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged NetMonitor.exe
@@ -1340,6 +1340,63 @@ def register_link(exe, scheme=LINK_SCHEME):
         winreg.SetValueEx(k, '', 0, winreg.REG_SZ, link_command(exe))
 
 
+class VS_FIXEDFILEINFO(ctypes.Structure):
+    _fields_ = [('dwSignature', wt.DWORD), ('dwStrucVersion', wt.DWORD), ('dwFileVersionMS', wt.DWORD),
+                ('dwFileVersionLS', wt.DWORD), ('dwProductVersionMS', wt.DWORD), ('dwProductVersionLS', wt.DWORD),
+                ('dwFileFlagsMask', wt.DWORD), ('dwFileFlags', wt.DWORD), ('dwFileOS', wt.DWORD),
+                ('dwFileType', wt.DWORD), ('dwFileSubtype', wt.DWORD), ('dwFileDateMS', wt.DWORD), ('dwFileDateLS', wt.DWORD)]
+
+
+version_dll = ctypes.WinDLL('version')
+version_dll.GetFileVersionInfoSizeW.argtypes = [wt.LPCWSTR, ctypes.POINTER(wt.DWORD)]
+version_dll.GetFileVersionInfoW.argtypes = [wt.LPCWSTR, wt.DWORD, wt.DWORD, ctypes.c_void_p]
+version_dll.VerQueryValueW.argtypes = [ctypes.c_void_p, wt.LPCWSTR, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wt.UINT)]
+
+
+def file_version(path):
+    """(major, minor, build, revision) from a program file's version details, or None."""
+    size = version_dll.GetFileVersionInfoSizeW(path, None)
+    if not size:
+        return None
+    buf = ctypes.create_string_buffer(size)
+    ptr, length = ctypes.c_void_p(), wt.UINT()
+    if not version_dll.GetFileVersionInfoW(path, 0, size, buf) or \
+            not version_dll.VerQueryValueW(buf, '\\', ctypes.byref(ptr), ctypes.byref(length)) or not length.value:
+        return None
+    ffi = VS_FIXEDFILEINFO.from_address(ptr.value)
+    return (ffi.dwFileVersionMS >> 16, ffi.dwFileVersionMS & 0xFFFF, ffi.dwFileVersionLS >> 16, ffi.dwFileVersionLS & 0xFFFF)
+
+
+def own_version():
+    return tuple((list(map(int, re.findall(r'\d+', APP_VERSION))) + [0, 0, 0, 0])[:4])
+
+
+def link_target(scheme=LINK_SCHEME):
+    """The program file the netmonitor:// link currently opens ('' if none)."""
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _link_key(scheme) + r'\shell\open\command') as k:
+            command = winreg.QueryValueEx(k, '')[0]
+    except OSError:
+        return ''
+    m = re.match(r'^"([^"]+)"', command)
+    return m.group(1) if m else ''
+
+
+def should_take_link(exe, scheme=LINK_SCHEME):
+    """Whether this copy should take over the RUN link, so an older or temporary copy never replaces a newer one."""
+    target = link_target(scheme)
+    if not target or not os.path.isfile(target):
+        return True                                   # no link yet, or it points to a deleted file
+    norm = lambda p: os.path.normcase(os.path.realpath(p))
+    if norm(target) == norm(exe):
+        return False
+    temp = norm(os.environ.get('TEMP', '') or os.environ.get('TMP', ''))
+    in_temp = lambda p: bool(temp) and norm(p).startswith(temp + os.sep)
+    if in_temp(target) != in_temp(exe):
+        return in_temp(target)                        # a saved copy beats one running from a download's temp folder
+    return own_version() >= (file_version(target) or (0,))
+
+
 def unregister_link(scheme=LINK_SCHEME):
     base = _link_key(scheme)
     for sub in (r'\shell\open\command', r'\shell\open', r'\shell', r'\DefaultIcon', ''):
@@ -1397,8 +1454,8 @@ def main():
         register_link(exe)
         user32.MessageBoxW(None, 'Done. A RUN button on a web page can now start NetMonitor on this PC.', APP_NAME, 0x40)
         return
-    # the app sets up its RUN-button link (for this Windows user) whenever it runs from a new location
-    if FROZEN and args.app and not link_registered(exe):
+    # the app sets up its RUN-button link (for this Windows user), unless an equal or newer saved copy already has it
+    if FROZEN and args.app and not link_registered(exe) and should_take_link(exe):
         try:
             register_link(exe)
         except OSError:
