@@ -28,6 +28,7 @@ input{font:inherit;width:100%;max-width:340px;padding:8px 10px;border:1px solid 
 .tool h3{margin:0;font-size:17px}
 .run{font:inherit;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--brand);border:0;border-radius:4px;padding:10px 26px;cursor:pointer}
 .run:disabled{background:#b6b1a9;cursor:not-allowed}
+.run.stop{background:#2e2d29}
 .help{display:none;margin-top:14px;padding:14px 16px;background:#e6f1f9;border-left:4px solid var(--accent);border-radius:4px;font-size:14px}
 .help.show{display:block}
 .help ol{margin:6px 0 0;padding-left:20px}
@@ -127,14 +128,65 @@ const startApp = () => {
 
 $('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
 
-// RUN: start the app if this PC is set up; otherwise show the one-time setup steps
-$('#run').onclick = () => { setup.done() ? startApp() : showSetup(); };
+// ---- Is NetMonitor running on this PC? The app answers this page (and only this site) on localhost,
+// so RUN can turn into STOP. Browsers may ask once to allow the page to reach apps on this device.
+const PORTS = [8765, 8766, 8767];
+let appPort = null, stopRequested = false, watching = false;
+
+async function findApp() {
+  for (const p of PORTS) {
+    try {
+      const r = await fetch(`http://localhost:${p}/status`, {cache: 'no-store', signal: AbortSignal.timeout(1500)});
+      if (r.ok) { const s = await r.json(); if (s.app === 'NetMonitor' && !s.stopping) return p; }
+    } catch (e) { /* not running on this port, or the browser didn't allow the check */ }
+  }
+  return null;
+}
+
+function updateRunButton() {
+  if (!isWindows) return;
+  const b = $('#run');
+  b.classList.toggle('stop', !!appPort && !stopRequested);
+  b.textContent = stopRequested ? 'STOPPING…' : appPort ? 'STOP' : 'RUN';
+  b.disabled = stopRequested;
+}
+
+async function checkApp() {
+  appPort = await findApp();
+  if (appPort) { setup.set(true); $('#runStatus').classList.add('hidden'); }   // seeing it run proves setup worked
+  else stopRequested = false;
+  updateRunButton();
+}
+
+// only start checking once this PC is known to be set up (or after RUN), so first-time visitors get no prompt
+function watchApp() {
+  if (watching) return;
+  watching = true;
+  checkApp();
+  setInterval(checkApp, 3000);
+}
+
+async function stopApp() {
+  if (!confirm('Stop NetMonitor?\n\nThe monitor and its dashboard tab will close.')) return;
+  stopRequested = true;
+  updateRunButton();
+  try { await fetch(`http://localhost:${appPort}/site-stop`, {method: 'POST'}); } catch (e) {}
+}
+
+// RUN: start the app if this PC is set up, otherwise show the one-time setup steps; STOP: stop it
+$('#run').onclick = () => {
+  if (appPort) return stopApp();
+  if (!setup.done()) return showSetup();
+  startApp();
+  watchApp();
+};
 
 $('#setupDone').onclick = () => {
   // the page can't check this itself, so ask: starting before setup sends Windows to the Microsoft Store
   if (!confirm('Did you double-click the downloaded NetMonitor.exe and click Yes?\n\nThat one-time step sets up the RUN button. If you haven\'t yet, click Cancel and do step 3 first.')) return;
   setup.set(true);
   startApp();
+  watchApp();
 };
 
 // it was set up, but nothing started (e.g. the link was removed outside the website)
@@ -149,6 +201,8 @@ $('#removeLink').onclick = e => {
 };
 
 show(store.get());
+if (store.get() && setup.done() && isWindows) watchApp();
+$('#signinForm').addEventListener('submit', () => { if (setup.done() && isWindows) watchApp(); });
 </script>
 </body>
 </html>
