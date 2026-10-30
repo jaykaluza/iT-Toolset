@@ -86,6 +86,7 @@ When NetMonitor.exe runs, it registers a `netmonitor://` link for the signed-in 
 - Try it on the [demo page](https://jaykaluza.github.io/iT-Toolset/) (proof of concept, demo sign-in only).
 - Remove the link with the **"click here"** line in the demo page's setup steps (it sends `netmonitor://unregister`, the only other action a link can trigger) or `NetMonitor.exe --unregister-link`; add it again by starting the app, or with `NetMonitor.exe --register-link`.
 - The demo page remembers, per browser, whether this PC has been set up: if not, RUN shows the setup steps instead of trying to start the app.
+- **RUN becomes STOP while the app runs.** The app answers two requests from the IT Toolset site only (`https://jaykaluza.github.io`, enforced by the browser): `/status` (just "NetMonitor is running" and its version) and `/site-stop`. STOP closes the dashboard tab and ends the app. Everything else (data, End process, Block app) still needs the dashboard's secret key. Browsers may ask once to let the page reach apps on this device; if that's blocked, RUN still works, it just doesn't turn into STOP.
 - With several copies on one PC, the RUN link goes to the newest saved copy: a copy only takes it over if there's no link yet, the linked file is gone, the linked copy runs from a temporary download folder, or it's the same version or newer. A copy opened straight from a browser's download bar never takes it from a saved one. `--register-link` forces it.
 
 ## Blocking apps

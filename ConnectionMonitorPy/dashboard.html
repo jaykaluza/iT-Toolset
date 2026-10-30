@@ -584,6 +584,11 @@ let stopped = false;
 $('#quit').onclick = async () => {
   if (!confirm('Stop NetMonitor?\n\nThe program will stop and this tab will close. Start the app again to reopen it.')) return;
   try { await fetch('/quit', {method: 'POST', headers: {'X-NetMon-Token': TOKEN}}); } catch (e) {}
+  closeDashboard();
+};
+
+// close this tab once NetMonitor has stopped (Stop monitor here, or STOP on the IT Toolset website)
+function closeDashboard() {
   stopped = true;
   // browsers only let a page close a tab it was opened in fresh (as NetMonitor opens it); otherwise say it's done
   window.close();
@@ -592,7 +597,7 @@ $('#quit').onclick = async () => {
       '<div class="empty" style="font-size:16px;padding:60px 20px">NetMonitor has stopped. You can close this tab.<br>' +
       '<span class="small" style="display:inline">Start the app again to reopen the dashboard.</span></div>';
   }, 300);
-};
+}
 
 // live data from NetMonitor
 let interval = 3000;
@@ -606,10 +611,14 @@ async function poll() {
       setTimeout(() => location.reload(), 1000);
       return;
     }
-    if (r.ok) { window.NETDATA = await r.json(); if (window.NETDATA.interval) interval = window.NETDATA.interval * 1000; render(); }
+    if (r.ok) {
+      const data = await r.json();
+      if (data.stopping) return closeDashboard();   // stopped from the website
+      window.NETDATA = data; if (data.interval) interval = data.interval * 1000; render();
+    }
   } catch (e) {
-    $('#meta').innerHTML = '<span class="warn">NetMonitor has stopped. Start NetMonitor again, then reload this page.</span>';
-    $('#kill').disabled = true;
+    // NetMonitor is no longer running (for example stopped from the website while this tab was in the background)
+    return closeDashboard();
   }
   setTimeout(poll, interval);
 }

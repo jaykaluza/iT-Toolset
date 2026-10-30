@@ -38,7 +38,7 @@ if sys.platform != 'win32':
     sys.exit('NetMonitor only runs on Windows.')
 
 APP_NAME = 'My Windows Network/Internet Connection Monitor'
-APP_VERSION = '1.0'
+APP_VERSION = '1.1'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged NetMonitor.exe
@@ -670,6 +670,14 @@ class Monitor:
         self.dashboard_pids = frozenset()
         self.last_client = time.time()     # when a dashboard last asked for data
         self.stop = threading.Event()      # set by the dashboard's Stop monitor button
+        self.stopping = False              # the website's STOP: dashboards close their tab, then the app exits
+
+    def stop_from_site(self):
+        """Stop at the website's request: give open dashboards a few seconds to see it and close their tabs."""
+        if self.stopping:
+            return
+        self.stopping = True
+        threading.Timer(max(4.0, self.args.interval + 1.5), self.stop.set).start()
 
     # ---- background lookups
 
@@ -1192,6 +1200,9 @@ class Monitor:
 # token that is embedded in the page, so other websites can't read the data or end processes.
 
 CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'"
+# The IT Toolset website may ask "is NetMonitor running?" (/status) and stop it (/site-stop), so its RUN
+# button can switch to STOP. Browsers only let these origins read the answer or send the stop.
+SITE_ORIGINS = ('https://jaykaluza.github.io',)
 
 
 def make_handler(monitor, page_bytes, token, port):
@@ -1202,18 +1213,38 @@ def make_handler(monitor, page_bytes, token, port):
         def log_message(self, *args):
             pass
 
-        def send(self, status, ctype, body):
+        def send(self, status, ctype, body, extra=None):
             self.send_response(status)
             self.send_header('Content-Type', ctype)
             self.send_header('Content-Length', str(len(body)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Content-Security-Policy', CSP)
+            for k, v in (extra or {}).items():
+                self.send_header(k, v)
             self.end_headers()
             self.wfile.write(body)
 
-        def send_json(self, status, obj):
-            self.send(status, 'application/json; charset=utf-8', json.dumps(obj).encode('utf-8'))
+        def send_json(self, status, obj, extra=None):
+            self.send(status, 'application/json; charset=utf-8', json.dumps(obj).encode('utf-8'), extra)
+
+        def site_origin(self):
+            """The IT Toolset website's origin if this request comes from it, else None."""
+            origin = self.headers.get('Origin')
+            return origin if origin in SITE_ORIGINS else None
+
+        def site_headers(self, origin):
+            return {'Access-Control-Allow-Origin': origin, 'Vary': 'Origin'}
+
+        def do_OPTIONS(self):
+            # browsers check first before letting the website talk to an app on this PC
+            origin = self.site_origin()
+            if not self.host_ok() or not origin or self.path not in ('/status', '/site-stop'):
+                return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
+            self.send(204, 'text/plain', b'', {**self.site_headers(origin), 'Access-Control-Allow-Methods': 'GET, POST',
+                                               'Access-Control-Allow-Headers': 'Content-Type',
+                                               'Access-Control-Allow-Private-Network': 'true',
+                                               'Access-Control-Max-Age': '600'})
 
         def host_ok(self):
             # only answer requests addressed to this dashboard (blocks DNS-rebinding tricks)
@@ -1229,14 +1260,30 @@ def make_handler(monitor, page_bytes, token, port):
                 return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
             if self.path == '/':
                 return self.send(200, 'text/html; charset=utf-8', page_bytes)
+            if self.path == '/status':
+                # only "it's running" and the version; readable by the IT Toolset website alone
+                origin = self.site_origin()
+                if not origin:
+                    return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
+                return self.send_json(200, {'app': 'NetMonitor', 'version': APP_VERSION, 'stopping': monitor.stopping},
+                                      self.site_headers(origin))
             if not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
             if self.path == '/data':
                 monitor.last_client = time.time()
+                if monitor.stopping:   # the dashboard closes its tab when it sees this
+                    return self.send_json(200, {'stopping': True})
                 return self.send(200, 'application/json; charset=utf-8', monitor.latest_json.encode('utf-8'))
             self.send_json(404, {'ok': False, 'message': 'Not found'})
 
         def do_POST(self):
+            if self.path == '/site-stop':
+                # the website's STOP button: only from the IT Toolset site, and only stopping NetMonitor itself
+                origin = self.site_origin()
+                if not self.host_ok() or not origin:
+                    return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
+                monitor.stop_from_site()
+                return self.send_json(200, {'ok': True, 'message': 'NetMonitor is stopping.'}, self.site_headers(origin))
             if not self.host_ok() or not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
             if self.path in ('/block', '/unblock'):
