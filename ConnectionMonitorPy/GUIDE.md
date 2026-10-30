@@ -17,6 +17,8 @@ A small app that shows, live in your browser, every network connection your Wind
 
 Double-clicking it again while it's running just reopens the dashboard.
 
+**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove this, run `NetMonitor.exe --unregister-link`.
+
 ---
 
 ## 2. The dashboard

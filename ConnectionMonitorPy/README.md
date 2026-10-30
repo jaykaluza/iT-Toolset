@@ -79,6 +79,13 @@ Options:
 | `--once` | off | Take one snapshot (saved as `data.json`) and exit |
 | `--port` | 8765 | Local port for the dashboard (the next free one is used if it's taken) |
 
+## Start it from a web page (RUN button)
+
+When NetMonitor.exe runs, it registers a `netmonitor://` link for the signed-in Windows user (no administrator rights needed for that part). After that, any web page with a RUN button pointing to `netmonitor://run` starts the app: the browser asks to open it, Windows asks for administrator rights as usual, and the dashboard opens. The link can only start the app; anything else in it is rejected.
+
+- Try it on the [demo page](https://jaykaluza.github.io/iT-Toolset/) (proof of concept, demo sign-in only).
+- Remove the link with `NetMonitor.exe --unregister-link`; add it again by starting the app, or with `NetMonitor.exe --register-link`.
+
 ## Blocking apps
 
 Select a row and click **Block app** to cut a program off from the network: NetMonitor adds two Windows Firewall rules (incoming and outgoing) for that program's file and closes the program, so connections it already had open end too. You always get a confirmation prompt first. If you start the program again, it stays blocked.

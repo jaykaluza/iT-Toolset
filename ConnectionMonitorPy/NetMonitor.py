@@ -31,13 +31,14 @@ import sys
 import threading
 import time
 import webbrowser
+import winreg
 from concurrent.futures import ThreadPoolExecutor
 
 if sys.platform != 'win32':
     sys.exit('NetMonitor only runs on Windows.')
 
 APP_NAME = 'My Windows Network/Internet Connection Monitor'
-APP_VERSION = '1.1'
+APP_VERSION = '1.2'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged NetMonitor.exe
@@ -1306,6 +1307,57 @@ def another_copy_running():
     return ctypes.get_last_error() == ERROR_ALREADY_EXISTS
 
 
+# ---- netmonitor:// link, so a web page's RUN button can start the app (per-user, no admin needed)
+LINK_SCHEME = 'netmonitor'
+LINK_PATTERN = re.compile(r'^netmonitor:(//)?(run)?/?$', re.I)   # the link can only start the app
+
+
+def _link_key(scheme):
+    return rf'Software\Classes\{scheme}'
+
+
+def link_command(exe):
+    return f'"{exe}" "%1"'
+
+
+def link_registered(exe, scheme=LINK_SCHEME):
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _link_key(scheme) + r'\shell\open\command') as k:
+            return winreg.QueryValueEx(k, '')[0] == link_command(exe)
+    except OSError:
+        return False
+
+
+def register_link(exe, scheme=LINK_SCHEME):
+    """Make netmonitor:// links open this exe, for the signed-in Windows user only."""
+    base = _link_key(scheme)
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base) as k:
+        winreg.SetValueEx(k, '', 0, winreg.REG_SZ, f'URL:{APP_NAME}')
+        winreg.SetValueEx(k, 'URL Protocol', 0, winreg.REG_SZ, '')
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + r'\DefaultIcon') as k:
+        winreg.SetValueEx(k, '', 0, winreg.REG_SZ, f'"{exe}",0')
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + r'\shell\open\command') as k:
+        winreg.SetValueEx(k, '', 0, winreg.REG_SZ, link_command(exe))
+
+
+def unregister_link(scheme=LINK_SCHEME):
+    base = _link_key(scheme)
+    for sub in (r'\shell\open\command', r'\shell\open', r'\shell', r'\DefaultIcon', ''):
+        try:
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, base + sub)
+        except OSError:
+            pass
+    return not link_registered('', scheme) and not _key_exists(base)
+
+
+def _key_exists(path):
+    try:
+        winreg.OpenKey(winreg.HKEY_CURRENT_USER, path).Close()
+        return True
+    except OSError:
+        return False
+
+
 def show_error(message):
     user32.MessageBoxW(None, message, APP_NAME, 0x10)   # MB_ICONERROR
 
@@ -1322,7 +1374,32 @@ def main():
                     help='app mode (default for NetMonitor.exe): one copy only, logs in %%LOCALAPPDATA%%, '
                          'stops a few minutes after the dashboard is closed')
     ap.add_argument('--idle-exit', type=int, default=3, help='app mode: minutes without an open dashboard before stopping')
+    ap.add_argument('--register-link', action='store_true', help='let netmonitor:// links (a website RUN button) start this app')
+    ap.add_argument('--unregister-link', action='store_true', help='remove the netmonitor:// link')
+    ap.add_argument('link', nargs='?', help=argparse.SUPPRESS)   # netmonitor://run, passed by Windows
     args = ap.parse_args()
+
+    exe = sys.executable if FROZEN else os.path.abspath(__file__)
+    if args.unregister_link:
+        unregister_link()
+        if FROZEN:
+            user32.MessageBoxW(None, 'The RUN button link was removed. Websites can no longer start NetMonitor.', APP_NAME, 0x40)
+        print('netmonitor:// link removed.')
+        return
+    if args.register_link:
+        if not FROZEN:
+            sys.exit('The netmonitor:// link can only be set up from NetMonitor.exe.')
+        register_link(exe)
+        user32.MessageBoxW(None, 'Done. A RUN button on a web page can now start NetMonitor on this PC.', APP_NAME, 0x40)
+        return
+    if args.link and not LINK_PATTERN.match(args.link):
+        sys.exit(f'NetMonitor was started from an unsupported link ({args.link[:80]}). Links can only start the app.')
+    # the app sets up its RUN-button link (for this Windows user) whenever it runs from a new location
+    if FROZEN and args.app and not link_registered(exe):
+        try:
+            register_link(exe)
+        except OSError:
+            pass
     if not args.outdir:
         args.outdir = os.path.join(APP_DIR if args.app else HERE, 'NetMonitorOutput')
     url_file = os.path.join(APP_DIR, 'running.url')
