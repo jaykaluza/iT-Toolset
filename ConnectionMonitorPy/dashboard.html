@@ -49,7 +49,8 @@ label{color:var(--muted);display:flex;gap:7px;align-items:center;cursor:pointer}
 .bar label input[type=checkbox]:checked::after{left:18px}
 .bar label input[type=checkbox]:disabled{opacity:.4;cursor:not-allowed}
 .bar label input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.bar label:has(input:checked){color:var(--text);font-weight:600}
+.bar label:has(input:checked){color:var(--text)}   /* colour only: bold would widen the label and shift the layout */
+html{overflow-y:scroll;scrollbar-gutter:stable}   /* always keep the scrollbar so the page doesn't jump when the list gets short */
 .clearf{font:inherit;font-weight:600;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:4px;padding:4px 12px;margin-left:8px;cursor:pointer}
 .wrap{padding:0 20px 30px;overflow-x:auto}
 table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
