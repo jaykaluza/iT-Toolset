@@ -38,7 +38,7 @@ if sys.platform != 'win32':
     sys.exit('NetMonitor only runs on Windows.')
 
 APP_NAME = 'My Windows Network/Internet Connection Monitor'
-APP_VERSION = '1.5'
+APP_VERSION = '1.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged NetMonitor.exe
@@ -1415,6 +1415,16 @@ def _key_exists(path):
         return False
 
 
+MB_YESNO, MB_ICONINFORMATION, IDYES = 0x4, 0x40, 6
+
+
+def ask_start_after_setup():
+    """After the first run sets up the RUN link: start now (Yes) or go back to the website (No)."""
+    return user32.MessageBoxW(None, 'NetMonitor is set up on this PC.\n\n'
+                                    'The RUN button on the IT Toolset website can now start it.\n\n'
+                                    'Start NetMonitor now?', APP_NAME, MB_YESNO | MB_ICONINFORMATION) == IDYES
+
+
 def show_error(message):
     user32.MessageBoxW(None, message, APP_NAME, 0x10)   # MB_ICONERROR
 
@@ -1460,6 +1470,10 @@ def main():
             register_link(exe)
         except OSError:
             pass
+        else:
+            # first run of this copy: it's a setup step, so let people go back to the website instead of opening now
+            if not args.link and not ask_start_after_setup():
+                return
     if not args.outdir:
         args.outdir = os.path.join(APP_DIR if args.app else HERE, 'NetMonitorOutput')
     url_file = os.path.join(APP_DIR, 'running.url')

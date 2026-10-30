@@ -18,7 +18,8 @@ Each tool has its own version numbers and releases on the [Releases](../../relea
 | Tool | Release tags |
 | --- | --- |
 | Connection monitor (PowerShell) | `ps-v1.2`, `ps-v1.3`, … (earlier releases: `v1.0`, `v1.1`) |
-| Connection monitor (Python) | `py-v1.0`, `py-v1.1`, … |
+| Connection monitor (Python) | `py-v1.0`, `py-v1.1` |
+| Connection monitor, web version (NetMonitor.exe with the website RUN button) | `web-v1.0`, `web-v1.1`, … |
 
 A release's notes give the master fingerprint for that tool.
 

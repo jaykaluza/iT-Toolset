@@ -8,7 +8,7 @@ A small app that shows, live in your browser, every network connection your Wind
 
 ## 1. Get it and start it
 
-1. Download **NetMonitor.exe** from the latest Python release (`py-v…`) on the [Releases page](https://github.com/jaykaluza/iT-Toolset/releases).
+1. Download **NetMonitor.exe** from the latest release (`web-v…`) on the [Releases page](https://github.com/jaykaluza/iT-Toolset/releases/latest), or from the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/).
 2. **Check it's genuine:** in PowerShell, in the folder with the file, run `Get-FileHash .\NetMonitor.exe -Algorithm SHA256` and compare the result with the fingerprint in the release notes. They must match exactly.
 3. Put it in a folder of its own (for example `Documents\NetMonitor`), then **double-click it**.
 4. Windows may say **"Windows protected your PC"** (the app isn't digitally signed): click **More info → Run anyway**.
