@@ -1,23 +1,23 @@
-# My Windows Network/Internet Connection Monitor: quick guide
+# What's My PC Connecting To?: quick guide
 
 A small app that shows, live in your browser, every network connection your Windows PC is making, names the app behind each one, flags anything risky, and lets you stop or block apps.
 
-*Screenshots: the PC name and Windows user name are hidden; the Blocked tab shows example data.*
+*Screenshots: taken with an earlier version, so the look and some button names differ slightly (it now has a light page with a black header, and Block app also closes the app). The PC name and Windows user name are hidden; the Blocked tab shows example data.*
 
 ---
 
 ## 1. Get it and start it
 
-1. Download **NetMonitor.exe** from the latest release (`web-v…`) on the [Releases page](https://github.com/jaykaluza/iT-Toolset/releases/latest), or from the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/).
-2. **Check it's genuine:** in PowerShell, in the folder with the file, run `Get-FileHash .\NetMonitor.exe -Algorithm SHA256` and compare the result with the fingerprint in the release notes. They must match exactly.
-3. Put it in a folder of its own (for example `Documents\NetMonitor`), then **double-click it**.
+1. Download **WhatsMyPCConnectingTo.exe** from the latest release (`web-v…`) on the [Releases page](https://github.com/jaykaluza/iT-Toolset/releases/latest), or from the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/).
+2. **Check it's genuine:** in PowerShell, in the folder with the file, run `Get-FileHash .\WhatsMyPCConnectingTo.exe -Algorithm SHA256` and compare the result with the fingerprint in the release notes. They must match exactly.
+3. Put it in a folder of its own (for example `Documents\WhatsMyPCConnectingTo`), then **double-click it**.
 4. Windows may say **"Windows protected your PC"** (the app isn't digitally signed): click **More info → Run anyway**.
 5. Click **Yes** when Windows asks to allow it to make changes. It needs administrator rights to see every app and to end or block programs.
 6. The dashboard opens in your browser at `http://localhost:8765`. No install, no Python needed.
 
 Double-clicking it again while it's running just reopens the dashboard.
 
-**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove it, use **"To remove the RUN button link from this PC later, click here"** in the page's setup steps, or run `NetMonitor.exe --unregister-link`. Save NetMonitor.exe in a fixed folder first: if you open it straight from the browser's download bar, it runs from a temporary folder and RUN stops working once the browser deletes it.
+**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove it, use **"To remove the RUN button link from this PC later, click here"** in the page's setup steps, or run `WhatsMyPCConnectingTo.exe --unregister-link`. Save WhatsMyPCConnectingTo.exe in a fixed folder first: if you open it straight from the browser's download bar, it runs from a temporary folder and RUN stops working once the browser deletes it.
 
 ---
 
@@ -25,13 +25,14 @@ Double-clicking it again while it's running just reopens the dashboard.
 
 ![Main view](docs/conn.png)
 
-- **Top cards:** active connections, how many go to the internet, inbound vs outbound, and total download/upload speed.
+- **Top cards:** risky apps, active connections, internet connections in and out, apps talking out, and total download/upload speed.
 - **Tabs:**
-  - **Connections:** every live connection, with app, remote host and address, port and state.
+  - **Connections:** every live connection, with app, remote host and address, port and state. Hover over a row for check links on its internet address (who owns it, blacklists, abuse reports, reputation, exposure) and a **Block** button.
   - **By app:** one row per app, with its connection counts and the hosts it talks to.
   - **Listening:** ports open for incoming connections and whether other devices can reach them.
-  - **Blocked:** apps you've blocked and their attempts to connect (see section 4).
-- **Filters:** search box, In/Out, and slide toggles for *External only* (internet connections only), *Show recently closed* and *Risky only* (red = on). Filters start fresh each time the dashboard opens; if they hide everything, a **Clear filters** button appears.
+  - **Open tabs:** the tabs open in your browsers and the site each one is on, with **Block site** on hover.
+  - **Blocked:** apps, addresses and sites you've blocked, and their attempts to connect (see section 4).
+- **Filters:** search box, In/Out, and slide toggles for *External only* (internet connections only), *Recently closed* (also show connections that ended in the last 10 minutes; hover over it for details) and *Risky only* (red = on). Filters start fresh each time the dashboard opens; if they hide everything, a **Clear filters** button appears.
 - **Risk column:** **red** rows need attention, **amber** rows are worth a look. Hover over a coloured row to see what's wrong and how to fix it.
 
 ![By app tab](docs/apps.png)
@@ -44,16 +45,15 @@ Hover over any app name to see whether it's **built into Windows**, a Microsoft 
 
 ---
 
-## 3. End or block an app
+## 3. Block an app
 
-Click a row to select its program (all its rows are highlighted; click again or press **Esc** to clear), then use the buttons on the right:
+Click a row to select its program (all its rows are highlighted; click again or press **Esc** to clear), then click **Block app** next to the filters:
 
-![Selected app with Block app and End process](docs/select.png)
+![Selected app with Block app](docs/select.png)
 
-- **End process** closes the app completely. It's asked to close normally first (so, for example, Chrome saves its tabs), and anything still running after 5 seconds is forced closed.
 - **Block app** adds two Windows Firewall rules (incoming and outgoing) for that program and closes it. If you start it again, it stays cut off from the network until you unblock it.
-- Both always ask you to confirm first.
-- For safety, core Windows processes, Microsoft Defender and programs shared by many apps (PowerShell, Edge WebView2 and similar) can't be ended or blocked; the button greys out and explains why.
+- It always asks you to confirm first. Hover over the button to see what it will do, or why it's greyed out.
+- For safety, core Windows processes, Microsoft Defender and programs shared by many apps (PowerShell, Edge WebView2 and similar) can't be blocked.
 
 ---
 
@@ -61,34 +61,37 @@ Click a row to select its program (all its rows are highlighted; click again or 
 
 ![Blocked tab (example data)](docs/blocked.png)
 
-- **Apps you blocked:** each blocked app, its location, the firewall rules NetMonitor created for it (`NetMonitor block: <app> (outbound/inbound)`), and an **Unblock** button. Blocked apps also get a red **Blocked by you** tag in the other tabs.
+- **Block an address or site:** type an IP address, a range or a site and click **Block IP/URL**. Addresses are blocked in Windows Firewall, sites in Windows' hosts file.
+- **Apps you blocked:** each blocked app, its location, the firewall rules created for it (`WhatsMyPCConnectingTo block: <app> (outbound/inbound)`), and an **Unblock** button. Blocked apps also get a red **Blocked by you** tag in the other tabs.
+- **Addresses you blocked** and **Sites you blocked:** each with **Unblock** and check links (who owns it, blacklists, reputation and more).
+- **Show all blocks:** every block rule in Windows Firewall and every hosts-file entry on the PC, including ones made by other programs.
 - **Attempts to connect:** each time a blocked app tries to connect, with the address, how many times, and the **Firewall rule** that stopped it.
 
-Seeing attempts needs Windows to record blocked connections, which is off by default. Click **Turn on recording** in the Blocked tab (it asks first); **Turn off recording** appears once it's on.
+Seeing attempts needs Windows to record blocked connections, which is off by default. Click **Turn on recording** in the Blocked tab (it asks first); **Turn off recording** appears once it's on. Hover over the button for what recording does.
 
 ![Turn on recording](docs/recording.png)
 
-The rules live in their own **NetMonitor** group in Windows Defender Firewall. Unblock only ever removes NetMonitor's own rules.
+The rules live in their own **WhatsMyPCConnectingTo** group in Windows Defender Firewall. Unblock only ever removes the app's own rules. Rules made by earlier versions (**NetMonitor** group) still work and are renamed the next time the app runs as Administrator.
 
 ---
 
 ## 5. Activity log
 
-Every **Block app**, **Unblock** and **End process** is written to **`activity-log.txt`**, stored **in the same folder as NetMonitor.exe**.
+Every **Block app**, **Block IP/URL** and **Unblock** is written to **`activity-log.txt`**, stored **in the same folder as WhatsMyPCConnectingTo.exe**.
 
 - Open it with the **Activity log** button at the top of the dashboard (it opens in your normal text editor), or open the file directly.
 - It keeps the **last 10 days**; older lines are removed automatically.
 - Each line shows the time, action, app, process IDs, file location, the firewall rules added or removed, and the result:
 
 ```
-2026-10-29 18:02:41  BLOCKED    iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Blocked iCloudHome with Windows Firewall rules 'NetMonitor block: iCloudHome (outbound)' and 'NetMonitor block: iCloudHome (inbound)': it can't connect in or out.
+2026-10-29 18:02:41  BLOCKED    iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Blocked iCloudHome with Windows Firewall rules 'WhatsMyPCConnectingTo block: iCloudHome (outbound)' and 'WhatsMyPCConnectingTo block: iCloudHome (inbound)': it can't connect in or out.
 2026-10-29 18:02:46  ENDED      iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Closed iCloudHome.
 2026-10-29 18:05:12  UNBLOCKED  iCloudHome  C:\...\iCloudHome.exe  Unblocked iCloudHome: removed Windows Firewall rules ...
 ```
 
-If the app's folder can't be written to, the log goes to `%LOCALAPPDATA%\MyNetworkMonitor\NetMonitorOutput` instead.
+If the app's folder can't be written to, the log goes to `%LOCALAPPDATA%\MyNetworkMonitor\WhatsMyPCConnectingToOutput` instead.
 
-**Other files** (all in `%LOCALAPPDATA%\MyNetworkMonitor\NetMonitorOutput`; paste that into File Explorer's address bar):
+**Other files** (all in `%LOCALAPPDATA%\MyNetworkMonitor\WhatsMyPCConnectingToOutput`; paste that into File Explorer's address bar):
 - `connections-YYYYMMDD.csv`: a daily log of every new connection.
 - `unblocked.json`: when apps were unblocked (so old blocked attempts aren't listed again).
 
@@ -107,7 +110,7 @@ Everything stays on your PC; nothing is sent anywhere.
 
 | What you see | What to do |
 | --- | --- |
-| Page stuck on "Starting up…" | Close the tab and double-click NetMonitor.exe again (it opens a fresh tab). |
+| Page stuck on "Starting up…" | Close the tab and double-click WhatsMyPCConnectingTo.exe again (it opens a fresh tab). |
 | "Windows protected your PC" | Normal for an unsigned app: **More info → Run anyway**, after checking the fingerprint. |
 | Antivirus warns about the app | Packaged apps like this are sometimes flagged by mistake. Check the fingerprint matches the release notes, then scan it: right-click → **Scan with Microsoft Defender**. |
 | Blocked tab says recording is off | Click **Turn on recording**. |

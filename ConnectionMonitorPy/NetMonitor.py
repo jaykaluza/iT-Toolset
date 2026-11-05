@@ -682,9 +682,10 @@ def net_label(net):
 
 
 # Block site: Windows' hosts file sends the site's names to 0.0.0.0, so Windows and browsers can't find it.
-# Only lines NetMonitor added (marked with HOSTS_MARK) are ever read back or removed.
+# Only lines this app added (marked with HOSTS_MARK, or OLD_HOSTS_MARK from before the rename) are ever read back or removed.
 HOSTS_FILE = os.path.join(WINDIR, 'System32', 'drivers', 'etc', 'hosts')
-HOSTS_MARK = '# NetMonitor block: '
+HOSTS_MARK = '# WhatsMyPCConnectingTo block: '
+OLD_HOSTS_MARK = '# NetMonitor block: '   # lines added before the rename: still read and removed
 SITE_RE = re.compile(r'^(?=.{3,253}$)(?:[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$')
 # Windows itself needs these to sign in, update and check the connection
 PROTECTED_SITES = ('localhost', 'local', 'microsoft.com', 'windows.com', 'windowsupdate.com', 'microsoftonline.com',
@@ -737,15 +738,16 @@ def read_hosts():
 
 
 def hosts_sites():
-    """{site: [names]} for the sites NetMonitor blocked in the hosts file."""
+    """{site: [names]} for the sites this app blocked in the hosts file."""
     sites = {}
     try:
         text = read_hosts()
     except OSError:
         return sites
     for line in text.splitlines():
-        if HOSTS_MARK in line:
-            site = line.split(HOSTS_MARK, 1)[1].strip()
+        mark = HOSTS_MARK if HOSTS_MARK in line else OLD_HOSTS_MARK if OLD_HOSTS_MARK in line else ''
+        if mark:
+            site = line.split(mark, 1)[1].strip()
             parts = line.split('#', 1)[0].split()
             if site and len(parts) >= 2 and parts[1] not in sites.setdefault(site, []):
                 sites[site].append(parts[1])
@@ -949,7 +951,7 @@ class Monitor:
         self.out_dir = args.outdir
         os.makedirs(self.out_dir, exist_ok=True)
         self.csv_path = os.path.join(self.out_dir, f'connections-{dt.date.today():%Y%m%d}.csv')
-        # activity log lives next to NetMonitor.exe (or NetMonitor.py) and keeps the last 10 days
+        # activity log lives next to the exe (or NetMonitor.py) and keeps the last 10 days
         self.activity_log = os.path.join(os.path.dirname(sys.executable) if FROZEN else HERE, 'activity-log.txt')
         self.activity_pruned = 0.0
         self.prune_activity_log()
@@ -1144,7 +1146,7 @@ class Monitor:
         if not self.admin:
             return {'ok': False, 'message': 'Unblocking apps needs administrator rights. Start the app as Administrator.'}
         entry = next((e for e in self.fw_blocked if e['Path'].lower() == str(path).lower()), None)
-        if not entry:   # only NetMonitor's own rules can be removed from here
+        if not entry:   # only this app's own rules can be removed from here
             return {'ok': False, 'message': 'That app is not in the list of apps you blocked.'}
         row = next(iter(run_powershell(FW_UNBLOCK_PS, {'NM_PATH': entry['Path']})), {})
         if not row.get('ok'):
@@ -1231,7 +1233,7 @@ class Monitor:
         if not self.admin:
             return {'ok': False, 'message': 'Unblocking addresses needs administrator rights. Start the app as Administrator.'}
         entry = next((e for e in self.fw_ips if e['Address'] == str(text)), None)
-        if not entry:   # only NetMonitor's own rules can be removed from here
+        if not entry:   # only this app's own rules can be removed from here
             return {'ok': False, 'message': 'That address is not in the list of addresses you blocked.'}
         row = next(iter(run_powershell(FW_REMOVE_PS, {'NM_IDS': json.dumps(entry['Ids'])})), {})
         if not row.get('ok'):
@@ -1307,7 +1309,7 @@ class Monitor:
             return {'ok': False, 'message': 'That site is not in the list of sites you blocked.'}
         try:
             lines = read_hosts().splitlines(keepends=True)
-            kept = [ln for ln in lines if not (HOSTS_MARK in ln and ln.split(HOSTS_MARK, 1)[1].strip() == site)]
+            kept = [ln for ln in lines if not any(m in ln and ln.split(m, 1)[1].strip() == site for m in (HOSTS_MARK, OLD_HOSTS_MARK))]
             write_hosts(''.join(kept))
         except OSError as e:
             return {'ok': False, 'message': f"Couldn't change Windows' hosts file ({HOSTS_FILE}): {e.strerror or e}."}
@@ -1341,7 +1343,7 @@ class Monitor:
                 continue
             blocks = ip in ('0.0.0.0', '127.0.0.1', '::', '::1')
             for n in names:
-                hosts.append({'Name': n, 'Address': ip, 'Blocks': blocks, 'Ours': HOSTS_MARK in line})
+                hosts.append({'Name': n, 'Address': ip, 'Blocks': blocks, 'Ours': HOSTS_MARK in line or OLD_HOSTS_MARK in line})
         return {'ok': True, 'rules': rules, 'hosts': hosts}
 
     def browser_sites(self):
@@ -1385,7 +1387,7 @@ class Monitor:
         when = str(ev.get('Time') or now_iso())
         unblocked_at = self.unblocked.get(path.lower())
         if unblocked_at and dt.datetime.fromisoformat(when) <= dt.datetime.fromisoformat(unblocked_at):
-            return   # blocked by a NetMonitor rule that has since been removed
+            return   # blocked by one of this app's rules that has since been removed
         # outbound blocks repeat from new local ports, inbound ones target the same local port
         key = (name.lower(), direction, remote, rport if direction == 'Outbound' else lport, proto)
         b = self.blocked.get(key)
@@ -1641,7 +1643,7 @@ class Monitor:
             with open(self.activity_log, 'a', encoding='utf-8'):
                 pass
         try:
-            # via Explorer, so the editor runs as the signed-in user rather than with NetMonitor's admin rights
+            # via Explorer, so the editor runs as the signed-in user rather than with the app's admin rights
             subprocess.Popen([os.path.join(WINDIR, 'explorer.exe'), self.activity_log], creationflags=CREATE_NO_WINDOW)
         except OSError as e:
             return {'ok': False, 'message': f"Couldn't open the activity log ({self.activity_log}): {e}"}
@@ -1727,14 +1729,14 @@ class Monitor:
 # token that is embedded in the page, so other websites can't read the data or end processes.
 
 CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'"
-# The IT Toolset website may ask "is NetMonitor running?" (/status) and stop it (/site-stop), so its RUN
+# The IT Toolset website may ask "is the app running?" (/status) and stop it (/site-stop), so its RUN
 # button can switch to STOP. Browsers only let these origins read the answer or send the stop.
 SITE_ORIGINS = ('https://jaykaluza.github.io',)
 
 
 def make_handler(monitor, page_bytes, token, port):
     class Handler(http.server.BaseHTTPRequestHandler):
-        server_version = 'NetMonitor'
+        server_version = 'WhatsMyPCConnectingTo'
         sys_version = ''
 
         def log_message(self, *args):
@@ -1792,7 +1794,7 @@ def make_handler(monitor, page_bytes, token, port):
                 origin = self.site_origin()
                 if not origin:
                     return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
-                return self.send_json(200, {'app': 'NetMonitor', 'version': APP_VERSION, 'stopping': monitor.stopping},
+                return self.send_json(200, {'app': 'WhatsMyPCConnectingTo', 'version': APP_VERSION, 'stopping': monitor.stopping},
                                       self.site_headers(origin))
             if not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
@@ -1805,7 +1807,7 @@ def make_handler(monitor, page_bytes, token, port):
 
         def do_POST(self):
             if self.path == '/site-stop':
-                # the website's STOP button: only from the IT Toolset site, and only stopping NetMonitor itself
+                # the website's STOP button: only from the IT Toolset site, and only stopping this app itself
                 origin = self.site_origin()
                 if not self.host_ok() or not origin:
                     return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
@@ -1892,15 +1894,16 @@ _instance_mutex = None
 
 
 def another_copy_running():
-    """True if NetMonitor is already running as the app (one copy per Windows session)."""
+    """True if the app is already running as the app (one copy per Windows session)."""
     global _instance_mutex
     _instance_mutex = kernel32.CreateMutexW(None, False, 'Local\\MyWindowsNetworkMonitor')
     return ctypes.get_last_error() == ERROR_ALREADY_EXISTS
 
 
-# ---- netmonitor:// link, so a web page's RUN button can start the app (per-user, no admin needed)
-LINK_SCHEME = 'netmonitor'
-LINK_PATTERN = re.compile(r'^netmonitor:(//)?(run|unregister)?/?$', re.I)   # start the app, or remove the link
+# ---- whatsmypcconnectingto:// link, so a web page's RUN button can start the app (per-user, no admin needed)
+LINK_SCHEME = 'whatsmypcconnectingto'
+OLD_LINK_SCHEME = 'netmonitor'   # the link versions before the rename set up; removed along with the new one
+LINK_PATTERN = re.compile(r'^(whatsmypcconnectingto|netmonitor):(//)?(run|unregister)?/?$', re.I)   # start the app, or remove the link
 
 
 def _link_key(scheme):
@@ -1920,7 +1923,7 @@ def link_registered(exe, scheme=LINK_SCHEME):
 
 
 def register_link(exe, scheme=LINK_SCHEME):
-    """Make netmonitor:// links open this exe, for the signed-in Windows user only."""
+    """Make whatsmypcconnectingto:// links open this exe, for the signed-in Windows user only."""
     base = _link_key(scheme)
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base) as k:
         winreg.SetValueEx(k, '', 0, winreg.REG_SZ, f'URL:{APP_NAME}')
@@ -1963,7 +1966,7 @@ def own_version():
 
 
 def link_target(scheme=LINK_SCHEME):
-    """The program file the netmonitor:// link currently opens ('' if none)."""
+    """The program file the whatsmypcconnectingto:// link currently opens ('' if none)."""
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _link_key(scheme) + r'\shell\open\command') as k:
             command = winreg.QueryValueEx(k, '')[0]
@@ -2032,26 +2035,27 @@ def main():
                     help='app mode (default for the packaged .exe): one copy only, logs in %%LOCALAPPDATA%%, '
                          'stops a few minutes after the dashboard is closed')
     ap.add_argument('--idle-exit', type=int, default=3, help='app mode: minutes without an open dashboard before stopping')
-    ap.add_argument('--register-link', action='store_true', help='let netmonitor:// links (a website RUN button) start this app')
-    ap.add_argument('--unregister-link', action='store_true', help='remove the netmonitor:// link')
-    ap.add_argument('link', nargs='?', help=argparse.SUPPRESS)   # netmonitor://run, passed by Windows
+    ap.add_argument('--register-link', action='store_true', help='let whatsmypcconnectingto:// links (a website RUN button) start this app')
+    ap.add_argument('--unregister-link', action='store_true', help='remove the whatsmypcconnectingto:// link')
+    ap.add_argument('link', nargs='?', help=argparse.SUPPRESS)   # whatsmypcconnectingto://run, passed by Windows
     args = ap.parse_args()
 
     exe = sys.executable if FROZEN else os.path.abspath(__file__)
     if args.link and not LINK_PATTERN.match(args.link):
         sys.exit(f'The app was started from an unsupported link ({args.link[:80]}). Links can only start the app or remove the link.')
-    if args.link and LINK_PATTERN.match(args.link).group(2) and LINK_PATTERN.match(args.link).group(2).lower() == 'unregister':
+    if args.link and (LINK_PATTERN.match(args.link).group(3) or '').lower() == 'unregister':
         args.unregister_link = True   # a website's "Remove the RUN link" button
     if args.unregister_link:
         unregister_link()
+        unregister_link(OLD_LINK_SCHEME)   # and the old netmonitor:// link from before the rename
         if FROZEN:
             user32.MessageBoxW(None, 'The RUN button link was removed. Websites can no longer start this app on this PC.\n\n'
                                      f'Running {EXE_NAME} again sets it up again.', APP_NAME, 0x40)
-        print('netmonitor:// link removed.')
+        print('whatsmypcconnectingto:// link removed.')
         return
     if args.register_link:
         if not FROZEN:
-            sys.exit(f'The netmonitor:// link can only be set up from {EXE_NAME}.')
+            sys.exit(f'The whatsmypcconnectingto:// link can only be set up from {EXE_NAME}.')
         register_link(exe)
         user32.MessageBoxW(None, 'Done. A RUN button on a web page can now start this app on this PC.', APP_NAME, 0x40)
         return
@@ -2066,7 +2070,7 @@ def main():
             if not args.link and not ask_start_after_setup():
                 return
     if not args.outdir:
-        args.outdir = os.path.join(APP_DIR if args.app else HERE, 'NetMonitorOutput')
+        args.outdir = os.path.join(APP_DIR if args.app else HERE, 'WhatsMyPCConnectingToOutput')
     url_file = os.path.join(APP_DIR, 'running.url')
 
     if args.app and not args.once and another_copy_running():

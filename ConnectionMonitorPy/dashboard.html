@@ -146,7 +146,7 @@ tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0
 </style>
 </head>
 <body>
-<header><h1>what's_my_pc_connecting_to?</h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop NetMonitor">Stop monitor</button></header>
+<header><h1>what's_my_pc_connecting_to?</h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop the monitor and close the app">Stop monitor</button></header>
 <div class="stats" id="stats"></div>
 <div class="bar">
   <div class="tabs" id="tabs">
@@ -645,7 +645,7 @@ $('#kill').onclick = async () => {
 };
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && SEL) { SEL = null; render(); } });
 
-// ---- Block app / Unblock (Windows Firewall rules NetMonitor creates)
+// ---- Block app / Unblock (Windows Firewall rules this app creates)
 const isFwBlocked = (d, path) => !!path && (d.fwBlocked || []).some(b => b.Path.toLowerCase() === path.toLowerCase());
 async function postAction(url, body) {
   try {
@@ -821,7 +821,7 @@ document.addEventListener('mouseover', e => {
   else if (aiOpen) aiTimer = setTimeout(hideAppInfo, 300);
 });
 
-// Stop monitor: shuts NetMonitor down (the only way to stop the app version, which has no window)
+// Stop monitor: shuts the app down (the only way to stop the app version, which has no window)
 let stopped = false;
 $('#quit').onclick = async () => {
   if (!confirm('Stop the monitor?\n\nThe app will stop and this tab will close. Start it again to reopen it.')) return;
@@ -829,10 +829,10 @@ $('#quit').onclick = async () => {
   closeDashboard();
 };
 
-// close this tab once NetMonitor has stopped (Stop monitor here, or STOP on the IT Toolset website)
+// close this tab once the app has stopped (Stop monitor here, or STOP on the IT Toolset website)
 function closeDashboard() {
   stopped = true;
-  // browsers only let a page close a tab it was opened in fresh (as NetMonitor opens it); otherwise say it's done
+  // browsers only let a page close a tab it was opened in fresh (as the app opens it); otherwise say it's done
   window.close();
   setTimeout(() => {
     document.body.innerHTML = '<header><h1>what\'s_my_pc_connecting_to?</h1></header>' +
@@ -842,14 +842,14 @@ function closeDashboard() {
   }, 300);
 }
 
-// live data from NetMonitor
+// live data from the app
 let interval = 3000;
 async function poll() {
   if (stopped) return;
   try {
     const r = await fetch('/data', {headers: {'X-NetMon-Token': TOKEN}, cache: 'no-store'});
     if (r.status === 403) {
-      // NetMonitor was restarted, so this tab's secret key is out of date: reload to get the new one
+      // the app was restarted, so this tab's secret key is out of date: reload to get the new one
       $('#meta').textContent = 'The app restarted, reconnecting…';
       setTimeout(() => location.reload(), 1000);
       return;
@@ -860,7 +860,7 @@ async function poll() {
       window.NETDATA = data; if (data.interval) interval = data.interval * 1000; render();
     }
   } catch (e) {
-    // NetMonitor is no longer running (for example stopped from the website while this tab was in the background)
+    // the app is no longer running (for example stopped from the website while this tab was in the background)
     return closeDashboard();
   }
   setTimeout(poll, interval);

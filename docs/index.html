@@ -3,44 +3,54 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
 <title>IT Toolset</title>
 <style>
-:root{--bg:#f4f4f4;--panel:#fff;--text:#2e2d29;--muted:#53565a;--line:#dad7cb;--brand:#8c1515;--brand-dark:#820000;--accent:#006cb8;--warn:#7f5800;--warn-bg:#fdf5dc}
+/* same look as the What's My PC Connecting To? dashboard: light grey page, white cards, black header bar */
+:root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
+  --red:#8c1515;--red-dark:#820000;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--warn:#a05a00;--warn-bg:rgba(255,204,0,.16)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "Source Sans 3","Source Sans Pro","Segoe UI",system-ui,sans-serif}
-header{background:var(--brand);color:#fff;border-bottom:5px solid var(--brand-dark);padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-header h1{font:600 24px/1.2 "Source Serif 4","Source Serif Pro",Georgia,serif;margin:0}
-header .who{margin-left:auto;font-size:14px}
-header button{font:inherit;font-size:14px;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.7);border-radius:4px;padding:5px 12px;cursor:pointer}
-.demo{background:var(--warn-bg);color:var(--warn);text-align:center;font-size:13px;padding:6px 16px}
-main{max-width:1040px;margin:32px auto;padding:0 16px}
-.card{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:4px;padding:22px 24px;margin-bottom:18px}
-h2{font:600 20px/1.3 "Source Serif 4","Source Serif Pro",Georgia,serif;margin:0 0 8px}
-label{display:block;font-weight:600;margin:14px 0 4px}
-input{font:inherit;width:100%;max-width:340px;padding:8px 10px;border:1px solid var(--line);border-radius:4px}
-.btn{font:inherit;font-weight:600;color:#fff;background:var(--brand);border:0;border-radius:4px;padding:9px 20px;cursor:pointer}
-.btn:disabled{background:#b6b1a9;cursor:not-allowed}
-.muted{color:var(--muted);font-size:14px}
-.tool{display:flex;align-items:center;gap:18px;padding:16px 0;border-top:1px solid var(--line)}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+header{background:var(--head);color:var(--head-text);padding:10px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;
+  color:#fff;background-color:#fff;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 6px rgba(255,255,255,.35))}   /* bright white with a soft glow, plus yellow, green, blue and red specks added by speckle() */
+header .who{margin-left:auto;font-size:13px;color:var(--head-muted)}
+header button{font:inherit;font-size:12px;font-weight:500;color:var(--head-text);background:transparent;border:1px solid var(--head-muted);border-radius:980px;padding:2px 12px;cursor:pointer}
+header button:hover{border-color:var(--head-text)}
+.demo{background:var(--warn-bg);color:var(--warn);text-align:center;font-size:12px;padding:5px 16px}
+main{max-width:1040px;margin:28px auto;padding:0 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin-bottom:18px}
+h2{font:600 19px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.015em;margin:0 0 8px}
+label{display:block;font-weight:600;font-size:13px;margin:14px 0 4px}
+input{font:inherit;width:100%;max-width:340px;padding:6px 14px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:980px}
+input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,102,204,.15)}
+.btn{font:inherit;font-size:13px;font-weight:500;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:5px 16px;cursor:pointer}
+.btn:hover{background:var(--red-dark);border-color:var(--red-dark)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.muted{color:var(--muted);font-size:13px}
+.tool{display:flex;align-items:center;gap:18px;padding:14px 0;border-top:1px solid var(--line)}
 .tool:first-of-type{border-top:0}
-.icon{flex:none;width:52px;height:52px;border-radius:10px;background:var(--brand);display:grid;place-items:center}
+.icon{flex:none;width:52px;height:52px;border-radius:12px;background:var(--head);display:grid;place-items:center}
 .tool .info{flex:1;min-width:0}
-.tool h3{margin:0;font-size:17px}
-.run{font:inherit;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--brand);border:0;border-radius:4px;padding:10px 26px;cursor:pointer}
-.run:disabled{background:#b6b1a9;cursor:not-allowed}
-.run.stop{background:#2e2d29}
-.help{display:none;margin-top:14px;padding:14px 16px;background:#e6f1f9;border-left:4px solid var(--accent);border-radius:4px;font-size:14px}
+.tool h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.run{font:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:6px 24px;cursor:pointer}
+.run:hover{background:var(--red-dark);border-color:var(--red-dark)}
+.run:disabled{opacity:.4;cursor:not-allowed}
+.run.stop{background:var(--head);border-color:var(--head)}
+.help{display:none;margin-top:14px;padding:12px 16px;background:var(--panel-2);border-radius:12px;font-size:13px;line-height:1.55}
 .help.show{display:block}
 .help ol{margin:6px 0 0;padding-left:20px}
-code{font:13px Consolas,monospace;background:#f4f4f4;border:1px solid var(--line);border-radius:3px;padding:1px 5px;word-break:break-all}
-a{color:var(--accent)}
+.help li{margin:3px 0}
+code{font:12px Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px;word-break:break-all}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
 .hidden{display:none}
 @media (max-width:560px){.tool{flex-wrap:wrap}.run{width:100%}}
 </style>
 </head>
 <body>
 <header>
-  <h1>IT Toolset</h1>
+  <h1>it_toolset</h1>
   <span class="who hidden" id="who"></span>
   <button class="hidden" id="signout">Sign out</button>
 </header>
@@ -70,22 +80,22 @@ a{color:var(--accent)}
           <path d="M7 14.5h3.5l2-4.5 3.2 8.5 2.6-6 1.7 2h5"/></svg>
       </div>
       <div class="info">
-        <h3>Windows Network Traffic Monitor</h3>
+        <h3>What's My PC Connecting To?</h3>
         <div class="muted">See every connection your PC makes, spot risky apps, and end or block them.</div>
         <div class="muted"><a href="#" id="setupLink">First time on this PC? Set it up</a></div>
-        <div class="muted hidden" id="runStatus">Starting NetMonitor… If the Microsoft Store opened instead, NetMonitor isn't set up on this PC yet: close the Store and <a href="#" id="notStarted">click here to show the setup steps</a>.</div>
+        <div class="muted hidden" id="runStatus">Starting the app… If the Microsoft Store opened instead, the app isn't set up on this PC yet: close the Store and <a href="#" id="notStarted">click here to show the setup steps</a>.</div>
       </div>
       <button class="run" id="run">RUN</button>
     </div>
     <div class="help" id="help">
       <b>Set up on this PC (one time):</b>
       <ol>
-        <li>Download <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/NetMonitor.exe">NetMonitor.exe</a> and <b>save it</b> in a folder of its own (for example <code>Documents\NetMonitor</code>). Don't open it straight from your browser's download bar: that runs it from a temporary folder the browser deletes later, and RUN would stop working.</li>
-        <li>Check it's genuine: compare <code>Get-FileHash .\NetMonitor.exe</code> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</li>
-        <li>Double-click it once and click <b>Yes</b> on the Windows prompt. When NetMonitor says it's set up, click <b>No</b> (don't start it yet) and come back here.</li>
+        <li>Download <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/WhatsMyPCConnectingTo.exe">WhatsMyPCConnectingTo.exe</a> and <b>save it</b> in a folder of its own (for example <code>Documents\WhatsMyPCConnectingTo</code>). Don't open it straight from your browser's download bar: that runs it from a temporary folder the browser deletes later, and RUN would stop working.</li>
+        <li>Check it's genuine: compare <code>Get-FileHash .\WhatsMyPCConnectingTo.exe</code> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</li>
+        <li>Double-click it once and click <b>Yes</b> on the Windows prompt. When the app says it's set up, click <b>No</b> (don't start it yet) and come back here.</li>
         <li>Then click the button below. Your browser will ask to open the app: click <b>Open</b> (tick "always allow" to skip this next time). From then on, <b>RUN</b> starts it directly.</li>
       </ol>
-      <p><button class="btn" id="setupDone">I've run NetMonitor.exe, start it now</button></p>
+      <p><button class="btn" id="setupDone">I've run WhatsMyPCConnectingTo.exe, start it now</button></p>
       <p class="muted" style="margin:8px 0 0"><a href="#" id="removeLink">To remove the RUN button link from this PC later, click here.</a></p>
     </div>
   </section>
@@ -114,21 +124,21 @@ function show(user) {
 $('#signinForm').onsubmit = e => { e.preventDefault(); const n = $('#name').value.trim(); if (n) { store.set(n); show(n); } };
 $('#signout').onclick = () => { store.set(''); show(''); };
 // Browsers won't tell a page which apps are installed, so this browser remembers whether
-// NetMonitor has been set up on this PC (set by "Done, start it now", cleared by the remove link).
+// the app has been set up on this PC (set by "Done, start it now", cleared by the remove link).
 const setup = {
-  done: () => { try { return localStorage.getItem('netmonitor-setup') === '1'; } catch (e) { return false; } },
-  set: on => { try { on ? localStorage.setItem('netmonitor-setup', '1') : localStorage.removeItem('netmonitor-setup'); } catch (e) {} }
+  done: () => { try { return localStorage.getItem('whatsmypcconnectingto-setup') === '1'; } catch (e) { return false; } },
+  set: on => { try { on ? localStorage.setItem('whatsmypcconnectingto-setup', '1') : localStorage.removeItem('whatsmypcconnectingto-setup'); } catch (e) {} }
 };
 const showSetup = () => { $('#runStatus').classList.add('hidden'); $('#help').classList.add('show'); $('#help').scrollIntoView({behavior: 'smooth', block: 'nearest'}); };
 const startApp = () => {
   $('#help').classList.remove('show');
   $('#runStatus').classList.remove('hidden');
-  location.href = 'netmonitor://run';   // starts NetMonitor.exe through the link it set up
+  location.href = 'whatsmypcconnectingto://run';   // starts WhatsMyPCConnectingTo.exe through the link it set up
 };
 
 $('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
 
-// ---- Is NetMonitor running on this PC? The app answers this page (and only this site) on localhost,
+// ---- Is the app running on this PC? The app answers this page (and only this site) on localhost,
 // so RUN can turn into STOP. Browsers may ask once to allow the page to reach apps on this device.
 const PORTS = [8765, 8766, 8767];
 let appPort = null, stopRequested = false, watching = false;
@@ -137,7 +147,7 @@ async function findApp() {
   for (const p of PORTS) {
     try {
       const r = await fetch(`http://localhost:${p}/status`, {cache: 'no-store', signal: AbortSignal.timeout(1500)});
-      if (r.ok) { const s = await r.json(); if (s.app === 'NetMonitor' && !s.stopping) return p; }
+      if (r.ok) { const s = await r.json(); if ((s.app === 'WhatsMyPCConnectingTo' || s.app === 'NetMonitor') && !s.stopping) return p; }
     } catch (e) { /* not running on this port, or the browser didn't allow the check */ }
   }
   return null;
@@ -167,7 +177,7 @@ function watchApp() {
 }
 
 async function stopApp() {
-  if (!confirm('Stop NetMonitor?\n\nThe monitor and its dashboard tab will close.')) return;
+  if (!confirm('Stop the app?\n\nIt will close, along with its dashboard tab.')) return;
   stopRequested = true;
   updateRunButton();
   try { await fetch(`http://localhost:${appPort}/site-stop`, {method: 'POST'}); } catch (e) {}
@@ -183,7 +193,7 @@ $('#run').onclick = () => {
 
 $('#setupDone').onclick = () => {
   // the page can't check this itself, so ask: starting before setup sends Windows to the Microsoft Store
-  if (!confirm('Did you double-click the downloaded NetMonitor.exe and click Yes?\n\nThat one-time step sets up the RUN button. If you haven\'t yet, click Cancel and do step 3 first.')) return;
+  if (!confirm('Did you double-click the downloaded WhatsMyPCConnectingTo.exe and click Yes?\n\nThat one-time step sets up the RUN button. If you haven\'t yet, click Cancel and do step 3 first.')) return;
   setup.set(true);
   startApp();
   watchApp();
@@ -192,17 +202,29 @@ $('#setupDone').onclick = () => {
 // it was set up, but nothing started (e.g. the link was removed outside the website)
 $('#notStarted').onclick = e => { e.preventDefault(); setup.set(false); showSetup(); };
 
-// Remove the RUN link: asks NetMonitor.exe (via its own link) to unregister itself on this PC
+// Remove the RUN link: asks WhatsMyPCConnectingTo.exe (via its own link) to unregister itself on this PC
 $('#removeLink').onclick = e => {
   e.preventDefault();
-  if (!confirm('Remove the RUN link from this PC?\n\nYour browser will ask to open NetMonitor, then Windows asks for administrator rights. NetMonitor removes its link and confirms; it does not start the monitor.\n\nAfterwards the RUN button shows the setup steps again on this PC.')) return;
+  if (!confirm('Remove the RUN link from this PC?\n\nYour browser will ask to open the app, then Windows asks for administrator rights. The app removes its link and confirms; it does not start the monitor.\n\nAfterwards the RUN button shows the setup steps again on this PC.')) return;
   setup.set(false);
-  location.href = 'netmonitor://unregister';
+  location.href = 'whatsmypcconnectingto://unregister';
 };
 
 show(store.get());
 if (store.get() && setup.done() && isWindows) watchApp();
 $('#signinForm').addEventListener('submit', () => { if (setup.done() && isWindows) watchApp(); });
+
+// yellow, green, blue and red specks in the bright white title
+(function speckle() {
+  const h = document.querySelector('header h1'); if (!h) return;
+  const dots = [];
+  const colors = ['#ffd60a', '#30d158', '#0a84ff', '#ff3b30'];
+  for (let i = 0; i < 32; i++) {
+    const r = (1.5 + Math.random() * (i < 4 ? 4 : 2)).toFixed(1);
+    dots.push(`radial-gradient(circle at ${(Math.random() * 100).toFixed(1)}% ${(15 + Math.random() * 70).toFixed(1)}%, ${colors[i % 4]} ${r}px, transparent ${(+r + 0.6).toFixed(1)}px)`);
+  }
+  h.style.backgroundImage = dots.join(',');
+})();
 </script>
 </body>
 </html>
