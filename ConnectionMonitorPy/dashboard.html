@@ -3,47 +3,71 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>My Windows Network/Internet Connection Monitor</title>
+<meta name="color-scheme" content="only light">
+<title>What's My PC Connecting To?</title>
 <style>
-:root{--bg:#f4f4f4;--panel:#fff;--text:#2e2d29;--muted:#53565a;--line:#dad7cb;--accent:#006cb8;
-  --brand:#8c1515;--brand-dark:#820000;--brand-text:#fff;
-  --in:#a34700;--in-bg:#fdf0e3;--out:#006cb8;--out-bg:#e6f1f9;--ext:#620059;--ext-bg:#f3e8f2;--lan:#53565a;--lan-bg:#efede7;
-  --risk:#b1040e;--risk-bg:#fbe9ea;--caution:#7f5800;--caution-bg:#fdf5dc}
+:root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--footnote:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
+  --brand:#0071e3;--brand-dark:#0077ed;--brand-text:#fff;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--head-accent:#2997ff;
+  --in:#b64400;--in-bg:rgba(255,149,0,.14);--out:#0066cc;--out-bg:rgba(0,113,227,.10);--ext:#8944ab;--ext-bg:rgba(175,82,222,.12);--lan:#6e6e73;--lan-bg:rgba(110,110,115,.12);
+  --risk:#d70015;--risk-bg:rgba(255,59,48,.10);--caution:#a05a00;--caution-bg:rgba(255,204,0,.16)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Source Sans 3","Source Sans Pro","Segoe UI",system-ui,sans-serif}
-header{background:var(--brand);color:var(--brand-text);border-bottom:5px solid var(--brand-dark);padding:16px 20px 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-bottom:10px}
-h1{font:600 24px/1.2 "Source Serif 4","Source Serif Pro",Georgia,"Times New Roman",serif;margin:0}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+header{background:var(--head);color:var(--head-text);border-bottom:0;padding:7px 16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:6px}
+h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;font-kerning:normal;-webkit-font-smoothing:antialiased;margin:0}
 .sub{color:var(--muted);font-size:13px}
 .warn{color:var(--in)}
-header .sub{color:rgba(255,255,255,.88)}header .warn{color:#fedd5c}
-.note{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:4px;padding:12px 16px;margin:0 0 12px;white-space:normal;line-height:1.6}
+header .sub{color:var(--head-muted)}
+header h1{color:#fff;background-color:#fff;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}   /* bright white, with Stanford red specks added by speckle() */header .warn{color:#ffd60a}
+.note{background:var(--panel-2);color:var(--footnote);border:0;border-radius:12px;padding:9px 14px;margin:0 0 10px;white-space:normal;line-height:1.5;font-size:12px;letter-spacing:.005em}
+.note b,.note strong{color:var(--text);font-weight:600}
 .note code{display:block;margin:6px 0 8px;padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;font:13px Consolas,monospace;user-select:all;word-break:break-all}
-#blockapp{font:inherit;font-weight:600;color:var(--risk);background:transparent;border:1px solid var(--risk);border-radius:7px;padding:6px 13px;cursor:pointer}
-#blockapp:disabled{color:var(--muted);border-color:var(--line);cursor:not-allowed}
-.blk{color:#fff;background:var(--risk);margin-left:6px;font-size:11px}
-.unblock{font:inherit;font-size:13px;font-weight:600;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:4px;padding:3px 10px;cursor:pointer}
-.fwlist{margin:0 0 14px}.fwlist h3{font-size:14px;margin:0 0 6px}
-.auditbtn{font:inherit;font-weight:600;color:#fff;background:var(--brand);border:0;border-radius:4px;padding:8px 16px;margin:8px 0;cursor:pointer}
+#blockapp{font:inherit;font-size:11px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:1px 9px;cursor:pointer}
+#blockapp:disabled,#kill:disabled{opacity:.4;cursor:not-allowed}
+#blockapp:not(:disabled):hover,#kill:not(:disabled):hover,.unblock.danger:hover,.mini:hover,.blockform button:not(:disabled):hover{background:#820000;border-color:#820000}
+.pill.blk{color:#fff;background:#8c1515;border:1px solid #8c1515;margin-left:6px;font-size:11px;font-weight:500;padding:1px 9px;vertical-align:1px}
+.unblock{font:inherit;font-size:11px;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:1px 9px;cursor:pointer}
+.fwlist{margin:0 0 22px}.fwlist h3{font-size:14px;font-weight:600;margin:0 0 3px}
+.fwlist h4{font-size:13px;font-weight:600;margin:14px 0 3px}
+.fwlist .lead{font-size:12px;color:var(--footnote);margin:0 0 8px;line-height:1.5}
+.fwlist .none{font-size:13px;color:var(--muted);padding:2px 0}
+.fwlist .none b{color:var(--text);font-weight:600}
+.small.checks{max-width:none;white-space:normal;line-height:1.5;font-size:10.5px}
+td.ipcell{position:relative;padding-bottom:19px}
+.small.rowchecks{position:absolute;left:8px;bottom:4px;font-size:10.5px;line-height:1.3;white-space:nowrap;visibility:hidden;z-index:2;padding-right:8px}   /* Connections: shown on the row under the mouse */
+tbody tr:hover .rowchecks,tbody tr.sel .rowchecks{visibility:visible}
+.unblock.danger{color:#fff;background:#8c1515;border-color:#8c1515;font-size:11px;padding:1px 9px}
+tbody tr:not(:hover) button[data-blocksite]{visibility:hidden}   /* Open tabs: shown on the row under the mouse */
+.mini{font:inherit;font-size:11px;font-weight:600;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:0 8px;margin-left:6px;cursor:pointer;visibility:hidden}
+tbody tr:hover .mini,tbody tr.sel .mini{visibility:visible}   /* hidden (not removed) so columns don't shift */
+.blockform{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:0 16px 10px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--risk);border-radius:12px;padding:8px 12px;font-size:13px}
+.blockform[hidden]{display:none}
+.blockform input{font:inherit;font-size:11px;line-height:normal;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:980px;padding:1px 9px;flex:1 1 300px;max-width:440px}
+.blockform button:disabled{opacity:.4;cursor:not-allowed}
+.blockform button{font:inherit;font-size:11px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:1px 9px;cursor:pointer}
+.blockform .small{max-width:none;flex-basis:100%;color:var(--footnote);line-height:1.5;white-space:normal;overflow:visible}
+.small[style*="max-width:none"]{white-space:normal}   /* full-width notes wrap instead of being cut off */
+.auditbtn{font:inherit;font-weight:500;color:#fff;background:var(--brand);border:0;border-radius:980px;padding:7px 18px;margin:8px 0;cursor:pointer}
 .auditbtn.secondary{color:var(--brand);background:transparent;border:1px solid var(--brand);padding:3px 10px;margin:0 0 0 8px;font-size:13px}
 .note details{margin-top:6px}.note summary{cursor:pointer;color:var(--accent)}
-#quit{margin-left:auto;align-self:center;font:inherit;font-weight:600;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.7);border-radius:4px;padding:6px 14px;cursor:pointer}
-#quit:hover{background:rgba(255,255,255,.15)}#quit:disabled{opacity:.5;cursor:default}
-#openlog{margin-left:auto;align-self:center;font:inherit;font-weight:600;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.7);border-radius:4px;padding:6px 14px;cursor:pointer}
-#openlog:hover{background:rgba(255,255,255,.15)}
+#quit{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:3px 14px;cursor:pointer}
+#quit:hover{background:#820000;border-color:#820000}#quit:disabled{opacity:.5;cursor:default}
+#openlog{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:500;color:#72a3f7;background:transparent;border:1.5px solid #4d74b5;border-radius:980px;padding:3px 14px;cursor:pointer}
+#openlog:hover{background:rgba(114,163,247,.14)}
 #openlog + #quit{margin-left:0}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:8px 20px}
-.stat{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:3px;padding:10px 12px}
-.stat b{display:block;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
-.stat span{color:var(--muted);font-size:12px}
-.bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:12px 20px}
-.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px}
-.tabs button{border:0;background:none;color:var(--muted);padding:6px 12px;border-radius:6px;font:inherit;cursor:pointer}
+.stats{display:flex;flex-wrap:nowrap;gap:5px;padding:2px 16px}   /* always one line: labels shorten with … on narrow windows */
+.stat{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--accent);border-radius:8px;padding:2px 8px}
+.stat b{font-size:13px;line-height:1.3;font-weight:700}
+.stat span{color:var(--muted);font-size:11px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:6px 16px}
+@media (min-width:1100px){.bar{flex-wrap:nowrap}.bar label,.bar button,.tabs,#dir{white-space:nowrap;flex-shrink:0}.killbar{min-width:0}#selinfo{flex:0 1 auto;min-width:0}}   /* one line: the search box and the hint shrink first */
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:980px;padding:3px}
+.tabs button{border:0;background:none;color:var(--muted);padding:4px 12px;border-radius:980px;font:inherit;cursor:pointer}
 .tabs button.on{background:var(--brand);color:#fff}
-input[type=search],select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px}
-input[type=search]{min-width:220px}
+input[type=search],select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:980px;padding:4px 8px}
+input[type=search]{flex:0 1 190px;min-width:110px;width:190px}
 label{color:var(--muted);display:flex;gap:7px;align-items:center;cursor:pointer}
 /* filter checkboxes drawn as slide toggles: red = on */
-.bar label input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:34px;height:18px;margin:0;border-radius:9px;background:#c9c5bb;position:relative;cursor:pointer;transition:background .15s}
+.bar label input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:34px;height:18px;margin:0;border-radius:9px;background:#d1d1d6;position:relative;cursor:pointer;transition:background .15s}
 .bar label input[type=checkbox]::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
 .bar label input[type=checkbox]:checked{background:var(--brand)}
 .bar label input[type=checkbox]:checked::after{left:18px}
@@ -51,18 +75,23 @@ label{color:var(--muted);display:flex;gap:7px;align-items:center;cursor:pointer}
 .bar label input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .bar label:has(input:checked){color:var(--text)}   /* colour only: bold would widen the label and shift the layout */
 html{overflow-y:scroll;scrollbar-gutter:stable}   /* always keep the scrollbar so the page doesn't jump when the list gets short */
-.clearf{font:inherit;font-weight:600;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:4px;padding:4px 12px;margin-left:8px;cursor:pointer}
-.wrap{padding:0 20px 30px;overflow-x:auto}
-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden}
-th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
-th{font-size:12px;color:var(--muted);font-weight:600;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
+.clearf{font:inherit;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:4px 12px;margin-left:8px;cursor:pointer}
+.wrap{padding:0 16px 30px;overflow-x:auto}
+.wrap table{font-size:13px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+td{white-space:normal}td.num,td .pill,td .origin{white-space:nowrap}
+th{font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
 th.sorted::after{content:" ▾"}th.sorted.asc::after{content:" ▴"}
 tr:last-child td{border-bottom:0}
 tr.closed td{opacity:.45}
-td.num{font-variant-numeric:tabular-nums}
+td.host{position:relative;width:220px;min-width:220px}   /* fixed width, so the table doesn't shift when long names come and go */
+td.host .hn{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* one line, cut to fit */
+td.host[data-full]:hover::after{content:attr(data-full);position:absolute;left:0;top:0;padding:5px 8px;background:var(--panel);color:var(--text);border:0;white-space:nowrap;z-index:3;pointer-events:none}   /* full name while the mouse is over it */
 .app{font-weight:600}
-.small{color:var(--muted);font-size:12px;max-width:420px;overflow:hidden;text-overflow:ellipsis;display:block}
-.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.small.hosts{color:var(--text);white-space:normal;overflow-wrap:anywhere;max-width:none;min-width:150px}
+.small{color:var(--muted);font-size:13px;white-space:nowrap;max-width:min(420px,28vw);overflow:hidden;text-overflow:ellipsis;display:block}
+.pill{display:inline-block;padding:0 7px;border-radius:99px;font-size:13px;font-weight:600}
 .in{color:var(--in);background:var(--in-bg)}.out{color:var(--out);background:var(--out-bg)}
 .ext{color:var(--ext);background:var(--ext-bg)}.lan{color:var(--lan);background:var(--lan-bg)}
 a.link{color:var(--accent);cursor:pointer;text-decoration:none}
@@ -81,7 +110,7 @@ tr[data-tip]{cursor:help}
 #tip h4{margin:0 0 6px;font-size:13px}
 #tip p{margin:0 0 8px}#tip p:last-child{margin:0}
 #tip .lvl{font-weight:700;color:var(--risk)}#tip .lvl.medium{color:var(--caution)}
-[data-ai]{cursor:help;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+[data-ai]{cursor:help}
 #ainfo{position:fixed;z-index:11;width:440px;max-width:calc(100vw - 16px);background:var(--panel);color:var(--text);
   border:1px solid var(--line);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:13px;display:none;white-space:normal}
 #ainfo h4{margin:0 0 6px;font-size:15px}
@@ -91,16 +120,24 @@ tr[data-tip]{cursor:help}
 #ainfo ul{margin:2px 0 0;padding-left:18px}
 #ainfo .links a{color:var(--accent);margin-right:14px;text-decoration:none}
 #ainfo .links a:hover{text-decoration:underline}
-.origin{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.origin{display:inline-block;padding:2px 9px;border-radius:99px;font-size:13px;font-weight:600}
 .o-windows{color:var(--out);background:var(--out-bg)}.o-microsoft{color:var(--ext);background:var(--ext-bg)}
 .o-thirdparty{color:var(--lan);background:var(--lan-bg)}.o-unsigned{color:#fff;background:var(--risk)}.o-unknown{color:var(--caution);background:var(--caution-bg)}
 tbody tr{cursor:pointer}
 tbody tr.sel td{background:var(--out-bg)!important;box-shadow:inset 0 1px 0 var(--accent),inset 0 -1px 0 var(--accent)}
 tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0 var(--accent),inset 0 -1px 0 var(--accent)}
-.killbar{margin-left:auto;display:flex;align-items:center;gap:10px}
-#selinfo{color:var(--muted);font-size:13px;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#kill{font:inherit;font-weight:600;color:#fff;background:var(--risk);border:0;border-radius:7px;padding:7px 14px;cursor:pointer}
-#kill:disabled{background:var(--lan-bg);color:var(--muted);cursor:not-allowed}
+.killbar{margin-left:0;display:flex;align-items:center;gap:8px;position:relative}
+.rec{position:relative;margin-left:8px;padding-left:14px;border-left:1px solid var(--line);display:inline-flex}
+.rec[hidden]{display:none}
+#recbtn{font:inherit;font-size:11px;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:1px 9px;cursor:pointer}
+#recbtn:hover,#allbtn:hover{background:var(--out-bg)}
+#allbtn{font:inherit;font-size:11px;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:1px 9px;cursor:pointer;margin-left:8px}
+.tipwrap{position:relative;display:inline-flex}
+#closedwrap{position:relative}#closedwrap[data-tip]:hover::after{right:auto;left:0}
+.killbar[data-tip]:hover::after,.rec[data-tip]:hover::after,.tipwrap[data-tip]:hover::after{content:attr(data-tip);max-width:320px;white-space:normal;text-align:left;line-height:1.4;position:absolute;top:100%;right:0;margin-top:6px;background:#1d1d1f;color:#fff;font-size:12px;font-weight:500;padding:5px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:9;pointer-events:none;width:max-content}
+#selinfo{display:none;color:var(--muted);font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kill{font:inherit;font-size:11px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:1px 9px;cursor:pointer}
+
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:12;max-width:min(560px,calc(100vw - 32px));
   background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;
   box-shadow:0 10px 30px rgba(0,0,0,.3);display:none}
@@ -109,18 +146,26 @@ tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0
 </style>
 </head>
 <body>
-<header><h1>My Windows Network/Internet Connection Monitor</h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop NetMonitor">Stop monitor</button></header>
+<header><h1>what's_my_pc_connecting_to?</h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop NetMonitor">Stop monitor</button></header>
 <div class="stats" id="stats"></div>
 <div class="bar">
   <div class="tabs" id="tabs">
-    <button data-t="conn">Connections</button><button data-t="apps">By app</button><button data-t="listen">Listening</button><button data-t="blocked">Blocked</button>
+    <button data-t="conn">Connections</button><button data-t="apps">By app</button><button data-t="listen">Listening</button><button data-t="sites">Open tabs</button><button data-t="blocked">Blocked</button>
   </div>
   <input type="search" id="q" placeholder="Filter app, host, IP, port…">
   <select id="dir"><option value="all">In + out</option><option value="Inbound">Inbound only</option><option value="Outbound">Outbound only</option></select>
   <label><input type="checkbox" id="ext"> External only</label>
-  <label><input type="checkbox" id="closed"> Show recently closed</label>
+  <label class="tipwrap" id="closedwrap" data-tip="Also show connections that ended in the last 10 minutes (dimmed, State: Closed). Many apps connect for only a second or two, for example to check for updates or send usage data, and would otherwise disappear before you see them."><input type="checkbox" id="closed"> Recently closed</label>
   <label><input type="checkbox" id="risky"> Risky only</label>
-  <div class="killbar"><span id="selinfo">Click a row to select a program</span><button id="blockapp" disabled>Block app</button><button id="kill" disabled>End process</button></div>
+  <div class="killbar"><span id="selinfo">Click a row to select it</span><button id="blockapp" disabled>Block app</button><button id="kill" disabled hidden>End process</button></div>
+</div>
+<div class="blockform" id="blockform" hidden>
+  <b>Block an address or site</b>
+  <input type="text" id="blockq" placeholder="IP address (203.0.113.7), range (203.0.113.0/24) or site (example.com)" autocomplete="off" spellcheck="false">
+  <span class="tipwrap" id="blockwrap" data-tip="Type an IP address (203.0.113.7) or a website (example.com) in the box first"><button id="blockbtn" disabled>Block IP/URL</button></span>
+  <button id="allbtn" hidden>Show all blocks</button>
+  <span class="rec" id="recwrap" hidden><button id="recbtn">Turn off recording</button></span>
+  <span class="small">Addresses are blocked with Windows Firewall rules. Sites are blocked in Windows' hosts file, so no browser on this PC can find them. To block a website, type its name (example.com), not its address: big sites share their addresses with many others.</span>
 </div>
 <div class="wrap" id="view"></div>
 <div id="tip"></div>
@@ -224,7 +269,7 @@ try { Object.assign(S, JSON.parse(localStorage.getItem('netmon') || '{}')); } ca
 // filters start fresh each time so the list is never empty for a forgotten reason; tab, sort and External only are remembered
 Object.assign(S, {risky: false, closed: false, q: '', dir: 'all'});
 // settings saved by an older version may lack newer tabs' sort order
-S.sort = Object.assign({conn:['rr',-1], apps:['rr',-1], listen:['rr',-1], blocked:['LastSeen',-1]}, S.sort);
+S.sort = Object.assign({conn:['rr',-1], apps:['rr',-1], listen:['rr',-1], blocked:['LastSeen',-1], tabs:['Browser',1]}, S.sort);
 const save = () => { try { localStorage.setItem('netmon', JSON.stringify(S)); } catch(e) {} };
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -267,25 +312,30 @@ function render() {
   const d = window.NETDATA; if (!d || !d.connections) return;
   const now = new Date(d.generated);
   const active = d.connections.filter(c => !c.Closed), ext = active.filter(c => c.External);
-  $('#meta').innerHTML = `${esc(d.host)} · updated ${now.toLocaleTimeString()} · every ${d.interval}s` +
+  $('#meta').innerHTML = `[${esc(d.host)} · updated ${now.toLocaleTimeString()} · every ${d.interval}s]` +
     (d.admin ? '' : ' · <span class="warn">not elevated: some app paths hidden — run as Administrator for full detail</span>');
   TIPS = [];
   const riskyApps = new Set([...active.filter(c => c.Risk === 'high'), ...d.listeners.filter(l => l.Risk === 'high')].map(x => x.App));
-  const st = [[riskyApps.size,'Risky apps (red)', riskyApps.size ? 'alert' : ''],[active.length,'Active connections'],[ext.length,'External'],[ext.filter(c=>c.Direction==='Inbound').length,'External inbound'],
+  const st = [[riskyApps.size,'Risky apps (red)', riskyApps.size ? 'alert' : ''],[active.length,'Active connections'],[ext.filter(c=>c.Direction==='Inbound').length,'External inbound'],
     [ext.filter(c=>c.Direction==='Outbound').length,'External outbound'],[new Set(ext.map(c=>c.App)).size,'Apps talking out'],
     [rate(d.rxRate),'Download (all apps)'],[rate(d.txRate),'Upload (all apps)']];
-  if (d.blockedStatus === 'on' && (d.fwBlocked || []).length) st.push([(d.blocked || []).reduce((n, b) => n + b.Count, 0), 'Blocked app attempts (last hour)']);
+  if (d.blockedStatus === 'on' && ((d.fwBlocked || []).length || (d.fwIps || []).length)) st.push([(d.blocked || []).reduce((n, b) => n + b.Count, 0), 'Blocked attempts (last hour)']);
   $('#stats').innerHTML = st.map(s => `<div class="stat ${s[2] || ''}"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === S.tab));
-  $('#dir').disabled = $('#ext').disabled = S.tab === 'listen';
-  $('#closed').disabled = S.tab === 'listen' || S.tab === 'blocked'; $('#risky').disabled = S.tab === 'blocked';
+  $('#dir').disabled = $('#ext').disabled = S.tab === 'listen' || S.tab === 'sites';
+  document.querySelector('.killbar').style.display = ['conn', 'apps', 'listen'].includes(S.tab) ? '' : 'none';
+  $('#recwrap').hidden = !(S.tab === 'blocked' && d.blockedStatus === 'on');
+  $('#allbtn').hidden = S.tab !== 'blocked';
+  $('#allbtn').textContent = ALLB_OPEN ? 'Hide all blocks' : 'Show all blocks';   // only where recording matters
+  $('#closed').disabled = S.tab === 'listen' || S.tab === 'blocked' || S.tab === 'sites'; $('#risky').disabled = S.tab === 'blocked' || S.tab === 'sites';
+  $('#blockform').hidden = S.tab !== 'blocked' && S.tab !== 'sites';
 
   let out = '';
   if (S.tab === 'conn') {
     const rows = sortRows(filtered(d).map(c => ({...c, rr: RANK[c.Risk] || 0, Dur: (c.Closed ? new Date(c.Closed) : now) - new Date(c.FirstSeen)})), 'conn').map(c =>
       `<tr${rowAttrs(c.Risk, c.Issues, c.App, [c.Closed ? 'closed' : '', isSel([c.PID], c.App) ? 'sel' : ''].join(' ').trim())}${selData([c.PID], c.App, c.Path)}><td>${riskPill(c.Risk)}</td><td><span class="pill ${c.Direction==='Inbound'?'in':'out'}">${c.Direction==='Inbound'?'↓ In':'↑ Out'}</span></td>
       <td><span class="app" data-ai="${esc(c.App)}" data-svc="${esc(c.Services)}">${esc(appLabel(c))}</span>${isFwBlocked(d, c.Path) ? '<span class="pill blk">Blocked by you</span>' : ''}<span class="small" title="${esc(c.Path)}">${esc(c.Path)}</span></td><td class="num">${c.PID}</td>
-      <td>${esc(c.RemoteHost || '—')}</td><td class="num">${esc(c.RemoteAddress)}</td><td class="num">${c.RemotePort}</td><td class="num">${c.LocalPort}</td>
+      <td class="host"${c.RemoteHost ? ` data-full="${esc(c.RemoteHost)}"` : ''}><span class="hn">${esc(c.RemoteHost || '—')}</span></td><td class="num${c.External ? ' ipcell' : ''}">${esc(c.RemoteAddress)}${ipBlocked(d, c.RemoteAddress) ? '<span class="pill blk">Blocked by you</span>' : c.External && d.admin ? `<button class="mini" data-blockip="${esc(c.RemoteAddress)}" data-app="${esc(c.App)}" data-host="${esc(c.RemoteHost || '')}" title="Block this address in Windows Firewall (asks first)">Block</button>` : ''}${c.External ? ipChecks(c.RemoteAddress).replace('small checks', 'small checks rowchecks') : ''}</td><td class="num">${c.RemotePort}</td><td class="num">${c.LocalPort}</td>
       <td><span class="pill ${c.External?'ext':'lan'}">${c.External?'Internet':'Local'}</span></td><td>${c.Closed?'Closed':esc(c.State)}</td><td class="num">${dur(0, c.Dur)}</td></tr>`);
     out = table([['rr','Risk'],['Direction','Dir'],['App','App'],['PID','PID'],['RemoteHost','Remote host'],['RemoteAddress','Remote IP'],['RemotePort','Port'],
       ['LocalPort','Local port'],['External','Scope'],['State','State'],['Dur','Age']], rows, 'conn');
@@ -297,7 +347,7 @@ function render() {
     const rows = sortRows(Object.values(g).map(a => ({...a, nhosts:a.hosts.size})), 'apps').map(a => { const r = ['', 'medium', 'high'][a.rr]; return (
       `<tr${rowAttrs(r, [...a.issues.values()], a.App, isSel([...a.pids], a.App) ? 'sel' : '')}${selData([...a.pids], a.App, a.Path)}><td>${riskPill(r)}</td><td><a class="link app" data-app="${esc(a.App)}" data-ai="${esc(a.App)}" data-svc="${esc([...a.svc].join(', '))}">${esc(a.label)}</a>${isFwBlocked(d, a.Path) ? '<span class="pill blk">Blocked by you</span>' : ''}<span class="small" title="${esc(a.Path)}">${esc(a.Path)}</span></td>
       <td class="num">${[...a.pids].join(', ')}</td><td class="num">${a.total}</td><td class="num">${a.ext}</td><td class="num">${a.extIn}</td><td class="num">${a.extOut}</td>
-      <td><span class="small" title="${esc([...a.hosts].join('\n'))}">${esc([...a.hosts].slice(0,6).join(', '))}${a.hosts.size>6?' …':''}</span></td></tr>`); });
+      <td><span class="small hosts" title="${esc([...a.hosts].join('\n'))}">${esc([...a.hosts].slice(0,6).join(', '))}${a.hosts.size>6?' …':''}</span></td></tr>`); });
     out = table([['rr','Risk'],['App','App'],['pids','PID'],['total','Connections'],['ext','External'],['extIn','Ext. in'],['extOut','Ext. out'],['nhosts','Remote hosts']], rows, 'apps');
   } else if (S.tab === 'blocked') {
     const q = S.q.trim().toLowerCase();
@@ -308,14 +358,16 @@ function render() {
       <td><span class="app" data-ai="${esc(b.App)}">${esc(b.App)}</span><span class="small" title="${esc(b.Path)}">${esc(b.Path)}</span></td><td class="num">${b.PID || '—'}</td>
       <td class="num">${esc(b.RemoteAddress)}</td><td class="num">${b.RemotePort}</td><td class="num">${b.LocalPort}</td><td>${esc(b.Protocol)}</td>
       <td><span class="pill ${b.External?'ext':'lan'}">${b.External?'Internet':'Local'}</span></td><td>${b.Rule ? esc(b.Rule) : '<span class="small" style="display:inline">unknown</span>'}</td><td class="num">${b.Count}</td></tr>`);
-    out = fwSection(d) + blockedNotice(d, list.length) + (rows.length ? table([['LastSeen','Last blocked'],['Direction','Dir'],['App','App'],['PID','PID'],['RemoteAddress','Remote IP'],
-      ['RemotePort','Port'],['LocalPort','Local port'],['Protocol','Proto'],['External','Scope'],['Rule','Firewall rule'],['Count','Times blocked']], rows, 'blocked') : '');
+    out = allBlocksSection() + blockSections(d) + '<div class="fwlist"><h3>Blocked apps and sites trying to connect</h3><div class="lead">Connections Windows Firewall stopped for the apps and addresses you blocked, and browser tabs on sites you blocked.</div>' + blockedNotice(d, list.length) + (rows.length ? table([['LastSeen','Last blocked'],['Direction','Dir'],['App','App'],['PID','PID'],['RemoteAddress','Remote IP'],
+      ['RemotePort','Port'],['LocalPort','Local port'],['Protocol','Proto'],['External','Scope'],['Rule','Firewall rule'],['Count','Times blocked']], rows, 'blocked') : '') + blockedSiteTries(d) + '</div>';
+  } else if (S.tab === 'sites') {
+    out = browserSection(d);
   } else {
     const q = S.q.trim().toLowerCase();
     const rows = sortRows(d.listeners.filter(l => (!S.risky || l.Risk) && (!q || [l.App, l.Description, l.Services, l.LocalPort, l.Protocol].join(' ').toLowerCase().includes(q)))
       .map(l => ({...l, rr: RANK[l.Risk] || 0})), 'listen').map(l =>
       `<tr${rowAttrs(l.Risk, l.Issues, l.App + ' (port ' + l.LocalPort + ')', isSel([l.PID], l.App) ? 'sel' : '')}${selData([l.PID], l.App, l.Path)}><td>${riskPill(l.Risk)}</td><td><span class="app" data-ai="${esc(l.App)}" data-svc="${esc(l.Services)}">${esc(appLabel(l))}</span><span class="small">${esc(l.Path)}</span></td><td class="num">${l.PID}</td><td>${l.Protocol}</td>
-      <td class="num">${esc(l.LocalAddress)}</td><td class="num">${l.LocalPort}</td><td><span class="pill ${l.Exposed?'in':'lan'}">${l.Exposed?'Reachable from network':'This PC only'}</span></td></tr>`);
+      <td class="num">${esc(l.LocalAddress)}</td><td class="num">${l.LocalPort}</td><td><span class="pill ${l.Exposed?'ext':'lan'}">${l.Exposed?'Reachable from network':'This PC only'}</span></td></tr>`);
     out = table([['rr','Risk'],['App','App'],['PID','PID'],['Protocol','Proto'],['LocalAddress','Address'],['LocalPort','Port'],['Exposed','Exposure']], rows, 'listen');
   }
   $('#view').innerHTML = out;
@@ -325,12 +377,13 @@ function render() {
 // ---- what to say when filters hide everything
 function emptyMessage() {
   const on = [];
-  if (S.risky && S.tab !== 'blocked') on.push('Risky only');
-  if (S.ext && S.tab !== 'listen') on.push('External only');
-  if (S.dir !== 'all' && S.tab !== 'listen') on.push(S.dir === 'Inbound' ? 'Inbound only' : 'Outbound only');
+  const searchOnly = S.tab === 'sites';   // Open tabs only uses the search box
+  if (S.risky && S.tab !== 'blocked' && !searchOnly) on.push('Risky only');
+  if (S.ext && S.tab !== 'listen' && !searchOnly) on.push('External only');
+  if (S.dir !== 'all' && S.tab !== 'listen' && !searchOnly) on.push(S.dir === 'Inbound' ? 'Inbound only' : 'Outbound only');
   if (S.q.trim()) on.push(`search "${S.q.trim()}"`);
   if (!on.length) return '<div class="empty">Nothing to show here right now.</div>';
-  const lead = S.risky && S.tab !== 'blocked' ? 'No risky apps right now. ' : 'Nothing matches the current filters. ';
+  const lead = S.risky && S.tab !== 'blocked' && !searchOnly ? 'No risky apps right now. ' : 'Nothing matches the current filters. ';
   return `<div class="empty">${esc(lead)}Filters on: ${esc(on.join(', '))}.<button class="clearf" data-clear="1">Clear filters</button></div>`;
 }
 function clearFilters() {
@@ -339,10 +392,132 @@ function clearFilters() {
   save(); render();
 }
 
+// ---- Blocked tab: addresses and sites blocked from the dashboard
+const v4num = a => { const p = String(a).split('.'); return p.length === 4 && p.every(x => /^\d{1,3}$/.test(x) && +x < 256) ? p.reduce((n, x) => n * 256 + +x, 0) : null; };
+function ipBlocked(d, ip) {   // exact address, or inside a blocked IPv4 range
+  return (d.fwIps || []).some(b => {
+    if (b.Address === ip) return true;
+    const [net, bits] = b.Address.split('/'), a = v4num(ip), n = v4num(net);
+    if (!bits || a === null || n === null) return false;
+    const size = 2 ** (32 - +bits);
+    return Math.floor(a / size) === Math.floor(n / size);
+  });
+}
+const dirsText = dirs => esc(dirs.map(x => x === 'Inbound' ? 'Incoming' : 'Outgoing').join(' + '));
+// look-ups on well-known sites; each opens in your browser only when clicked (the address or name is sent to that site)
+const chk = (url, label, what) => `<a class="link" href="${url}" target="_blank" rel="noopener" title="${what}">${label}</a>`;
+function ipChecks(ip) {
+  const a = encodeURIComponent(ip);
+  return '<span class="small checks">' + [
+    chk(`https://ipinfo.io/${a}`, 'Who owns it?', 'Owner, network and location (opens ipinfo.io)'),
+    chk(`https://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${a}&run=toolpage`, 'Blacklists', 'Is it on spam or abuse blacklists? (opens MxToolbox)'),
+    chk(`https://www.abuseipdb.com/check/${a}`, 'Abuse reports', 'Reports of attacks or abuse from this address (opens AbuseIPDB)'),
+    chk(`https://www.virustotal.com/gui/ip-address/${a}`, 'Reputation', 'Security vendors&#39; verdicts and linked malware (opens VirusTotal)'),
+    chk(`https://www.shodan.io/host/${a}`, 'Exposure', 'Open ports and known vulnerabilities or breaches on this server (opens Shodan)')
+  ].join(' · ') + '</span>';
+}
+function siteChecks(site) {
+  const a = encodeURIComponent(site);
+  return '<span class="small checks">' + [
+    chk(`https://www.virustotal.com/gui/domain/${a}`, 'Reputation', 'Security vendors&#39; verdicts on this site (opens VirusTotal)'),
+    chk(`https://transparencyreport.google.com/safe-browsing/search?url=${a}`, 'Safe Browsing', 'Does Google flag it as dangerous? (opens Google Transparency Report)'),
+    chk(`https://haveibeenpwned.com/PwnedWebsites`, 'Breaches', 'Has this site had a data breach? Search its name on the page (opens Have I Been Pwned)'),
+    chk(`https://who.is/whois/${a}`, 'Who owns it?', 'Registration details (opens who.is)')
+  ].join(' · ') + '</span>';
+}
+// "Show all blocks": every firewall block rule and hosts-file entry on this PC, whoever made them (read-only)
+let ALLB = null, ALLB_OPEN = false, allbBusy = false, allbAt = 0;
+async function loadAllBlocks() {
+  if (allbBusy) return;
+  allbBusy = true; render();
+  const r = await postAction('/all-blocks', {});
+  allbBusy = false; allbAt = Date.now();
+  if (r.ok) ALLB = r; else { ALLB = null; ALLB_OPEN = false; toast([r]); }
+  render();
+}
+$('#allbtn').onclick = () => { ALLB_OPEN = !ALLB_OPEN; if (ALLB_OPEN && !ALLB) loadAllBlocks(); else render(); };
+function allBlocksSection() {
+  if (!ALLB_OPEN) return '';
+  const head = '<div class="fwlist"><h3>Everything blocked on this PC</h3>';
+  if (!ALLB) return head + '<div class="none">Reading Windows Firewall and the hosts file…</div></div>';
+  const q = S.q.trim().toLowerCase(), hit = o => !q || Object.values(o).join(' ').toLowerCase().includes(q);
+  const any = v => v && v !== 'Any';
+  const madeBy = g => g === 'WhatsMyPCConnectingTo' || g === 'NetMonitor' ? '<b>This app</b>' : g ? esc(g.startsWith('@') ? 'Windows' : g) : 'Another program or you';
+  const rules = ALLB.rules.filter(hit), hosts = ALLB.hosts.filter(hit);
+  const rulesHtml = rules.length ? '<table><thead><tr><th>Rule</th><th>Direction</th><th>What it blocks</th><th>Made by</th><th>On</th></tr></thead><tbody>' +
+    rules.map(r => {
+      const what = [any(r.Program) ? `<span class="small" title="${esc(r.Program)}">${esc(r.Program)}</span>` : '',
+        any(r.Remote) ? `Address: ${esc(r.Remote)}` : '', any(r.Port) ? `Port: ${esc(r.Port)}${any(r.Protocol) ? ' ' + esc(r.Protocol) : ''}` : ''].filter(Boolean).join('<br>') || 'Everything that matches its other settings';
+      return `<tr><td><b>${esc(r.Name)}</b></td><td>${r.Direction === 'Inbound' ? 'Incoming' : 'Outgoing'}</td><td>${what}</td><td>${madeBy(r.Group)}</td><td>${r.Enabled === 'True' ? 'Yes' : 'No'}</td></tr>`;
+    }).join('') + '</tbody></table>' : '<div class="none">No firewall rules block anything' + (q ? ' that matches the filter' : '') + '.</div>';
+  const hostsHtml = hosts.length ? '<table><thead><tr><th>Name</th><th>Points to</th><th>Effect</th><th>Made by</th></tr></thead><tbody>' +
+    hosts.map(h => `<tr><td><b>${esc(h.Name)}</b></td><td class="num">${esc(h.Address)}</td><td>${h.Blocks ? 'Blocked: can\'t be reached' : 'Sent to this address instead'}</td><td>${h.Ours ? '<b>This app</b>' : 'Another program or you'}</td></tr>`).join('') +
+    '</tbody></table>' : '<div class="none">The hosts file has no entries' + (q ? ' that match the filter' : '') + '.</div>';
+  return head + `<div class="lead">Every block rule in Windows Firewall and every entry in Windows' hosts file, including ones made by other programs or by you. Read only: remove the ones this app made with Unblock below; others in Windows Defender Firewall settings or the hosts file. Read at ${new Date(allbAt).toLocaleTimeString()}. <a class="link" data-allb="1">${allbBusy ? 'Reading…' : 'Refresh'}</a></div>` +
+    `<h4>Windows Firewall block rules (${rules.length})</h4>` + rulesHtml + `<h4>Hosts file entries (${hosts.length})</h4>` + hostsHtml + '</div>';
+}
+
+function blockSections(d) {
+  const ips = d.fwIps || [], sites = d.fwSites || [];
+  let h = '';
+  if (ips.length) h += '<div class="fwlist"><h3>Addresses you blocked</h3><table><thead><tr><th>Address</th><th>Name</th><th>Used by</th><th>Blocked on</th><th>Firewall rules</th><th></th></tr></thead><tbody>' +
+    ips.map(b => `<tr><td class="num"><b>${esc(b.Address)}</b><span class="pill blk">Blocked by you</span></td>
+      <td>${b.Name ? esc(b.Name) : '<span class="small" style="display:inline">no name published</span>'}${b.Address.includes('/') ? '' : ipChecks(b.Address)}</td>
+      <td>${b.App ? `<span class="app" data-ai="${esc(b.App.split(', ')[0])}">${esc(b.App)}</span>` : '<span class="small" style="display:inline">not recorded</span>'}</td>
+      <td class="num">${b.When ? esc(b.When) : '<span class="small" style="display:inline">not recorded</span>'}</td>
+      <td><span class="small" title="${esc((b.Rules || []).join('\n'))}">${dirsText(b.Directions)} (${(b.Rules || []).length} rules)</span></td>
+      <td><button class="unblock" data-unblockip="${esc(b.Address)}">Unblock</button></td></tr>`).join('') + '</tbody></table></div>';
+  if (sites.length) h += '<div class="fwlist"><h3>Sites you blocked</h3><table><thead><tr><th>Site</th><th>Names blocked in the hosts file</th><th></th></tr></thead><tbody>' +
+    sites.map(x => `<tr><td><b>${esc(x.Site)}</b><span class="pill blk">Blocked by you</span>${siteChecks(x.Site)}</td>
+      <td><span class="small" title="${esc(x.Names.join('\n'))}">${esc(x.Names.slice(0, 5).join(', '))}${x.Names.length > 5 ? ` and ${x.Names.length - 5} more` : ''}</span></td>
+      <td><button class="unblock" data-unblocksite="${esc(x.Site)}">Unblock</button></td></tr>`).join('') + '</tbody></table></div>';
+  return h + fwSection(d);
+}
+
+// Open tabs: the tabs open in this PC's browsers, read only while this tab is shown, kept only in this page
+let BTABS = null, bsitesBusy = false, bsitesAt = 0;
+function browserSection(d) {
+  if (!bsitesBusy && Date.now() - bsitesAt > 15000) setTimeout(loadBrowserSites, 0);
+  const intro = '<div class="note">The tabs open in your browsers (Chrome, Edge, Firefox, Opera, Brave, Vivaldi) right now, read from their tab bars. Each tab\'s address comes from the browser\'s own history on this PC. Nothing is saved or sent anywhere.</div>';
+  if (!BTABS) return intro + '<div class="empty">Reading your browsers\' tabs…</div>';
+  const q = S.q.trim().toLowerCase();
+  const blocked = new Set((d.fwSites || []).map(x => x.Site));
+  const rows = sortRows(BTABS.filter(x => !q || [x.Title, x.Host, x.Browser].join(' ').toLowerCase().includes(q)).map(x => ({...x})), 'tabs').map(x =>
+    `<tr><td><b>${esc(x.Title)}</b><span class="small" title="${esc(x.Url)}">${x.Url ? esc(x.Url) : 'address not found in the browser\'s history'}</span></td>
+    <td>${esc(x.Browser)}</td><td>${x.Site ? esc(x.Site) : '<span class="small" style="display:inline">—</span>'}${blocked.has(x.Site) ? '<span class="pill blk">Blocked by you</span>' : ''}</td>
+    <td>${!x.Site ? '' : x.Protected ? '<span class="small" style="display:inline" title="Windows uses this site for sign-in, updates or connection checks">used by Windows</span>' : blocked.has(x.Site) ? `<button class="unblock" data-unblocksite="${esc(x.Site)}">Unblock</button>` : `<button class="unblock danger" data-blocksite="${esc(x.Site)}">Block site</button>`}</td></tr>`);
+  const list = rows.length ? table([['Title', 'Tab'], ['Browser', 'Browser'], ['Site', 'Site'], ['', '']], rows, 'tabs')
+    : BTABS.length ? emptyMessage() : '<div class="empty">No browser tabs are open (or the browsers are minimised to the tray).</div>';
+  return intro + list + `<span class="small" style="max-width:none;margin-top:6px">${BTABS.length} tab${BTABS.length === 1 ? '' : 's'} open · updated ${new Date(bsitesAt).toLocaleTimeString()}, refreshes every 15 seconds. <a class="link" data-bsites="show">Refresh now</a></span>`;
+}
+// Blocked tab: browser tabs that keep trying to open a site you blocked
+function blockedSiteTries(d) {
+  const sites = new Set((d.fwSites || []).map(x => x.Site));
+  if (!sites.size) return '';
+  if (!bsitesBusy && Date.now() - bsitesAt > 15000) setTimeout(loadBrowserSites, 0);
+  const head = '<h4>Browser tabs on sites you blocked</h4>';
+  if (!BTABS) return head + '<div class="none">Checking your browser tabs…</div>';
+  const hits = BTABS.filter(x => x.Site && sites.has(x.Site));
+  const lead = `<div class="lead">The site can\'t load while it\'s blocked. Windows doesn\'t record other apps trying blocked sites, so only open tabs are listed. Checked ${new Date(bsitesAt).toLocaleTimeString()}, every 15 seconds.</div>`;
+  if (!hits.length) return head + lead + '<div class="none">No open tab is on a site you blocked.</div>';
+  return head + lead + `<table><thead><tr><th>Site</th><th>Tab</th><th>Browser</th><th>Status</th></tr></thead><tbody>` +
+    hits.map(x => `<tr><td><b>${esc(x.Site)}</b><span class="pill blk">Blocked by you</span></td><td>${esc(x.Failed ? x.Host : x.Title)}<span class="small" title="${esc(x.Url)}">${esc(x.Url)}</span></td><td>${esc(x.Browser)}</td>
+      <td>${x.Failed ? '<span class="pill blk" style="margin-left:0">Stopped: can&#39;t load</span>' : '<span class="small" style="display:inline" title="This tab was opened before you blocked the site. It shows what it already loaded; it can&#39;t load anything new.">Opened before the block</span>'}</td></tr>`).join('') +
+    '</tbody></table>';
+}
+async function loadBrowserSites() {
+  if (bsitesBusy) return;
+  bsitesBusy = true;
+  const r = await postAction('/browser-sites', {});
+  bsitesBusy = false; bsitesAt = Date.now();
+  if (r.ok) BTABS = r.tabs || []; else toast([r]);
+  if (S.tab === 'sites' || S.tab === 'blocked') render();
+}
+
 // ---- Blocked tab: apps blocked with the Block app button
 function fwSection(d) {
   const list = d.fwBlocked || [];
-  if (!list.length) return '<div class="note">You haven\'t blocked any apps. To block one, click its row in the Connections, By app or Listening tab, then <b>Block app</b>.</div>';
+  if (!list.length) return '<div class="fwlist"><h3>Apps you blocked</h3><div class="none">None yet. To block one, click its row in the Connections, By app or Listening tab, then <b>Block app</b>.</div></div>';
   return '<div class="fwlist"><h3>Apps you blocked</h3><table><thead><tr><th>App</th><th>Location</th><th>Blocked</th><th>Firewall rules</th><th></th></tr></thead><tbody>' +
     list.map(b => `<tr><td><span class="app" data-ai="${esc(b.App)}">${esc(b.App)}</span><span class="pill blk">Blocked by you</span></td>
       <td><span class="small" title="${esc(b.Path)}">${esc(b.Path)}</span></td><td>${esc(b.Directions.map(x => x === 'Inbound' ? 'Incoming' : 'Outgoing').join(' + '))}</td>
@@ -356,14 +531,18 @@ const AUDIT_ON = 'auditpol /set /subcategory:"{0CCE9226-69AE-11D9-BED3-505054503
 const AUDIT_OFF = 'auditpol /set /subcategory:"{0CCE9226-69AE-11D9-BED3-505054503030}" /failure:disable';
 function blockedNotice(d, shown) {
   const s = d.blockedStatus;
-  if (s === 'admin') return '<div class="note">Seeing blocked connections needs administrator rights. Start NetMonitor as Administrator (the NetMonitor.exe app does this automatically).</div>';
+  if (s === 'checking') return '<div class="none">Checking…</div>';   // just started: don't offer Turn on recording before Windows has been asked
+  if (s === 'admin') return '<div class="note">Seeing blocked connections needs administrator rights. Start the app as Administrator (WhatsMyPCConnectingTo.exe does this automatically).</div>';
   if (s === 'error') return `<div class="note">Couldn't read blocked connections from the Windows Security log: ${esc(d.blockedError)}</div>`;
-  const offBtn = '<button class="auditbtn secondary" data-audit="off">Turn off recording</button>';
-  const anyBlocked = (d.fwBlocked || []).length > 0;
-  if (s === 'on') return !anyBlocked ? `<div class="note">Recording is on: once you block an app, its attempts to connect appear here. ${offBtn}</div>`
-    : shown ? `<div class="note">Attempts to connect by the apps you blocked, in the last hour. Windows Firewall stopped each one; repeats are grouped. ${offBtn}</div>`
-    : `<div class="note">None of the apps you blocked have tried to connect in the last hour (or none match the filters). ${offBtn}</div>`;
-  return `<div class="note"><b>To see when blocked apps try to connect, Windows needs to record blocked connections.</b> This is off by default.
+  const anyBlocked = (d.fwBlocked || []).length + (d.fwIps || []).length > 0;
+  if (s === 'on') {   // the explanation lives in the Turn off recording button's hover label
+    $('#recwrap').dataset.tip = !anyBlocked ? 'Recording is on: once you block an app or address, its attempts to connect appear here.'
+      : shown ? 'Attempts to connect by the apps you blocked, or to the addresses you blocked, in the last hour. Windows Firewall stopped each one; repeats are grouped.'
+      : 'Nothing you blocked has tried to connect in the last hour (or nothing matches the filters).';
+    $('#recwrap').dataset.tip += ' Recording means Windows notes every connection its firewall stops, so the app can list them. Turning it off stops the notes and this list; your blocks keep working.';
+    return shown ? '' : `<div class="none">${anyBlocked ? 'Nothing you blocked has tried to connect in the last hour.' : 'Nothing yet.'}</div>`;
+  }
+  return `<div class="note"><b>To see when blocked apps or addresses are tried, Windows needs to record blocked connections.</b> This is off by default.
     <div><button class="auditbtn" data-audit="on">Turn on recording</button></div>
     <span class="small" style="display:inline;max-width:none">Good to know: a busy PC can record many blocks, and Windows keeps a limited Security log, so older security records (such as sign-in history) are replaced sooner while this is on. You can turn it off again here anytime.</span>
     <details${diyOpen ? ' open' : ''}><summary>Prefer to do it yourself?</summary>In PowerShell <b>as Administrator</b>, turn it on with:
@@ -374,6 +553,7 @@ function blockedNotice(d, shown) {
 let diyOpen = false;
 document.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('.note details')) diyOpen = e.target.open; }, true);
 
+$('#recbtn').onclick = () => setAudit(false);
 async function setAudit(enable) {
   const question = enable
     ? 'Turn on blocked-connection recording?\n\nWindows will record each connection its firewall blocks in the Security log, so they can be shown here. This changes one Windows security setting (Filtering Platform Connection auditing). You can turn it off again from this tab.'
@@ -382,7 +562,7 @@ async function setAudit(enable) {
   try {
     const r = await fetch('/audit', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-NetMon-Token': TOKEN}, body: JSON.stringify({enable})});
     toast([await r.json()]);
-  } catch (e) { toast([{ok: false, message: 'NetMonitor is not running, so nothing was changed.'}]); }
+  } catch (e) { toast([{ok: false, message: 'The app is not running, so nothing was changed.'}]); }
 }
 
 // ---- selecting a row and ending its program
@@ -409,16 +589,17 @@ function updateKillBar() {
     if (!SEL.pids.length) SEL = null;
   }
   const btn = $('#kill'), info = $('#selinfo'), bb = $('#blockapp');
-  if (!SEL) { info.textContent = 'Click a row to select a program'; info.title = ''; btn.disabled = true; btn.title = ''; bb.disabled = true; bb.textContent = 'Block app'; bb.title = ''; return; }
+  if (!SEL) { info.textContent = 'Click a row to select it'; info.title = ''; btn.disabled = true; btn.title = ''; bb.disabled = true; bb.textContent = 'Block app'; bb.title = ''; document.querySelector('.killbar').dataset.tip = 'Select an app in the list first'; return; }
   // Block app / Unblock app for the selected program
   const blockedNow = d && isFwBlocked(d, SEL.path);
-  const blockWhy = !d || !d.admin ? 'Needs NetMonitor to run as Administrator.'
+  const blockWhy = !d || !d.admin ? 'Needs the app to run as Administrator.'
     : noKillReason(SEL.name) ? 'Core part of Windows or Microsoft Defender: blocking it could cut off the whole PC.'
     : SHARED_HOSTS.includes(SEL.name.toLowerCase()) ? 'Used by many programs: blocking it would cut off more than one app.'
     : !SEL.path ? 'Its location is unknown, so it can\'t be blocked by its file.' : '';
   bb.textContent = blockedNow ? 'Unblock app' : 'Block app';
   bb.disabled = !blockedNow && !!blockWhy;
-  bb.title = blockedNow ? 'Remove the Windows Firewall block for this program' : (blockWhy || 'Block this program in Windows Firewall and close it (asks first)');
+  document.querySelector('.killbar').dataset.tip = blockedNow ? 'Remove the Windows Firewall block for this app' : (blockWhy || 'Block this app in Windows Firewall and close it (asks first)');
+  bb.title = '';
   info.textContent = `Selected: ${SEL.name}.exe · PID ${SEL.pids.join(', ')}`;
   info.title = SEL.path || '';
   const why = noKillReason(SEL.name);
@@ -456,7 +637,7 @@ $('#kill').onclick = async () => {
     try {
       const r = await fetch('/kill', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-NetMon-Token': TOKEN}, body: JSON.stringify({pid, name})});
       results.push(await r.json());
-    } catch (e) { results.push({ok: false, message: 'NetMonitor is not running, so nothing was ended.'}); }
+    } catch (e) { results.push({ok: false, message: 'The app is not running, so nothing was ended.'}); }
   }
   toast(results);
   SEL = null;
@@ -470,13 +651,54 @@ async function postAction(url, body) {
   try {
     const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-NetMon-Token': TOKEN}, body: JSON.stringify(body)});
     return await r.json();
-  } catch (e) { return {ok: false, message: 'NetMonitor is not running, so nothing was changed.'}; }
+  } catch (e) { return {ok: false, message: 'The app is not running, so nothing was changed.'}; }
 }
 async function unblockApp(path, name) {
   if (!confirm(`Unblock ${name}.exe?\n\n${path}\n\nWindows Firewall will let it connect again.`)) return;
   toast([await postAction('/unblock', {path})]);
 }
 $('#openlog').onclick = async () => toast([await postAction('/openlog', {})]);
+
+// ---- Block address / Block site
+async function blockIp(address, app = '', host = '') {
+  address = String(address).trim();
+  if (!address) return toast([{ok: false, message: 'Type an IP address or range first, for example 203.0.113.7 or 203.0.113.0/24.'}]);
+  const what = [host, app && `used by ${app}`].filter(Boolean).join(', ');
+  if (!confirm(`Block ${address}${what ? ` (${what})` : ''}?\n\nWindows Firewall will stop every app on this PC connecting to it, and stop it reaching this PC. Open connections to it are closed now.\n\nBig websites share their addresses with many other sites, so to block a website use Block site instead.\n\nYou can unblock it anytime in the Blocked tab.`)) return false;
+  const r = await postAction('/block-ip', {address, app, host});
+  toast([r]);
+  return r.ok;
+}
+async function blockSite(site) {
+  site = String(site).trim();
+  if (!site) return toast([{ok: false, message: 'Type a site first, for example example.com.'}]);
+  if (!confirm(`Block ${site}?\n\nThe app adds it to Windows' hosts file, so no browser or app on this PC can find it, and disconnects browser tabs that have it open.\n\nIf a browser has "Secure DNS" (DNS over HTTPS) turned on, it may still reach the site: turn that off in the browser's privacy or security settings.\n\nYou can unblock it anytime in the Blocked tab.`)) return false;
+  const r = await postAction('/block-site', {site});
+  toast([r]);
+  return r.ok;
+}
+async function unblockIp(address) {
+  const b = ((window.NETDATA || {}).fwIps || []).find(x => x.Address === address) || {};
+  const what = [b.Name, b.App && `used by ${b.App}`].filter(Boolean).join(', ');
+  if (!confirm(`Unblock ${address}${what ? ` (${what})` : ''}?\n\nWindows Firewall will let apps on this PC connect to it again.`)) return;
+  toast([await postAction('/unblock-ip', {address})]);
+}
+async function unblockSite(site) {
+  if (!confirm(`Unblock ${site}?\n\nThe app removes its lines from Windows' hosts file, so it can be opened again.`)) return;
+  toast([await postAction('/unblock-site', {site})]);
+}
+// one button: an IP address or range goes to the firewall, anything else is treated as a website
+const isAddr = v => /^[\d.]+(\/\d+)?$/.test(v) || /^[0-9a-f:]+:[0-9a-f:]*(\/\d+)?$/i.test(v);
+$('#blockbtn').onclick = async () => { const v = $('#blockq').value.trim(); if (await (isAddr(v) ? blockIp(v) : blockSite(v))) $('#blockq').value = ''; blockReady(); };
+// greyed out until the box holds an IP address, a range, a site name or a web address
+const isSiteText = v => /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z][a-z0-9-]+(:\d+)?(\/\S*)?$/i.test(v);
+const blockReady = () => { const v = $('#blockq').value.trim(), ok = isAddr(v) || isSiteText(v); $('#blockbtn').disabled = !ok;
+  $('#blockwrap').dataset.tip = ok ? "Blocks an IP address or range in Windows Firewall, or a website in Windows' hosts file (asks first)" : 'Type an IP address (203.0.113.7) or a website (example.com) in the box first'; };
+$('#blockq').oninput = blockReady;
+$('#blockq').onkeydown = e => {   // Enter does the same as the button
+  if (e.key !== 'Enter' || $('#blockbtn').disabled) return;
+  $('#blockbtn').click();
+};
 $('#blockapp').onclick = async () => {
   if (!SEL) return;
   const {pids, name, path} = SEL, d = window.NETDATA || {};
@@ -511,8 +733,14 @@ document.addEventListener('mousemove', e => {
 });
 $('#tabs').onclick = e => { if (e.target.dataset.t) { S.tab = e.target.dataset.t; save(); render(); } };
 $('#view').onclick = e => {
+  if (e.target.closest('[data-allb]')) { loadAllBlocks(); return; }
   const ab = e.target.closest('button[data-audit]'); if (ab) { setAudit(ab.dataset.audit === 'on'); return; }
   const ub = e.target.closest('button[data-unblock]'); if (ub) { unblockApp(ub.dataset.unblock, ub.dataset.name); return; }
+  const bi = e.target.closest('[data-blockip]'); if (bi) { blockIp(bi.dataset.blockip, bi.dataset.app, bi.dataset.host); return; }
+  const bs = e.target.closest('[data-blocksite]'); if (bs) { blockSite(bs.dataset.blocksite); return; }
+  const ui = e.target.closest('[data-unblockip]'); if (ui) { unblockIp(ui.dataset.unblockip); return; }
+  const us = e.target.closest('[data-unblocksite]'); if (us) { unblockSite(us.dataset.unblocksite); return; }
+  const bl = e.target.closest('[data-bsites]'); if (bl) { loadBrowserSites(); return; }
   if (e.target.closest('button[data-clear]')) { clearFilters(); return; }
   const th = e.target.closest('th[data-key]'); if (th) { const s = S.sort[th.dataset.key]; S.sort[th.dataset.key] = [th.dataset.k, s[0] === th.dataset.k ? -s[1] : 1]; save(); render(); return; }
   const a = e.target.closest('a[data-app]'); if (a) { S.q = a.dataset.app; S.tab = 'conn'; $('#q').value = S.q; save(); render(); return; }
@@ -539,6 +767,18 @@ const KERNEL_PARTS = ['system', 'system idle', 'registry', 'secure system', 'mem
 const noFileReason = (name, admin) => KERNEL_PARTS.includes(String(name).toLowerCase())
   ? 'No program file: this is part of the Windows kernel itself.'
   : admin ? 'Windows didn\'t reveal its location.' : 'Hidden: run as Administrator to see it';
+// Windows parts that normally live outside C:\Windows, and where
+const MS_HOMES = {
+  msedge: /^[a-z]:\\program files( \(x86\))?\\microsoft\\edge( beta| dev| sxs)?\\application\\/i,
+  msedgewebview2: /^[a-z]:\\program files( \(x86\))?\\microsoft\\edge(webview|core)\\/i,
+  msmpeng: /^[a-z]:\\(programdata\\microsoft\\windows defender\\platform|program files\\windows defender)\\/i,
+  nissrv: /^[a-z]:\\(programdata\\microsoft\\windows defender\\platform|program files\\windows defender)\\/i,
+  mpdefendercoreservice: /^[a-z]:\\(programdata\\microsoft\\windows defender\\platform|program files\\windows defender)\\/i,
+  widgets: /^[a-z]:\\program files\\windowsapps\\microsoftwindows\./i,
+  phoneexperiencehost: /^[a-z]:\\program files\\windowsapps\\microsoft\.yourphone_/i,
+  crossdeviceservice: /^[a-z]:\\program files\\windowsapps\\microsoft(windows)?\./i
+};
+const onHomeFolder = (name, path) => { const re = MS_HOMES[String(name).toLowerCase()]; return !!re && re.test(path); };
 function showAppInfo(el) {
   const d = window.NETDATA || {}, name = el.dataset.ai, info = (d.apps || {})[name] || {}, kb = kbFor(name);
   let origin = info.Origin || 'unknown', guessed = false;
@@ -549,7 +789,9 @@ function showAppInfo(el) {
   const svcHtml = !svcs.length ? '' : '<div class="sec"><b>Windows services running inside it</b><ul>' +
     svcs.slice(0, 6).map(s => { const x = (d.services || {})[s]; return `<li><strong>${esc(x ? x.d : s)}</strong>${x && x.s ? ': ' + esc(x.s) : ''}</li>`; }).join('') +
     (svcs.length > 6 ? `<li>…and ${svcs.length - 6} more</li>` : '') + '</ul></div>';
-  const disguise = kb && kb[0] === 'w' && info.Path && !/^[a-z]:\\windows\\/i.test(info.Path)
+  // a Windows name outside every folder that app really lives in, and not signed by Microsoft
+  const disguise = kb && kb[0] === 'w' && info.Path && !/^[a-z]:\\windows\\/i.test(info.Path) && !onHomeFolder(name, info.Path) &&
+    !(info.Origin === 'windows' || info.Origin === 'microsoft')
     ? '<div class="sec" style="color:var(--risk)"><b style="color:var(--risk)">Warning</b>This name belongs to Windows, but this copy runs from outside C:\\Windows, which is a common malware disguise. Run a full Defender scan.</div>' : '';
   const signed = info.Publisher ? `Signed by <strong>${esc(info.Publisher)}</strong>` : info.Path ? 'No valid digital signature' : '';
   const company = info.Company && info.Company !== info.Publisher ? `${signed ? ' · ' : ''}Company: ${esc(info.Company)}` : '';
@@ -582,7 +824,7 @@ document.addEventListener('mouseover', e => {
 // Stop monitor: shuts NetMonitor down (the only way to stop the app version, which has no window)
 let stopped = false;
 $('#quit').onclick = async () => {
-  if (!confirm('Stop NetMonitor?\n\nThe program will stop and this tab will close. Start the app again to reopen it.')) return;
+  if (!confirm('Stop the monitor?\n\nThe app will stop and this tab will close. Start it again to reopen it.')) return;
   try { await fetch('/quit', {method: 'POST', headers: {'X-NetMon-Token': TOKEN}}); } catch (e) {}
   closeDashboard();
 };
@@ -593,9 +835,10 @@ function closeDashboard() {
   // browsers only let a page close a tab it was opened in fresh (as NetMonitor opens it); otherwise say it's done
   window.close();
   setTimeout(() => {
-    document.body.innerHTML = '<header><h1>My Windows Network/Internet Connection Monitor</h1></header>' +
-      '<div class="empty" style="font-size:16px;padding:60px 20px">NetMonitor has stopped. You can close this tab.<br>' +
+    document.body.innerHTML = '<header><h1>what\'s_my_pc_connecting_to?</h1></header>' +
+      '<div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.<br>' +
       '<span class="small" style="display:inline">Start the app again to reopen the dashboard.</span></div>';
+    speckle();
   }, 300);
 }
 
@@ -607,7 +850,7 @@ async function poll() {
     const r = await fetch('/data', {headers: {'X-NetMon-Token': TOKEN}, cache: 'no-store'});
     if (r.status === 403) {
       // NetMonitor was restarted, so this tab's secret key is out of date: reload to get the new one
-      $('#meta').textContent = 'NetMonitor restarted, reconnecting…';
+      $('#meta').textContent = 'The app restarted, reconnecting…';
       setTimeout(() => location.reload(), 1000);
       return;
     }
@@ -623,6 +866,17 @@ async function poll() {
   setTimeout(poll, interval);
 }
 poll();
+// title: white letters with a few small Stanford red dots and patches in random places (new pattern on every start)
+function speckle() {
+  const h = document.querySelector('header h1'); if (!h) return;
+  const dots = [];
+  for (let i = 0; i < 40; i++) {
+    const r = (1.5 + Math.random() * (i < 6 ? 4 : 2)).toFixed(1);   // a few patches, mostly small dots
+    dots.push(`radial-gradient(circle at ${(Math.random() * 100).toFixed(1)}% ${(15 + Math.random() * 70).toFixed(1)}%, #8c1515 ${r}px, transparent ${(+r + 0.6).toFixed(1)}px)`);
+  }
+  h.style.backgroundImage = dots.join(',');
+}
+speckle();
 </script>
 </body>
 </html>

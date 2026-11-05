@@ -1,9 +1,9 @@
 r"""
-Builds NetMonitor.exe: a double-click app version of NetMonitor.py.
+Builds WhatsMyPCConnectingTo.exe: a double-click app version of NetMonitor.py.
 
 Needs PyInstaller on the build PC only (pip install pyinstaller); people who run the .exe need nothing.
 Run from this folder:  py build_exe.py
-Output: dist\NetMonitor.exe, plus its SHA-256 fingerprint.
+Output: dist\WhatsMyPCConnectingTo.exe, plus its SHA-256 fingerprint.
 """
 
 import hashlib
@@ -77,11 +77,14 @@ def write_icon(path, sizes=(256, 64, 48, 32, 16)):
 
 # ---------------------------------------------------------------- version details shown in the file's Properties
 
+EXE = 'WhatsMyPCConnectingTo'   # the app's file name (the source stays NetMonitor.py)
+
+
 def write_version_file(path, name, version):
     parts = (list(map(int, re.findall(r'\d+', version))) + [0, 0, 0, 0])[:4]
     four = '.'.join(map(str, parts))
     strings = {'CompanyName': 'iT-Toolset', 'FileDescription': name, 'FileVersion': four,
-               'InternalName': 'NetMonitor', 'OriginalFilename': 'NetMonitor.exe', 'ProductName': name,
+               'InternalName': EXE, 'OriginalFilename': EXE + '.exe', 'ProductName': name,
                'ProductVersion': version, 'LegalCopyright': 'jaykaluza'}
     table = ', '.join(f'StringStruct({k!r}, {v!r})' for k, v in strings.items())
     with open(path, 'w', encoding='utf-8') as f:
@@ -95,7 +98,7 @@ def write_version_file(path, name, version):
 
 def main():
     source = open(os.path.join(HERE, 'NetMonitor.py'), encoding='utf-8').read()
-    name = re.search(r"^APP_NAME = '(.+)'", source, re.M).group(1)
+    name = re.search(r'''^APP_NAME = (['"])(.+)\1''', source, re.M).group(2)
     version = re.search(r"^APP_VERSION = '(.+)'", source, re.M).group(1)
 
     shutil.rmtree(BUILD, ignore_errors=True)
@@ -105,12 +108,12 @@ def main():
     write_version_file(version_file, name, version)
 
     subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile', '--noconsole',
-                    '--uac-admin', '--name', 'NetMonitor', '--icon', icon, '--version-file', version_file,
+                    '--uac-admin', '--name', EXE, '--icon', icon, '--version-file', version_file,
                     '--add-data', f"{os.path.join(HERE, 'dashboard.html')}{os.pathsep}.",
                     '--distpath', DIST, '--workpath', BUILD, '--specpath', BUILD,
                     os.path.join(HERE, 'NetMonitor.py')], check=True)
 
-    exe = os.path.join(DIST, 'NetMonitor.exe')
+    exe = os.path.join(DIST, EXE + '.exe')
     digest = hashlib.sha256(open(exe, 'rb').read()).hexdigest().upper()
     print(f'\nBuilt {exe} (version {version}, {os.path.getsize(exe) // 1024} KB)')
     print(f'SHA-256: {digest}')

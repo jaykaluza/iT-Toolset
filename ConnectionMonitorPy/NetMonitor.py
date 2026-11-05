@@ -18,30 +18,36 @@ import csv
 import ctypes
 import ctypes.wintypes as wt
 import datetime as dt
+import glob
 import http.server
 import ipaddress
 import json
 import os
 import re
 import secrets
+import shutil
 import socket
+import sqlite3
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+import urllib.parse
 import webbrowser
 import winreg
 from concurrent.futures import ThreadPoolExecutor
 
 if sys.platform != 'win32':
-    sys.exit('NetMonitor only runs on Windows.')
+    sys.exit('This app only runs on Windows.')
 
-APP_NAME = 'My Windows Network/Internet Connection Monitor'
-APP_VERSION = '1.1'
+APP_NAME = "What's My PC Connecting To?"
+EXE_NAME = 'WhatsMyPCConnectingTo.exe'   # the packaged app's file name
+APP_VERSION = '1.2'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
-FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged NetMonitor.exe
+FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged WhatsMyPCConnectingTo.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)                # where dashboard.html is
 APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'MyNetworkMonitor')   # logs when run as the app
 
@@ -112,6 +118,15 @@ class MIB_IFROW(ctypes.Structure):
 iphlpapi.GetExtendedTcpTable.argtypes = [ctypes.c_void_p, ctypes.POINTER(wt.DWORD), wt.BOOL, wt.ULONG, ctypes.c_int, wt.ULONG]
 iphlpapi.GetExtendedUdpTable.argtypes = iphlpapi.GetExtendedTcpTable.argtypes
 iphlpapi.GetIfTable.argtypes = [ctypes.c_void_p, ctypes.POINTER(wt.ULONG), wt.BOOL]
+
+
+class MIB_TCPROW(ctypes.Structure):
+    _fields_ = [('dwState', wt.DWORD), ('dwLocalAddr', wt.DWORD), ('dwLocalPort', wt.DWORD),
+                ('dwRemoteAddr', wt.DWORD), ('dwRemotePort', wt.DWORD)]
+
+
+iphlpapi.SetTcpEntry.argtypes = [ctypes.POINTER(MIB_TCPROW)]
+MIB_TCP_STATE_DELETE_TCB = 12
 kernel32.OpenProcess.restype = wt.HANDLE
 kernel32.OpenProcess.argtypes = [wt.DWORD, wt.BOOL, wt.DWORD]
 kernel32.CloseHandle.argtypes = [wt.HANDLE]
@@ -170,6 +185,20 @@ def tcp_connections():
               _ip6(r.ucRemoteAddr), _port(r.dwRemotePort), r.dwOwningPid)
              for r in _read_table(iphlpapi.GetExtendedTcpTable, AF_INET6, TCP_TABLE_OWNER_PID_ALL, MIB_TCP6ROW_OWNER_PID)]
     return rows
+
+
+def close_tcp_to(nets, pids=None):
+    """End open IPv4 TCP connections to any of these networks (optionally only those owned by pids).
+    Windows Firewall only stops new connections, so this cuts ones that were already open. Needs admin."""
+    closed = 0
+    for r in _read_table(iphlpapi.GetExtendedTcpTable, AF_INET, TCP_TABLE_OWNER_PID_ALL, MIB_TCPROW_OWNER_PID):
+        if r.dwState == 2 or not r.dwRemoteAddr or (pids is not None and r.dwOwningPid not in pids):
+            continue
+        ip = ipaddress.ip_address(_ip4(r.dwRemoteAddr))
+        if any(ip in n for n in nets):
+            row = MIB_TCPROW(MIB_TCP_STATE_DELETE_TCB, r.dwLocalAddr, r.dwLocalPort, r.dwRemoteAddr, r.dwRemotePort)
+            closed += iphlpapi.SetTcpEntry(ctypes.byref(row)) == NO_ERROR
+    return closed
 
 
 def udp_endpoints():
@@ -449,34 +478,127 @@ ConvertTo-Json -InputObject @{ ok = $true; setting = [string]@($row.PSObject.Pro
 '''
 PROTOCOLS = {'1': 'ICMP', '6': 'TCP', '17': 'UDP', '58': 'ICMPv6'}
 
-# Apps blocked from the dashboard: Windows Firewall rules in their own "NetMonitor" group, so only
-# NetMonitor's rules are ever listed or removed. Program paths come in via environment variables.
-FW_GROUP = 'NetMonitor'
+# Apps blocked from the dashboard: Windows Firewall rules in their own "WhatsMyPCConnectingTo" group, so only
+# this app's rules are ever listed or removed. Program paths come in via environment variables.
+# Rules made before the rename are in the old "NetMonitor" group: they are still read and removed, and
+# renamed to the new name and group whenever the list is read with administrator rights.
+FW_GROUP = 'WhatsMyPCConnectingTo'
 FW_LIST_PS = r'''
-$out = foreach ($r in @(Get-NetFirewallRule -Group 'NetMonitor' -ErrorAction SilentlyContinue)) {
-  [pscustomobject]@{ Program = [string]($r | Get-NetFirewallApplicationFilter).Program; Direction = [string]$r.Direction; Name = [string]$r.DisplayName }
+foreach ($r in @(Get-NetFirewallRule -Group 'NetMonitor' -ErrorAction SilentlyContinue)) {
+  try {
+    $r.Group = 'WhatsMyPCConnectingTo'
+    $r.DisplayName = ([string]$r.DisplayName) -replace '^NetMonitor block', 'WhatsMyPCConnectingTo block'
+    $r.Description = ([string]$r.Description) -replace 'My Windows Network/Internet Connection Monitor', 'What''s My PC Connecting To?'
+    Set-NetFirewallRule -InputObject $r -ErrorAction Stop
+  } catch { }
+}
+$out = foreach ($r in @(Get-NetFirewallRule -Group 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue)) {
+  [pscustomobject]@{ Id = [string]$r.Name; Program = [string]($r | Get-NetFirewallApplicationFilter).Program
+                     Remote = @(($r | Get-NetFirewallAddressFilter).RemoteAddress) -join ','; Direction = [string]$r.Direction; Name = [string]$r.DisplayName
+                     Description = [string]$r.Description }
 }
 ConvertTo-Json -InputObject @($out) -Compress
 '''
 FW_BLOCK_PS = r'''
 try {
   foreach ($dir in 'Outbound', 'Inbound') {
-    New-NetFirewallRule -DisplayName ('NetMonitor block: {0} ({1})' -f $env:NM_NAME, $dir.ToLower()) -Group 'NetMonitor' `
+    New-NetFirewallRule -DisplayName ('WhatsMyPCConnectingTo block: {0} ({1})' -f $env:NM_NAME, $dir.ToLower()) -Group 'WhatsMyPCConnectingTo' `
       -Direction $dir -Action Block -Program $env:NM_PATH -Profile Any -ErrorAction Stop `
-      -Description 'Created by My Windows Network/Internet Connection Monitor (Block app). Use Unblock in its Blocked tab to remove.' | Out-Null
+      -Description 'Created by What''s My PC Connecting To? (Block app). Use Unblock in its Blocked tab to remove.' | Out-Null
   }
   ConvertTo-Json -InputObject @{ ok = $true } -Compress
 } catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
 '''
 FW_UNBLOCK_PS = r'''
 try {
-  $rules = @(Get-NetFirewallRule -Group 'NetMonitor' -ErrorAction SilentlyContinue |
+  $rules = @(Get-NetFirewallRule -Group 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue |
              Where-Object { ($_ | Get-NetFirewallApplicationFilter).Program -eq $env:NM_PATH })
   $names = @($rules | ForEach-Object { [string]$_.DisplayName })
   if ($rules.Count) { $rules | Remove-NetFirewallRule -ErrorAction Stop }
   ConvertTo-Json -InputObject @{ ok = $true; removed = $names } -Compress
 } catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
 '''
+# Block address: the same kind of rules, for a remote IP address or range instead of a program
+FW_BLOCK_IP_PS = r'''
+try {
+  foreach ($dir in 'Outbound', 'Inbound') {
+    New-NetFirewallRule -DisplayName ('WhatsMyPCConnectingTo block address: {0} ({1})' -f $env:NM_ADDR, $dir.ToLower()) -Group 'WhatsMyPCConnectingTo' `
+      -Direction $dir -Action Block -RemoteAddress $env:NM_ADDR -Profile Any -ErrorAction Stop `
+      -Description $env:NM_DESC | Out-Null
+  }
+  ConvertTo-Json -InputObject @{ ok = $true } -Compress
+} catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
+'''
+# removes this app's rules by their IDs; rules outside its groups (new and old name) are never touched
+FW_REMOVE_PS = r'''
+try {
+  $ids = $env:NM_IDS | ConvertFrom-Json
+  $ids = @($ids)
+  $rules = @(Get-NetFirewallRule -Group 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.Name })
+  $names = @($rules | ForEach-Object { [string]$_.DisplayName })
+  if ($rules.Count) { $rules | Remove-NetFirewallRule -ErrorAction Stop }
+  ConvertTo-Json -InputObject @{ ok = $true; removed = $names } -Compress
+} catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
+'''
+# this PC's own addresses, its router(s) and DNS servers: blocking those would cut off the network
+NET_ESSENTIALS_PS = r'''
+ConvertTo-Json -InputObject @{
+  own = @(Get-NetIPAddress -ErrorAction SilentlyContinue | ForEach-Object { [string]$_.IPAddress })
+  router = @(Get-NetRoute -DestinationPrefix '0.0.0.0/0', '::/0' -ErrorAction SilentlyContinue | ForEach-Object { [string]$_.NextHop })
+  dns = @(Get-DnsClientServerAddress -ErrorAction SilentlyContinue | ForEach-Object { $_.ServerAddresses } | ForEach-Object { [string]$_ })
+} -Compress
+'''
+
+# The tabs open in each browser window right now: their titles, read from the windows' tab strips through
+# Windows UI Automation (what screen readers use). Addresses aren't shown there; they're matched from history.
+# every Windows Firewall rule that blocks something, from any program (read-only)
+ALL_BLOCKS_PS = r'''
+$ErrorActionPreference = 'SilentlyContinue'
+$rules = @(Get-NetFirewallRule -Action Block)
+function Index($cmd) {
+  $h = @{}
+  try { & $cmd -All -ErrorAction Stop | ForEach-Object { $h[$_.InstanceID] = $_ } }
+  catch { $rules | & $cmd | ForEach-Object { $h[$_.InstanceID] = $_ } }
+  $h
+}
+$af = Index Get-NetFirewallAddressFilter
+$ap = Index Get-NetFirewallApplicationFilter
+$pf = Index Get-NetFirewallPortFilter
+$rules | ForEach-Object {
+  [pscustomobject]@{
+    Name = $_.DisplayName; Direction = "$($_.Direction)"; Enabled = "$($_.Enabled)"; Group = "$($_.Group)"
+    Program = "$($ap[$_.Name].Program)"; Remote = (@($af[$_.Name].RemoteAddress) -join ', ')
+    Port = (@($pf[$_.Name].RemotePort) -join ', '); Protocol = "$($pf[$_.Name].Protocol)"
+  }
+} | ConvertTo-Json -Compress
+'''
+
+OPEN_TABS_PS = r'''
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$browsers = @{}
+Get-Process chrome, msedge, firefox, opera, brave, vivaldi -ErrorAction SilentlyContinue | ForEach-Object { $browsers[$_.Id] = $_.ProcessName }
+$isWin = New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Window)
+$isTab = New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::TabItem)
+$walker = [Windows.Automation.TreeWalker]::ControlViewWalker
+$out = foreach ($w in [Windows.Automation.AutomationElement]::RootElement.FindAll([Windows.Automation.TreeScope]::Children, $isWin)) {
+  $proc = $browsers[[int]$w.Current.ProcessId]
+  if (-not $proc) { continue }
+  foreach ($t in $w.FindAll([Windows.Automation.TreeScope]::Descendants, $isTab)) {
+    if (-not $t.Current.Name) { continue }
+    # only the browser's own tab bar: skip tab-like controls inside web pages (carousels, page switchers)
+    $p = $walker.GetParent($t); $inPage = $false
+    while ($p -and -not $p.Equals($w)) {
+      if ($p.Current.ControlType -eq [Windows.Automation.ControlType]::Document) { $inPage = $true; break }
+      $p = $walker.GetParent($p)
+    }
+    if (-not $inPage) { [pscustomobject]@{ Process = $proc; Title = [string]$t.Current.Name } }
+  }
+}
+ConvertTo-Json -InputObject @($out) -Compress
+'''
+BROWSER_NAMES = {'chrome': 'Chrome', 'msedge': 'Edge', 'firefox': 'Firefox', 'opera': 'Opera', 'brave': 'Brave', 'vivaldi': 'Vivaldi'}
+# what browsers add to a tab's title in the tab strip
+TAB_TITLE_EXTRAS = re.compile(r'\s+-\s+(Audio playing|Playing audio|Muted|Audio muted|Camera or microphone recording|Pinned|Memory usage.*|Network error|Crashed)$', re.I)
 
 PUBLIC_NETWORK_PS = r'''
 ConvertTo-Json @(Get-NetConnectionProfile | Where-Object NetworkCategory -eq 'Public').Count
@@ -536,6 +658,199 @@ def is_external(ip):
     return addr.is_global and not addr.is_multicast
 
 
+def parse_address(text):
+    """An IP address or range typed or picked in the dashboard, as an ip_network. ValueError says what's wrong."""
+    t = str(text).strip().split('%')[0]
+    try:
+        net = ipaddress.ip_network(t, strict=False)
+    except ValueError:
+        raise ValueError(f'"{text}" is not an IP address or range. Examples: 203.0.113.7 or 203.0.113.0/24.') from None
+    if net.version == 6 and net.num_addresses == 1 and net.network_address.ipv4_mapped:
+        net = ipaddress.ip_network(net.network_address.ipv4_mapped)
+    a = net.network_address
+    if a.is_loopback or a.is_unspecified or a.is_multicast or a.is_link_local or net == ipaddress.ip_network('255.255.255.255'):
+        raise ValueError(f"{net_label(net)} is a special address (this PC itself, broadcast or local link), so the app won't block it.")
+    if net.prefixlen < (16 if net.version == 4 else 32):
+        raise ValueError(f'{net_label(net)} is too big a range: it would block a huge part of the internet. '
+                         f'Use /16 or smaller for IPv4, /32 or smaller for IPv6.')
+    return net
+
+
+def net_label(net):
+    """203.0.113.7 for a single address, 203.0.113.0/24 for a range."""
+    return str(net.network_address) if net.num_addresses == 1 else str(net)
+
+
+# Block site: Windows' hosts file sends the site's names to 0.0.0.0, so Windows and browsers can't find it.
+# Only lines NetMonitor added (marked with HOSTS_MARK) are ever read back or removed.
+HOSTS_FILE = os.path.join(WINDIR, 'System32', 'drivers', 'etc', 'hosts')
+HOSTS_MARK = '# NetMonitor block: '
+SITE_RE = re.compile(r'^(?=.{3,253}$)(?:[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$')
+# Windows itself needs these to sign in, update and check the connection
+PROTECTED_SITES = ('localhost', 'local', 'microsoft.com', 'windows.com', 'windowsupdate.com', 'microsoftonline.com',
+                   'msftconnecttest.com', 'msftncsi.com', 'live.com', 'windows.net')
+# two-part endings such as co.uk, so the site is bbc.co.uk rather than co.uk
+SECOND_LEVEL = {'co', 'com', 'org', 'net', 'gov', 'ac', 'edu', 'ne', 'or', 'go', 'gob', 'nic', 'mil'}
+BROWSERS = {'chrome', 'msedge', 'firefox', 'opera', 'brave', 'vivaldi', 'iexplore', 'chromium', 'librewolf', 'waterfox', 'arc', 'browser'}
+
+
+# hosting services where each customer has their own name (jaykaluza.github.io), so that's the site, not github.io
+SHARED_HOSTING = {'github.io', 'gitlab.io', 'blogspot.com', 'wordpress.com', 'netlify.app', 'pages.dev', 'vercel.app',
+                  'herokuapp.com', 'azurewebsites.net', 'web.app', 'firebaseapp.com', 'appspot.com', 'workers.dev',
+                  'cloudfront.net', 'substack.com', 'tumblr.com', 'sharepoint.com', 'myshopify.com', 'wixsite.com'}
+
+
+def base_site(host):
+    labels = host.split('.')
+    n = 3 if len(labels) >= 3 and (len(labels[-1]) == 2 and labels[-2] in SECOND_LEVEL or '.'.join(labels[-2:]) in SHARED_HOSTING) else 2
+    return '.'.join(labels[-n:])
+
+
+def parse_site(text):
+    """A site typed or picked in the dashboard (name or web address) as a plain name like example.com."""
+    t = str(text).strip().lower()
+    try:
+        host = urllib.parse.urlsplit(t if '://' in t else 'http://' + t).hostname or ''
+        host = host.rstrip('.').encode('idna').decode('ascii')
+    except (ValueError, UnicodeError):
+        host = ''
+    try:
+        ipaddress.ip_address(host)
+        is_ip = True
+    except ValueError:
+        is_ip = False
+    if is_ip:
+        raise ValueError(f'{host} is an IP address: use Block address for that.')
+    if host.startswith('www.'):
+        host = host[4:]
+    if not SITE_RE.match(host):
+        raise ValueError(f'"{text}" doesn\'t look like a website. Examples: example.com or https://www.example.com/page.')
+    if any(host == p or host.endswith('.' + p) for p in PROTECTED_SITES):
+        raise ValueError(f"{host} is used by Windows itself (sign-in, updates or connection checks), so the app won't block it.")
+    return host
+
+
+def read_hosts():
+    # latin-1 reads and writes every byte back unchanged, whatever encoding the file uses
+    with open(HOSTS_FILE, encoding='latin-1', newline='') as f:
+        return f.read()
+
+
+def hosts_sites():
+    """{site: [names]} for the sites NetMonitor blocked in the hosts file."""
+    sites = {}
+    try:
+        text = read_hosts()
+    except OSError:
+        return sites
+    for line in text.splitlines():
+        if HOSTS_MARK in line:
+            site = line.split(HOSTS_MARK, 1)[1].strip()
+            parts = line.split('#', 1)[0].split()
+            if site and len(parts) >= 2 and parts[1] not in sites.setdefault(site, []):
+                sites[site].append(parts[1])
+    return sites
+
+
+def write_hosts(text):
+    with open(HOSTS_FILE, 'w', encoding='latin-1', newline='') as f:
+        f.write(text)
+    try:   # forget names Windows already looked up, so the change works straight away
+        ctypes.WinDLL('dnsapi').DnsFlushResolverCache()
+    except (OSError, AttributeError):
+        pass
+
+
+# Browsers look sites up themselves (not through Windows' DNS cache), so the sites open in them are
+# read from each browser's own history file: only the last hour, only when asked, and nothing is kept.
+BROWSER_HISTORY = [
+    ('Chrome', 'LOCALAPPDATA', r'Google\Chrome\User Data\*\History'),
+    ('Edge', 'LOCALAPPDATA', r'Microsoft\Edge\User Data\*\History'),
+    ('Brave', 'LOCALAPPDATA', r'BraveSoftware\Brave-Browser\User Data\*\History'),
+    ('Vivaldi', 'LOCALAPPDATA', r'Vivaldi\User Data\*\History'),
+    ('Opera', 'APPDATA', r'Opera Software\Opera Stable\History'),
+    ('Opera', 'APPDATA', r'Opera Software\Opera Stable\*\History'),
+    ('Opera GX', 'APPDATA', r'Opera Software\Opera GX Stable\History'),
+    ('Opera GX', 'APPDATA', r'Opera Software\Opera GX Stable\*\History'),
+    ('Firefox', 'APPDATA', r'Mozilla\Firefox\Profiles\*\places.sqlite'),
+]
+
+
+def _history_visits(path, since):
+    """[(url, title, unix time)] visited after since, from a copy of one browser history database (the browser keeps it locked)."""
+    tmp = tempfile.mkdtemp(prefix='netmon-')
+    try:
+        copy = os.path.join(tmp, 'h.sqlite')
+        for suffix in ('', '-wal', '-journal'):
+            if os.path.exists(path + suffix):
+                shutil.copyfile(path + suffix, copy + suffix)
+        con = sqlite3.connect(copy)
+        try:
+            if path.lower().endswith('places.sqlite'):   # Firefox: microseconds since 1970
+                rows = con.execute('SELECT url, title, last_visit_date FROM moz_places WHERE last_visit_date > ? '
+                                   'ORDER BY last_visit_date DESC LIMIT 5000', (int(since * 1e6),)).fetchall()
+                return [(u, ti or '', t / 1e6) for u, ti, t in rows]
+            # Chromium browsers: microseconds since 1601
+            rows = con.execute('SELECT url, title, last_visit_time FROM urls WHERE last_visit_time > ? '
+                               'ORDER BY last_visit_time DESC LIMIT 5000', (int((since + 11644473600) * 1e6),)).fetchall()
+            return [(u, ti or '', t / 1e6 - 11644473600) for u, ti, t in rows]
+        finally:
+            con.close()
+    except (OSError, sqlite3.Error):
+        return []
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def site_of(url):
+    """(host, site) of a web address, or ('', '') for anything that isn't a normal website."""
+    if not str(url).lower().startswith(('http://', 'https://')):
+        return '', ''
+    try:
+        host = (urllib.parse.urlsplit(url).hostname or '').rstrip('.')
+    except ValueError:
+        return '', ''
+    if not SITE_RE.match(host):
+        return '', ''
+    return host, base_site(host[4:] if host.startswith('www.') else host)
+
+
+def open_browser_tabs():
+    """[{Browser, Title, Url, Host, Site}] for every tab open in a browser window right now."""
+    tabs = [t for t in run_powershell(OPEN_TABS_PS, timeout=30) if isinstance(t, dict) and t.get('Title')]
+    if not tabs:
+        return [], set()
+    # title -> most recent address, per browser, from the last 30 days of history
+    by_title, hosts = {}, set()
+    since = time.time() - 30 * 86400
+    for browser, env, pattern in BROWSER_HISTORY:
+        for path in glob.glob(os.path.join(os.environ.get(env, ''), pattern)):
+            for url, title, when in _history_visits(path, since):
+                if title:
+                    key = (browser.split()[0], title.strip())
+                    if key not in by_title or by_title[key][1] < when:
+                        by_title[key] = (url, when)
+                if when > time.time() - 3600:
+                    hosts.add(site_of(url)[0])
+    out = []
+    for t in tabs:
+        browser = BROWSER_NAMES.get(str(t.get('Process', '')).lower(), str(t.get('Process', '')))
+        title = TAB_TITLE_EXTRAS.sub('', str(t['Title']).strip())
+        url = (by_title.get((browser, title)) or (None,))[0]
+        if not url:   # long titles may be cut short in the tab strip: match the start
+            match = [(v[1], v[0]) for (b, ti), v in by_title.items() if b == browser and len(title) > 8 and ti.startswith(title)]
+            url = max(match)[1] if match else ''
+        failed = False
+        if not url and SITE_RE.match(title.lower()):   # error page: the title is the name the tab is trying to reach
+            url, failed = f'https://{title.lower()}/', True
+        host, site = site_of(url)
+        if not failed and host and title.lower() in (host, host.removeprefix('www.')):
+            failed = True   # an error page's title is just the site's name, even when history knows the address
+        protected = any(site == p or site.endswith('.' + p) for p in PROTECTED_SITES)
+        out.append({'Browser': browser, 'Title': title, 'Url': url, 'Host': host, 'Site': site, 'Protected': protected, 'Failed': failed})
+    return out, hosts - {''}
+
+
 def issue(level, text):
     return {'Level': level, 'Text': text}
 
@@ -589,9 +904,9 @@ NO_KILL = {**{n: 'core' for n in ('system', 'system idle', 'registry', 'secure s
            'svchost': 'svc',
            **{n: 'av' for n in ('msmpeng', 'nissrv', 'mpdefendercoreservice', 'securityhealthservice', 'smartscreen')}}
 NO_KILL_REASON = {
-    'core': "{0} is a core part of Windows. Ending it would crash or freeze the PC, so NetMonitor won't do it.",
+    'core': "{0} is a core part of Windows. Ending it would crash or freeze the PC, so the app won't do it.",
     'svc': 'svchost runs several Windows services at once (hover its name to see them). Stop the specific service instead: press Win+R, type services.msc, find the service and click Stop.',
-    'av': "{0} is part of Microsoft Defender. Ending it would switch off your virus protection, so NetMonitor won't do it.",
+    'av': "{0} is part of Microsoft Defender. Ending it would switch off your virus protection, so the app won't do it.",
 }
 # shared by many apps: ending every copy could close unrelated things, so only the selected one is ended
 SHARED_HOSTS = {'powershell', 'pwsh', 'cmd', 'conhost', 'msedgewebview2', 'dllhost', 'rundll32', 'runtimebroker',
@@ -652,10 +967,13 @@ class Monitor:
         self.prev_counters, self.prev_time = None, None
         self.sig_queue, self.sig_busy = set(), False   # program files waiting for a signature check
         self.blocked, self.blocked_since = {}, 0       # firewall-blocked connections, grouped
-        self.blocked_status, self.blocked_error = 'unknown', ''
+        self.blocked_status, self.blocked_error = 'checking', ''   # until the first look at the Security log
         self.blocked_busy, self.blocked_refreshed = False, 0.0
         self.audit_on, self.audit_checked = None, 0.0
         self.fw_blocked, self.fw_busy, self.fw_refreshed = [], False, 0.0   # apps blocked from the dashboard
+        self.fw_ips, self.fw_nets, self.fw_sites = [], [], []   # addresses and sites blocked from the dashboard
+        self.fw_changes = 0   # bumped on every block/unblock, so a background list read from before it is thrown away
+        self.browser_hosts = set()   # names seen in browser history, so Block site covers a site's other names too
         self.seen_names = {}
         # when each app was unblocked, so its earlier blocked attempts aren't listed again after a restart
         self.unblocked_file = os.path.join(self.out_dir, 'unblocked.json')
@@ -744,14 +1062,37 @@ class Monitor:
         try:
             if not self.admin:
                 return
-            by_path = {}
+            gen = self.fw_changes
+            by_path, by_addr = {}, {}
             for row in run_powershell(FW_LIST_PS):
-                prog = str(row.get('Program') or '') if isinstance(row, dict) else ''
-                if not prog or prog.lower() == 'any':
+                if not isinstance(row, dict):
                     continue
-                entry = by_path.setdefault(prog.lower(), {'Path': prog, 'Directions': [], 'Rules': []})
+                prog, remote = str(row.get('Program') or ''), str(row.get('Remote') or '')
+                if prog and prog.lower() != 'any':
+                    entry = by_path.setdefault(prog.lower(), {'Path': prog, 'Directions': [], 'Rules': []})
+                elif remote and remote.lower() != 'any':   # a Block address rule
+                    try:
+                        key = net_label(ipaddress.ip_network(remote.split(',')[0], strict=False))
+                    except ValueError:
+                        continue
+                    entry = by_addr.setdefault(key, {'Address': key, 'Directions': [], 'Rules': [], 'Ids': [], 'App': '', 'Name': '', 'When': ''})
+                    entry['Ids'].append(str(row.get('Id') or ''))
+                    desc = str(row.get('Description') or '')
+                    for field, pattern in (('When', r'Blocked on ([\d-]+ [\d:]+)'), ('App', r'App: ([^|;]*)'), ('Name', r'Name: ([^|;]*)')):   # ';' now, '|' in older rules
+                        m = re.search(pattern, desc)
+                        if m and not entry[field]:
+                            entry[field] = m.group(1).strip()
+                else:
+                    continue
                 entry['Directions'].append(str(row.get('Direction') or ''))
                 entry['Rules'].append(str(row.get('Name') or ''))
+            for entry in by_addr.values():
+                entry['Directions'] = sorted(set(entry['Directions']))
+            self.fw_ips = sorted(by_addr.values(), key=lambda e: (':' in e['Address'], e['Address']))
+            self.fw_nets = [ipaddress.ip_network(e['Address']) for e in self.fw_ips]
+            self.fw_sites = [{'Site': k, 'Names': v} for k, v in sorted(hosts_sites().items())]
+            if gen != self.fw_changes:   # something was blocked or unblocked while this was being read
+                return
             names = {n.lower(): n for n in getattr(self, 'names', {}).values()}
             for entry in by_path.values():
                 base = os.path.splitext(os.path.basename(entry['Path']))[0]
@@ -764,23 +1105,23 @@ class Monitor:
 
     def block_app(self, pid, name):
         if not self.admin:
-            return {'ok': False, 'message': 'Blocking apps needs administrator rights. Start NetMonitor as Administrator.'}
+            return {'ok': False, 'message': 'Blocking apps needs administrator rights. Start the app as Administrator.'}
         with self.lock:
             path = self.proc_cache.get(pid, {}).get('Path', '')
             in_dashboard = pid in self.dashboard_pids
         if pid in (os.getpid(), os.getppid()) or (FROZEN and path.lower() == sys.executable.lower()):
-            return {'ok': False, 'message': "NetMonitor can't block itself."}
+            return {'ok': False, 'message': "The app can't block itself."}
         if not in_dashboard:
             return {'ok': False, 'message': f'PID {pid} is no longer in the dashboard. Nothing was blocked.'}
         if process_names().get(pid) not in (None, name):
             return {'ok': False, 'message': f'PID {pid} now belongs to a different program. Nothing was blocked.'}
         why = NO_KILL.get(name.lower())
         if why == 'av':
-            return {'ok': False, 'message': f"{name} is part of Microsoft Defender. Blocking it would stop virus-protection updates, so NetMonitor won't do it."}
+            return {'ok': False, 'message': f"{name} is part of Microsoft Defender. Blocking it would stop virus-protection updates, so the app won't do it."}
         if why or pid == 4:
-            return {'ok': False, 'message': f"{name} is a core part of Windows. Blocking it could cut off networking for the whole PC, so NetMonitor won't do it."}
+            return {'ok': False, 'message': f"{name} is a core part of Windows. Blocking it could cut off networking for the whole PC, so the app won't do it."}
         if name.lower() in SHARED_HOSTS:
-            return {'ok': False, 'message': f"{name} is used by many different programs, so blocking it would cut off more than one app. NetMonitor won't block it."}
+            return {'ok': False, 'message': f"{name} is used by many different programs, so blocking it would cut off more than one app. The app won't block it."}
         if not path:
             return {'ok': False, 'message': f"Windows didn't reveal where {name} lives, so it can't be blocked by its file."}
         if any(e['Path'].lower() == path.lower() for e in self.fw_blocked):
@@ -788,9 +1129,10 @@ class Monitor:
         row = next(iter(run_powershell(FW_BLOCK_PS, {'NM_PATH': path, 'NM_NAME': name})), {})
         if not row.get('ok'):
             return {'ok': False, 'message': f"Windows Firewall didn't accept the block for {name}. {row.get('error', '')}".strip()}
+        self.fw_changes += 1
         self.refresh_fw()
-        msg = (f"Blocked {name} with Windows Firewall rules 'NetMonitor block: {name} (outbound)' and "
-               f"'NetMonitor block: {name} (inbound)': it can't connect in or out.")
+        msg = (f"Blocked {name} with Windows Firewall rules 'WhatsMyPCConnectingTo block: {name} (outbound)' and "
+               f"'WhatsMyPCConnectingTo block: {name} (inbound)': it can't connect in or out.")
         self.log_action('BLOCKED', [pid], name, path, msg)
         # close it too, so connections it already had open end now rather than when it next reconnects
         closed = self.end_program(pid, name)
@@ -800,13 +1142,14 @@ class Monitor:
 
     def unblock_app(self, path):
         if not self.admin:
-            return {'ok': False, 'message': 'Unblocking apps needs administrator rights. Start NetMonitor as Administrator.'}
+            return {'ok': False, 'message': 'Unblocking apps needs administrator rights. Start the app as Administrator.'}
         entry = next((e for e in self.fw_blocked if e['Path'].lower() == str(path).lower()), None)
         if not entry:   # only NetMonitor's own rules can be removed from here
-            return {'ok': False, 'message': 'That app is not in the list of apps NetMonitor blocked.'}
+            return {'ok': False, 'message': 'That app is not in the list of apps you blocked.'}
         row = next(iter(run_powershell(FW_UNBLOCK_PS, {'NM_PATH': entry['Path']})), {})
         if not row.get('ok'):
             return {'ok': False, 'message': f"Windows Firewall didn't remove the block for {entry['App']}. {row.get('error', '')}".strip()}
+        self.fw_changes += 1
         self.refresh_fw()
         with self.lock:   # its earlier blocked attempts came from this block, so clear them from the list
             for key in [k for k, b in self.blocked.items() if b['Path'] and b['Path'].lower() == entry['Path'].lower()]:
@@ -821,15 +1164,196 @@ class Monitor:
                 pass
         removed = row.get('removed') or []
         removed = [removed] if isinstance(removed, str) else removed
-        rules = ' and '.join(f"'{r}'" for r in removed) or 'its NetMonitor rules'
+        rules = ' and '.join(f"'{r}'" for r in removed) or 'its firewall rules'
         msg = f"Unblocked {entry['App']}: removed Windows Firewall {'rule' if len(removed) == 1 else 'rules'} {rules}; it can connect again."
         self.log_action('UNBLOCKED', [], entry['App'], entry['Path'], msg)
         return {'ok': True, 'message': msg}
 
+    # ---- Block address: Windows Firewall rules for a remote IP address or range
+
+    def _essentials(self):
+        """{address: why} for addresses that must never be blocked: this PC, its router and DNS servers."""
+        row = next(iter(run_powershell(NET_ESSENTIALS_PS)), {})
+        out = {}
+        for key, why in (('dns', 'one of your DNS servers (it turns site names into addresses)'),
+                         ('router', 'your router (the way out to the internet)'), ('own', 'this PC\'s own address')):
+            items = row.get(key) if isinstance(row, dict) else []
+            for a in [items] if isinstance(items, str) else items or []:
+                try:
+                    out[ipaddress.ip_address(str(a).split('%')[0])] = why
+                except ValueError:
+                    pass
+        return out
+
+    def block_ip(self, text, app='', host=''):
+        if not self.admin:
+            return {'ok': False, 'message': 'Blocking addresses needs administrator rights. Start the app as Administrator.'}
+        try:
+            net = parse_address(text)
+        except ValueError as e:
+            return {'ok': False, 'message': str(e)}
+        label = net_label(net)
+        if any(e['Address'] == label for e in self.fw_ips):
+            return {'ok': True, 'message': f'{label} is already blocked.'}
+        for addr, why in self._essentials().items():
+            if addr in net:
+                inside = '' if net.num_addresses == 1 else f' contains {addr}, which is'
+                return {'ok': False, 'message': f"{label}{inside or ' is'} {why}. Blocking it could cut off this PC's network, so the app won't do it."}
+        if not (app and host):   # typed in: take what it was from the connections seen to it
+            with self.lock:
+                seen = [r for r in self.conns.values() if self._in_nets(r.get('RemoteAddress'), [net])]
+            app = app or ', '.join(sorted({str(r.get('App') or '') for r in seen} - {''}))
+            host = host or next((r['RemoteHost'] for r in seen if r.get('RemoteHost')), '')
+        if not host and net.num_addresses == 1:
+            try:
+                host = socket.gethostbyaddr(str(net.network_address))[0]
+            except OSError:
+                pass
+        # Windows Firewall refuses descriptions containing '|', so the fields are separated with ';'
+        clean = lambda v: re.sub(r'[|;\r\n]', ' ', str(v)).strip()[:120]
+        desc = (f"Created by What's My PC Connecting To? (Block address). Blocked on {dt.datetime.now():%Y-%m-%d %H:%M}; "
+                f'App: {clean(app)}; Name: {clean(host)}; Use Unblock in its Blocked tab to remove.')
+        row = next(iter(run_powershell(FW_BLOCK_IP_PS, {'NM_ADDR': label, 'NM_DESC': desc})), {})
+        if not row.get('ok'):
+            return {'ok': False, 'message': f"Windows Firewall didn't accept the block for {label}. {row.get('error', '')}".strip()}
+        closed = close_tcp_to([net])
+        self.fw_changes += 1
+        self.refresh_fw()
+        msg = (f"Blocked {label} with Windows Firewall rules 'WhatsMyPCConnectingTo block address: {label} (outbound)' and "
+               f"'WhatsMyPCConnectingTo block address: {label} (inbound)': nothing on this PC can connect to it, or be reached from it.")
+        if closed:
+            msg += f" Closed {closed} open connection{'s' if closed != 1 else ''} to it."
+        what = ' · '.join(x for x in (host, app and f'used by {app}') if x)
+        self.log_action('BLOCKED', [], f'Address {label}' + (f' ({what})' if what else ''), 'Windows Firewall', msg)
+        return {'ok': True, 'message': msg}
+
+    def unblock_ip(self, text):
+        if not self.admin:
+            return {'ok': False, 'message': 'Unblocking addresses needs administrator rights. Start the app as Administrator.'}
+        entry = next((e for e in self.fw_ips if e['Address'] == str(text)), None)
+        if not entry:   # only NetMonitor's own rules can be removed from here
+            return {'ok': False, 'message': 'That address is not in the list of addresses you blocked.'}
+        row = next(iter(run_powershell(FW_REMOVE_PS, {'NM_IDS': json.dumps(entry['Ids'])})), {})
+        if not row.get('ok'):
+            return {'ok': False, 'message': f"Windows Firewall didn't remove the block for {entry['Address']}. {row.get('error', '')}".strip()}
+        net = ipaddress.ip_network(entry['Address'])
+        with self.lock:   # its earlier blocked attempts came from this block, so clear them from the list
+            for key in [k for k, b in self.blocked.items() if self._in_nets(b['RemoteAddress'], [net])]:
+                del self.blocked[key]
+        self.fw_changes += 1
+        self.refresh_fw()
+        removed = row.get('removed') or []
+        removed = [removed] if isinstance(removed, str) else removed
+        rules = ' and '.join(f"'{r}'" for r in removed) or 'its firewall rules'
+        msg = f"Unblocked {entry['Address']}: removed Windows Firewall {'rule' if len(removed) == 1 else 'rules'} {rules}."
+        self.log_action('UNBLOCKED', [], f"Address {entry['Address']}", 'Windows Firewall', msg)
+        return {'ok': True, 'message': msg}
+
+    @staticmethod
+    def _in_nets(ip, nets):
+        try:
+            addr = ipaddress.ip_address(str(ip).split('%')[0])
+        except ValueError:
+            return False
+        return any(addr in n for n in nets)
+
+    # ---- Block site: lines in Windows' hosts file
+
+    def block_site(self, text):
+        if not self.admin:
+            return {'ok': False, 'message': 'Blocking sites needs administrator rights. Start the app as Administrator.'}
+        try:
+            site = parse_site(text)
+        except ValueError as e:
+            return {'ok': False, 'message': str(e)}
+        if any(e['Site'] == site for e in self.fw_sites):
+            return {'ok': True, 'message': f'{site} is already blocked.'}
+        # the site and www., plus any of its other names seen recently (hosts files can't block "everything under" a site)
+        seen = self.browser_hosts | set(self.dns_names.values())
+        names = [site, 'www.' + site] + sorted(h for h in seen if isinstance(h, str) and h.endswith('.' + site) and h != 'www.' + site and SITE_RE.match(h))
+        names = names[:60]
+        # where it is now, so tabs that already have it open can be cut off
+        ips = set()
+        for n in names[:10]:
+            try:
+                ips |= {ipaddress.ip_address(i[4][0].split('%')[0]) for i in socket.getaddrinfo(n, 443, proto=socket.IPPROTO_TCP)}
+            except (OSError, ValueError):
+                pass
+        try:
+            text = read_hosts()
+            if text and not text.endswith(('\n', '\r')):
+                text += '\r\n'
+            text += ''.join(f'{ip} {n}  {HOSTS_MARK}{site}\r\n' for n in names for ip in ('0.0.0.0', '::'))
+            write_hosts(text)
+        except OSError as e:
+            return {'ok': False, 'message': f"Couldn't change Windows' hosts file ({HOSTS_FILE}): {e.strerror or e}. "
+                                            'Some security programs lock it; nothing was blocked.'}
+        browser_pids = {pid for pid, name in self.names.items() if str(name).lower() in BROWSERS}
+        closed = close_tcp_to([ipaddress.ip_network(i) for i in ips if not i.is_loopback and not i.is_unspecified], browser_pids)
+        self.fw_changes += 1
+        self.refresh_fw()
+        msg = (f'Blocked {site} in the Windows hosts file ({len(names)} names: {", ".join(names[:4])}'
+               f'{" and more" if len(names) > 4 else ""}): this PC can no longer find it.')
+        if closed:
+            msg += f" Closed {closed} open browser connection{'s' if closed != 1 else ''} to it."
+        self.log_action('BLOCKED', [], f'Site {site}', HOSTS_FILE, msg)
+        return {'ok': True, 'message': msg + ' If a tab still shows it, close the tab and open the site again; if it still loads, restart the browser and check its Secure DNS setting.'}
+
+    def unblock_site(self, site):
+        if not self.admin:
+            return {'ok': False, 'message': 'Unblocking sites needs administrator rights. Start the app as Administrator.'}
+        site = str(site)
+        if not any(e['Site'] == site for e in self.fw_sites):
+            return {'ok': False, 'message': 'That site is not in the list of sites you blocked.'}
+        try:
+            lines = read_hosts().splitlines(keepends=True)
+            kept = [ln for ln in lines if not (HOSTS_MARK in ln and ln.split(HOSTS_MARK, 1)[1].strip() == site)]
+            write_hosts(''.join(kept))
+        except OSError as e:
+            return {'ok': False, 'message': f"Couldn't change Windows' hosts file ({HOSTS_FILE}): {e.strerror or e}."}
+        self.fw_changes += 1
+        self.refresh_fw()
+        msg = f'Unblocked {site}: removed its {len(lines) - len(kept)} lines from the Windows hosts file.'
+        self.log_action('UNBLOCKED', [], f'Site {site}', HOSTS_FILE, msg)
+        return {'ok': True, 'message': msg + ' Reload its tab to open it again.'}
+
+    def all_blocks(self):
+        """Everything blocked on this PC: all firewall block rules and all hosts-file entries, whoever made them."""
+        if not self.admin:
+            return {'ok': False, 'message': 'Listing every firewall rule needs administrator rights. Start the app as Administrator.'}
+        rules = []
+        for r in run_powershell(ALL_BLOCKS_PS, timeout=60):
+            if not isinstance(r, dict):
+                continue
+            rules.append({k: str(r.get(k) or '') for k in ('Name', 'Direction', 'Enabled', 'Group', 'Program', 'Remote', 'Port', 'Protocol')})
+        hosts = []
+        try:
+            text = read_hosts()
+        except OSError:
+            text = ''
+        for line in text.splitlines():
+            data, _, comment = line.partition('#')
+            parts = data.split()
+            if len(parts) < 2:
+                continue
+            ip, names = parts[0], [n for n in parts[1:] if n.lower() != 'localhost']
+            if not names:
+                continue
+            blocks = ip in ('0.0.0.0', '127.0.0.1', '::', '::1')
+            for n in names:
+                hosts.append({'Name': n, 'Address': ip, 'Blocks': blocks, 'Ours': HOSTS_MARK in line})
+        return {'ok': True, 'rules': rules, 'hosts': hosts}
+
+    def browser_sites(self):
+        """The tabs open in this PC's browsers right now (only while the dashboard's Open tabs tab is shown)."""
+        tabs, hosts = open_browser_tabs()
+        self.browser_hosts = hosts | {t['Host'] for t in tabs if t['Host']}
+        return {'ok': True, 'tabs': tabs}
+
     def set_audit(self, enable):
         """Turn Windows' blocked-connection recording on or off (the dashboard's button). Only this one setting."""
         if not self.admin:
-            return {'ok': False, 'message': 'Changing this needs administrator rights. Start NetMonitor as Administrator.'}
+            return {'ok': False, 'message': 'Changing this needs administrator rights. Start the app as Administrator.'}
         auditpol = os.path.join(WINDIR, 'System32', 'auditpol.exe')
         try:
             r = subprocess.run([auditpol, '/set', '/subcategory:{0CCE9226-69AE-11D9-BED3-505054503030}',
@@ -1074,10 +1598,13 @@ class Monitor:
                    'listeners': listeners, 'apps': apps, 'services': self.svc_info,
                    # only attempts by apps blocked from the dashboard, not everything the firewall blocks
                    'blocked': sorted((b for b in self.blocked.values()
-                                      if b['Path'].lower() in {e['Path'].lower() for e in self.fw_blocked}),
+                                      if b['Path'].lower() in {e['Path'].lower() for e in self.fw_blocked}
+                                      or self._in_nets(b['RemoteAddress'], self.fw_nets)),
                                      key=lambda b: b['LastSeen'], reverse=True),
                    'blockedStatus': self.blocked_status, 'blockedError': self.blocked_error,
-                   'fwBlocked': self.fw_blocked}
+                   'fwBlocked': self.fw_blocked, 'fwIps': [{**{k: e[k] for k in ('Address', 'Directions', 'Rules', 'App', 'When')},
+                              'Name': e['Name'] or ('' if '/' in e['Address'] else self.host_for(e['Address'], True))} for e in self.fw_ips],
+                   'fwSites': self.fw_sites}
         self.latest_json = json.dumps(payload, separators=(',', ':'))
         # only processes currently shown in the dashboard may be ended
         self.dashboard_pids = frozenset([r['PID'] for r in self.conns.values() if not r['Closed']] + [l['PID'] for l in listeners])
@@ -1085,7 +1612,7 @@ class Monitor:
     # ---- End process
 
     def log_action(self, action, pids, name, path, msg):
-        """One line per Block / Unblock / End process in activity-log.txt."""
+        """One line per Block / Unblock / End process in activity-log.txt (for addresses and sites, path says where the block lives)."""
         who = name + (f" (PID {', '.join(map(str, pids))})" if pids else '')
         line = f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {action:<9}  {who}  {path or '(location unknown)'}  {msg}\n"
         if time.time() - self.activity_pruned > 3600:
@@ -1139,7 +1666,7 @@ class Monitor:
 
     def end_process(self, pid, name):
         if pid in (os.getpid(), os.getppid()):   # the .exe runs as a small launcher plus this process
-            return {'ok': False, 'message': 'That is NetMonitor itself. Press Ctrl+C in its window to stop it.'}
+            return {'ok': False, 'message': 'That is this app itself. Press Ctrl+C in its window to stop it.'}
         if pid not in self.dashboard_pids:
             return {'ok': False, 'message': f'PID {pid} is no longer in the dashboard. Nothing was ended.'}
         current = process_names().get(pid)
@@ -1153,7 +1680,7 @@ class Monitor:
         path = self.proc_cache.get(pid, {}).get('Path', '')
         result = terminate(pid)
         if result == 'denied':
-            ok, msg = False, f'Windows refused to end {name} (PID {pid}). Restart NetMonitor as Administrator and try again.'
+            ok, msg = False, f'Windows refused to end {name} (PID {pid}). Restart the app as Administrator and try again.'
         else:
             ok, msg = True, f'Ended {name} (PID {pid}).'
         self.log_action('ENDED', [pid], name, path, msg)
@@ -1165,7 +1692,7 @@ class Monitor:
         with self.lock:
             path = self.proc_cache.get(pid, {}).get('Path', '')
             if pid in (os.getpid(), os.getppid()) or (FROZEN and path.lower() == sys.executable.lower()):
-                return {'ok': False, 'message': 'That is NetMonitor itself. Use the Stop monitor button to stop it.'}
+                return {'ok': False, 'message': 'That is this app itself. Use the Stop monitor button to stop it.'}
             if name.lower() in SHARED_HOSTS or not path:
                 return self.end_process(pid, name)
             if pid not in self.dashboard_pids:
@@ -1188,7 +1715,7 @@ class Monitor:
             refused = sum(1 for p in targets if is_running(p) and terminate(p) == 'denied')
             n = len(targets)
             if refused:
-                msg = f'Closed {n - refused} of {n} {name} processes. Windows refused the rest; restart NetMonitor as Administrator and try again.'
+                msg = f'Closed {n - refused} of {n} {name} processes. Windows refused the rest; restart the app as Administrator and try again.'
             else:
                 msg = f'Closed {name}.' if n == 1 else f'Closed {name} completely ({n} processes).'
             self.log_action('ENDED', targets, name, path, msg)
@@ -1283,7 +1810,7 @@ def make_handler(monitor, page_bytes, token, port):
                 if not self.host_ok() or not origin:
                     return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
                 monitor.stop_from_site()
-                return self.send_json(200, {'ok': True, 'message': 'NetMonitor is stopping.'}, self.site_headers(origin))
+                return self.send_json(200, {'ok': True, 'message': 'The app is stopping.'}, self.site_headers(origin))
             if not self.host_ok() or not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
             if self.path in ('/block', '/unblock'):
@@ -1297,6 +1824,23 @@ def make_handler(monitor, page_bytes, token, port):
                 except (ValueError, KeyError, TypeError):
                     return self.send_json(400, {'ok': False, 'message': 'Bad request'})
                 return self.send_json(200, result)
+            if self.path == '/all-blocks':
+                return self.send_json(200, monitor.all_blocks())
+            if self.path in ('/block-ip', '/unblock-ip', '/block-site', '/unblock-site', '/browser-sites'):
+                try:
+                    length = min(int(self.headers.get('Content-Length', 0)), 10000)
+                    body = json.loads(self.rfile.read(length) or b'{}')
+                    if self.path == '/browser-sites':
+                        return self.send_json(200, monitor.browser_sites())
+                    action = {'/block-ip': monitor.block_ip, '/unblock-ip': monitor.unblock_ip,
+                              '/block-site': monitor.block_site, '/unblock-site': monitor.unblock_site}[self.path]
+                    if self.path == '/block-ip':
+                        result = monitor.block_ip(str(body['address']), str(body.get('app') or ''), str(body.get('host') or ''))
+                    else:
+                        result = action(str(body['address' if self.path.endswith('-ip') else 'site']))
+                except (ValueError, KeyError, TypeError):
+                    return self.send_json(400, {'ok': False, 'message': 'Bad request'})
+                return self.send_json(200, result)
             if self.path == '/openlog':
                 return self.send_json(200, monitor.open_activity_log())
             if self.path == '/audit':
@@ -1307,7 +1851,7 @@ def make_handler(monitor, page_bytes, token, port):
                     return self.send_json(400, {'ok': False, 'message': 'Bad request'})
                 return self.send_json(200, monitor.set_audit(enable))
             if self.path == '/quit':
-                self.send_json(200, {'ok': True, 'message': 'NetMonitor has stopped. You can close this tab.'})
+                self.send_json(200, {'ok': True, 'message': 'The app has stopped. You can close this tab.'})
                 monitor.stop.set()
                 return None
             if self.path != '/kill':
@@ -1467,9 +2011,9 @@ MB_YESNO, MB_ICONINFORMATION, IDYES = 0x4, 0x40, 6
 
 def ask_start_after_setup():
     """After the first run sets up the RUN link: start now (Yes) or go back to the website (No)."""
-    return user32.MessageBoxW(None, 'NetMonitor is set up on this PC.\n\n'
+    return user32.MessageBoxW(None, 'The app is set up on this PC.\n\n'
                                     'The RUN button on the IT Toolset website can now start it.\n\n'
-                                    'Start NetMonitor now?', APP_NAME, MB_YESNO | MB_ICONINFORMATION) == IDYES
+                                    'Start it now?', APP_NAME, MB_YESNO | MB_ICONINFORMATION) == IDYES
 
 
 def show_error(message):
@@ -1485,7 +2029,7 @@ def main():
     ap.add_argument('--once', action='store_true', help='take one snapshot (data.json) and exit')
     ap.add_argument('--port', type=int, default=8765, help='local dashboard port (default 8765)')
     ap.add_argument('--app', action='store_true', default=FROZEN,
-                    help='app mode (default for NetMonitor.exe): one copy only, logs in %%LOCALAPPDATA%%, '
+                    help='app mode (default for the packaged .exe): one copy only, logs in %%LOCALAPPDATA%%, '
                          'stops a few minutes after the dashboard is closed')
     ap.add_argument('--idle-exit', type=int, default=3, help='app mode: minutes without an open dashboard before stopping')
     ap.add_argument('--register-link', action='store_true', help='let netmonitor:// links (a website RUN button) start this app')
@@ -1495,21 +2039,21 @@ def main():
 
     exe = sys.executable if FROZEN else os.path.abspath(__file__)
     if args.link and not LINK_PATTERN.match(args.link):
-        sys.exit(f'NetMonitor was started from an unsupported link ({args.link[:80]}). Links can only start the app or remove the link.')
+        sys.exit(f'The app was started from an unsupported link ({args.link[:80]}). Links can only start the app or remove the link.')
     if args.link and LINK_PATTERN.match(args.link).group(2) and LINK_PATTERN.match(args.link).group(2).lower() == 'unregister':
         args.unregister_link = True   # a website's "Remove the RUN link" button
     if args.unregister_link:
         unregister_link()
         if FROZEN:
-            user32.MessageBoxW(None, 'The RUN button link was removed. Websites can no longer start NetMonitor on this PC.\n\n'
-                                     'Running NetMonitor.exe again sets it up again.', APP_NAME, 0x40)
+            user32.MessageBoxW(None, 'The RUN button link was removed. Websites can no longer start this app on this PC.\n\n'
+                                     f'Running {EXE_NAME} again sets it up again.', APP_NAME, 0x40)
         print('netmonitor:// link removed.')
         return
     if args.register_link:
         if not FROZEN:
-            sys.exit('The netmonitor:// link can only be set up from NetMonitor.exe.')
+            sys.exit(f'The netmonitor:// link can only be set up from {EXE_NAME}.')
         register_link(exe)
-        user32.MessageBoxW(None, 'Done. A RUN button on a web page can now start NetMonitor on this PC.', APP_NAME, 0x40)
+        user32.MessageBoxW(None, 'Done. A RUN button on a web page can now start this app on this PC.', APP_NAME, 0x40)
         return
     # the app sets up its RUN-button link (for this Windows user), unless an equal or newer saved copy already has it
     if FROZEN and args.app and not link_registered(exe) and should_take_link(exe):
@@ -1531,7 +2075,7 @@ def main():
             with open(url_file, encoding='utf-8') as f:
                 webbrowser.open(f.read().strip())
         except OSError:
-            show_error('NetMonitor is already running, but its dashboard address could not be found. '
+            show_error('The app is already running, but its dashboard address could not be found. '
                        'Wait a minute and try again.')
         return
 
@@ -1554,7 +2098,7 @@ def main():
         os.makedirs(APP_DIR, exist_ok=True)
         with open(url_file, 'w', encoding='utf-8') as f:
             f.write(url)
-    print(f'NetMonitor running. Dashboard: {url}')
+    print(f'{APP_NAME} is running. Dashboard: {url}')
     print(f'CSV log:   {monitor.csv_path}')
     if not monitor.admin:
         print('Tip: run as Administrator to resolve paths for all processes and to end elevated programs.')
@@ -1603,4 +2147,4 @@ if __name__ == '__main__':
         log = os.path.join(APP_DIR, 'error.log')
         with open(log, 'a', encoding='utf-8') as f:
             f.write(f'{now_iso()}\n{traceback.format_exc()}\n')
-        show_error(f'NetMonitor stopped because of an unexpected error. Details were saved to:\n{log}')
+        show_error(f'The app stopped because of an unexpected error. Details were saved to:\n{log}')
