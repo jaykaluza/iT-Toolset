@@ -47,7 +47,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.8'
+APP_VERSION = '1.9'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -1686,7 +1686,7 @@ class Monitor:
                    'blockedStatus': self.blocked_status, 'blockedError': self.blocked_error,
                    'fwBlocked': self.fw_blocked, 'fwIps': [{**{k: e[k] for k in ('Address', 'Directions', 'Rules', 'App', 'When')},
                               'Name': e['Name'] or ('' if '/' in e['Address'] else self.host_for(e['Address'], True))} for e in self.fw_ips],
-                   'fwSites': self.fw_sites, 'siteOpen': self.site_tabs > 0, 'selfPath': self_exe()}
+                   'fwSites': self.fw_sites, 'siteOpen': self.site_tabs > 0, 'selfPath': self_exe(), 'version': APP_VERSION}
         self.latest_json = json.dumps(payload, separators=(',', ':'))
         # only processes currently shown in the dashboard may be ended
         self.dashboard_pids = frozenset([r['PID'] for r in self.conns.values() if not r['Closed']] + [l['PID'] for l in listeners])

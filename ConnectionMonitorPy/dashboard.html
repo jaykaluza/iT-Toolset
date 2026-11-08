@@ -313,7 +313,7 @@ function render() {
   const d = window.NETDATA; if (!d || !d.connections) return;
   const now = new Date(d.generated);
   const active = d.connections.filter(c => !c.Closed), ext = active.filter(c => c.External);
-  $('#meta').innerHTML = `[${esc(d.host)} · updated ${now.toLocaleTimeString()} · every ${d.interval}s]` +
+  $('#meta').innerHTML = `[${esc(d.host)} · updated ${now.toLocaleTimeString()} · every ${d.interval}s · v${esc(d.version)}]` +
     (d.admin ? '' : ' · <span class="warn">not elevated: some app paths hidden — run as Administrator for full detail</span>');
   TIPS = [];
   const riskyApps = new Set([...active.filter(c => c.Risk === 'high'), ...d.listeners.filter(l => l.Risk === 'high')].map(x => x.App));
