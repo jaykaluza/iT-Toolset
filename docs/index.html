@@ -58,6 +58,7 @@ a:hover{text-decoration:underline}
 #launch{overflow:visible;width:min(480px,calc(100vw - 32px));padding:24px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
 #launch::backdrop{background:rgba(0,0,0,.45)}
 #launch p{margin:16px 0 0}
+.launch-note{display:block;margin-top:10px}
 .launch-head{display:flex;align-items:center;gap:14px}
 .launch-head h2{margin:0;font-size:18px}
 .launch-x{margin-left:auto;align-self:flex-start;font:inherit;font-size:22px;line-height:1;color:var(--muted);background:none;border:0;padding:0 4px;cursor:pointer}
@@ -206,12 +207,13 @@ $('#launch').addEventListener('close', () => clearTimeout(launchTimer));
 // the two setup steps, in the popup; it closes by itself as soon as the app is seen running
 const showSetup = () => { clearTimeout(launchTimer); openLaunch('', false, false); watchApp(); };
 const startApp = () => {
-  openLaunch('Attempting to launch My Connections. If your browser asks, choose <b>Open</b>.');
+  openLaunch('Attempting to launch My Connections. If your browser asks, choose <b>Open</b>.<span class="muted launch-note">If nothing opens, <a href="#" id="launchSetupLink">run the first-time setup</a>.</span>');
   location.href = 'myconnections://run';   // starts MyConnections.exe through the link it set up
   clearTimeout(launchTimer);
   launchTimer = setTimeout(() => openLaunch('My Connections wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, complete the one-time setup.', true, true), LAUNCH_WAIT_MS);
 };
 $('#launchSetup').onclick = () => { setup.set(false); showSetup(); };
+$('#launchMsg').addEventListener('click', e => { if (e.target.id === 'launchSetupLink') { e.preventDefault(); $('#launchSetup').click(); } });
 $('#launchRetry').onclick = () => startApp();
 
 $('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
@@ -219,7 +221,7 @@ $('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
 // ---- Is the app running on this PC? The app answers this page (and only this site) on localhost,
 // so RUN can turn into STOP. Browsers may ask once to allow the page to reach apps on this device.
 const PORTS = [8765, 8766, 8767];
-let appPort = null, stopRequested = false, watching = false;
+let appPort = null, stopRequested = false, watching = false, siteEvents = null;
 
 async function findApp() {
   for (const p of PORTS) {
@@ -243,6 +245,11 @@ async function checkApp() {
   appPort = await findApp();
   if (appPort) { setup.set(true); closeLaunch(); }   // seeing it run proves setup worked
   else stopRequested = false;
+  // while the app runs, it knows this page is open and can ask it to refresh (the dashboard's title link)
+  if (appPort && !siteEvents) {
+    siteEvents = new EventSource(`http://localhost:${appPort}/site-events`);
+    siteEvents.onmessage = e => { if (e.data === 'refresh') location.reload(); };
+  } else if (!appPort && siteEvents) { siteEvents.close(); siteEvents = null; }
   updateRunButton();
 }
 

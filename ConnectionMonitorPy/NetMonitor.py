@@ -44,7 +44,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.4'
+APP_VERSION = '1.5'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -1000,8 +1000,12 @@ class Monitor:
         self.latest_json = '{}'
         self.dashboard_pids = frozenset()
         self.last_client = time.time()     # when a dashboard last asked for data
+        self.tab_closed_at = 0             # when a dashboard tab last said it was closing
         self.stop = threading.Event()      # set by the dashboard's Stop monitor button
         self.stopping = False              # the website's STOP: dashboards close their tab, then the app exits
+        self.site_changed = threading.Condition()   # guards the two below
+        self.site_tabs = 0                 # landing pages open now (each keeps a /site-events connection)
+        self.site_refreshes = 0            # raised by the dashboard to make open landing pages refresh
 
     def stop_from_site(self):
         """Stop at the website's request: give open dashboards a few seconds to see it and close their tabs."""
@@ -1617,7 +1621,7 @@ class Monitor:
                    'blockedStatus': self.blocked_status, 'blockedError': self.blocked_error,
                    'fwBlocked': self.fw_blocked, 'fwIps': [{**{k: e[k] for k in ('Address', 'Directions', 'Rules', 'App', 'When')},
                               'Name': e['Name'] or ('' if '/' in e['Address'] else self.host_for(e['Address'], True))} for e in self.fw_ips],
-                   'fwSites': self.fw_sites}
+                   'fwSites': self.fw_sites, 'siteOpen': self.site_tabs > 0}
         self.latest_json = json.dumps(payload, separators=(',', ':'))
         # only processes currently shown in the dashboard may be ended
         self.dashboard_pids = frozenset([r['PID'] for r in self.conns.values() if not r['Closed']] + [l['PID'] for l in listeners])
@@ -1779,7 +1783,7 @@ def make_handler(monitor, page_bytes, token, port):
         def do_OPTIONS(self):
             # browsers check first before letting the website talk to an app on this PC
             origin = self.site_origin()
-            if not self.host_ok() or not origin or self.path not in ('/status', '/site-stop'):
+            if not self.host_ok() or not origin or self.path not in ('/status', '/site-stop', '/site-events'):
                 return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
             self.send(204, 'text/plain', b'', {**self.site_headers(origin), 'Access-Control-Allow-Methods': 'GET, POST',
                                                'Access-Control-Allow-Headers': 'Content-Type',
@@ -1807,6 +1811,11 @@ def make_handler(monitor, page_bytes, token, port):
                     return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
                 return self.send_json(200, {'app': 'MyConnections', 'version': APP_VERSION, 'stopping': monitor.stopping},
                                       self.site_headers(origin))
+            if self.path == '/site-events':
+                origin = self.site_origin()
+                if not origin:
+                    return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
+                return self.site_events(origin)
             if not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
             if self.path == '/data':
@@ -1816,7 +1825,42 @@ def make_handler(monitor, page_bytes, token, port):
                 return self.send(200, 'application/json; charset=utf-8', monitor.latest_json.encode('utf-8'))
             self.send_json(404, {'ok': False, 'message': 'Not found'})
 
+        def site_events(self, origin):
+            """Held open by each landing page: shows the app it is open, and tells it when to refresh."""
+            self.close_connection = True
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-store')
+            for k, v in self.site_headers(origin).items():
+                self.send_header(k, v)
+            self.end_headers()
+            with monitor.site_changed:
+                monitor.site_tabs += 1
+                seen = monitor.site_refreshes
+            try:
+                self.wfile.write(b': connected\n\n')
+                while not monitor.stop.is_set():
+                    with monitor.site_changed:
+                        monitor.site_changed.wait(5)   # the regular ping also reveals a closed tab
+                        refresh = monitor.site_refreshes != seen
+                        seen = monitor.site_refreshes
+                    self.wfile.write(b'data: refresh\n\n' if refresh else b': ping\n\n')
+            except OSError:
+                pass   # the tab was closed
+            finally:
+                with monitor.site_changed:
+                    monitor.site_tabs -= 1
+
         def do_POST(self):
+            if self.path == '/tab-closed':
+                # a dashboard tab is closing or reloading (browsers can't add the usual header here, so the key is the body)
+                length = min(int(self.headers.get('Content-Length', 0)), 200)
+                origin = self.headers.get('Origin')
+                if (self.host_ok() and secrets.compare_digest(self.rfile.read(length), token.encode())
+                        and (not origin or origin in (f'http://localhost:{port}', f'http://127.0.0.1:{port}'))):
+                    monitor.tab_closed_at = time.time()
+                    return self.send(204, 'text/plain', b'')
+                return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
             if self.path == '/site-stop':
                 # the website's STOP button: only from the Nesiam.com site, and only stopping this app itself
                 origin = self.site_origin()
@@ -1826,6 +1870,11 @@ def make_handler(monitor, page_bytes, token, port):
                 return self.send_json(200, {'ok': True, 'message': 'The app is stopping.'}, self.site_headers(origin))
             if not self.host_ok() or not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
+            if self.path == '/site-refresh':
+                with monitor.site_changed:
+                    monitor.site_refreshes += 1
+                    monitor.site_changed.notify_all()
+                return self.send_json(200, {'ok': True})
             if self.path in ('/block', '/unblock'):
                 try:
                     length = min(int(self.headers.get('Content-Length', 0)), 10000)
@@ -2115,7 +2164,11 @@ def main():
                 webbrowser.open(url)
                 opened = True
                 monitor.last_client = time.time()
-            # app mode has no window to close, so it stops once no dashboard has been open for a while
+            # app mode has no window to close, so it stops once the dashboard is closed: within seconds if the tab said so
+            # (a reload says so too, but the reloaded page asks for data straight away), or after a while if it couldn't
+            closed_at = monitor.tab_closed_at
+            if args.app and closed_at > monitor.last_client and time.time() - closed_at > args.interval * 2 + 1:
+                break
             if args.app and time.time() - monitor.last_client > args.idle_exit * 60:
                 break
             monitor.stop.wait(max(0.2, args.interval - (time.time() - start)))

@@ -102,7 +102,7 @@ Everything stays on your PC; nothing is sent anywhere.
 ## 6. Stopping it
 
 - Click **Stop monitor** (top right): the app stops and the tab closes.
-- Or just close the tab: the app stops itself about 3 minutes later.
+- Or just close the tab: the app stops itself within seconds.
 
 ---
 

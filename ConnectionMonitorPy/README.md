@@ -22,7 +22,7 @@ Pick whichever suits you:
 
 The app isn't digitally signed, so the first time you run it Windows may show **"Windows protected your PC"**: click **More info**, check the publisher reads *Unknown publisher* and the file name is MyConnections.exe, then click **Run anyway**.
 
-There's no window to close: use the **Stop monitor** button on the dashboard, or just close the dashboard tab and the app stops itself after 3 minutes. Double-clicking it again while it's running simply reopens the dashboard. Logs are kept in `%LOCALAPPDATA%\MyConnections`.
+There's no window to close: use the **Stop monitor** button on the dashboard, or just close the dashboard tab and the app stops itself within seconds. Double-clicking it again while it's running simply reopens the dashboard. Logs are kept in `%LOCALAPPDATA%\MyConnections`.
 
 To build the app yourself from this folder: `py -m pip install pyinstaller`, then `py build_exe.py`. The result is `dist\MyConnections.exe`.
 

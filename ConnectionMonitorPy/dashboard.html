@@ -17,7 +17,7 @@ h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI
 .sub{color:var(--muted);font-size:13px}
 .warn{color:var(--in)}
 header .sub{color:var(--head-muted)}
-header h1{color:#fff;background-color:#fff;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}   /* bright white, with Stanford red specks added by speckle() */header .warn{color:#ffd60a}
+header h1{color:#fff}header h1 a{color:inherit;text-decoration:none}header h1 a:hover{text-decoration:underline}header .warn{color:#ffd60a}
 .note{background:var(--panel-2);color:var(--footnote);border:0;border-radius:12px;padding:9px 14px;margin:0 0 10px;white-space:normal;line-height:1.5;font-size:12px;letter-spacing:.005em}
 .note b,.note strong{color:var(--text);font-weight:600}
 .note code{display:block;margin:6px 0 8px;padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;font:13px Consolas,monospace;user-select:all;word-break:break-all}
@@ -146,7 +146,7 @@ tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0
 </style>
 </head>
 <body>
-<header><h1>my_connections</h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop the monitor and close the app">Stop monitor</button></header>
+<header><h1><a id="home" href="https://jaykaluza.github.io/iT-Toolset/" target="nesiam-landing" title="Go to the Nesiam.com landing page">my_connections</a></h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop the monitor and close the app">Stop monitor</button></header>
 <div class="stats" id="stats"></div>
 <div class="bar">
   <div class="tabs" id="tabs">
@@ -840,12 +840,13 @@ function closeDashboard() {
     document.body.innerHTML = '<header><h1>my_connections</h1></header>' +
       '<div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.<br>' +
       '<span class="small" style="display:inline">Start the app again to reopen the dashboard.</span></div>';
-    speckle();
   }, 300);
 }
 
 // live data from the app
 let interval = 3000;
+// closing this tab stops the app within seconds, so the website's RUN button is right again
+addEventListener('pagehide', e => { if (!e.persisted && !stopped) navigator.sendBeacon('/tab-closed', TOKEN); });
 async function poll() {
   if (stopped) return;
   try {
@@ -868,17 +869,18 @@ async function poll() {
   setTimeout(poll, interval);
 }
 poll();
-// title: white letters with a few small Stanford red dots and patches in random places (new pattern on every start)
-function speckle() {
-  const h = document.querySelector('header h1'); if (!h) return;
-  const dots = [];
-  for (let i = 0; i < 40; i++) {
-    const r = (1.5 + Math.random() * (i < 6 ? 4 : 2)).toFixed(1);   // a few patches, mostly small dots
-    dots.push(`radial-gradient(circle at ${(Math.random() * 100).toFixed(1)}% ${(15 + Math.random() * 70).toFixed(1)}%, #8c1515 ${r}px, transparent ${(+r + 0.6).toFixed(1)}px)`);
-  }
-  h.style.backgroundImage = dots.join(',');
-}
-speckle();
+// title: go to the landing page in another tab. If this tab opened it, reuse that tab; if it's open anywhere else,
+// the app tells it to refresh (a page can't bring another tab to the front); otherwise open it.
+let landingTab = null;
+$('#home').onclick = async e => {
+  e.preventDefault();
+  if (landingTab && !landingTab.closed) { landingTab.location = e.currentTarget.href; landingTab.focus(); return; }
+  if (!(window.NETDATA && window.NETDATA.siteOpen)) { landingTab = window.open(e.currentTarget.href, 'nesiam-landing'); return; }
+  try {
+    await fetch('/site-refresh', {method: 'POST', headers: {'X-NetMon-Token': TOKEN}});
+    toast([{ok: true, message: 'The landing page is already open in another tab, so it was refreshed.'}]);
+  } catch (err) { /* the app has stopped; the dashboard says so */ }
+};
 </script>
 </body>
 </html>
