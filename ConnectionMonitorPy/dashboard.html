@@ -781,6 +781,31 @@ const MS_HOMES = {
   crossdeviceservice: /^[a-z]:\\program files\\windowsapps\\microsoft(windows)?\./i
 };
 const onHomeFolder = (name, path) => { const re = MS_HOMES[String(name).toLowerCase()]; return !!re && re.test(path); };
+// the app's own name: does this file match the fingerprint GitHub lists for its version?
+let selfCheck = null, selfChecking = false;
+function selfCheckHtml() {
+  if (selfChecking || !selfCheck) return '<b>Is this the original app?</b>Checking with GitHub…';
+  const c = selfCheck, v = esc(c.version || ''), page = `https://github.com/jaykaluza/iT-Toolset/releases/tag/web-v${encodeURIComponent(c.version || '')}`;
+  const answer = {
+    match: `<strong>Yes.</strong> This file's fingerprint matches the one GitHub lists for version ${v}.`,
+    mismatch: `<strong style="color:var(--risk)">No.</strong> This file's fingerprint doesn't match the one GitHub lists for version ${v}. It may have been changed, or it may be a test build. If you didn't build it yourself, delete it and download the app again.`,
+    unpublished: `Version ${v} isn't published on GitHub, so there's nothing to compare it with.`,
+    unknown: 'Couldn\'t reach GitHub. Hover again to try again.'
+  }[c.state] || 'Couldn\'t check this file.';
+  return `<b>Is this the original app?</b>${answer}` + (c.sha256 ? `<div class="path">${esc(c.sha256)}</div>` : '') +
+    `<div class="small" style="display:block;white-space:normal;overflow:visible">A tampered copy could fake this answer. To check without relying on this app, run Get-FileHash on the file in PowerShell and compare it with the <a href="${page}" target="_blank" rel="noopener">release page</a>.</div>`;
+}
+async function runSelfCheck() {
+  if (selfChecking || (selfCheck && selfCheck.state !== 'unknown')) return;
+  selfChecking = true;
+  try {
+    const r = await fetch('/verify-self', {method: 'POST', headers: {'X-NetMon-Token': TOKEN}});
+    selfCheck = r.ok ? await r.json() : {state: 'unknown'};
+  } catch (e) { selfCheck = {state: 'unknown'}; }
+  selfChecking = false;
+  const box = $('#selfcheck');
+  if (box) box.innerHTML = selfCheckHtml();
+}
 function showAppInfo(el) {
   const d = window.NETDATA || {}, name = el.dataset.ai, info = (d.apps || {})[name] || {}, kb = kbFor(name);
   let origin = info.Origin || 'unknown', guessed = false;
@@ -798,6 +823,8 @@ function showAppInfo(el) {
   const signed = info.Publisher ? `Signed by <strong>${esc(info.Publisher)}</strong>` : info.Path ? 'No valid digital signature' : '';
   const company = info.Company && info.Company !== info.Publisher ? `${signed ? ' · ' : ''}Company: ${esc(info.Company)}` : '';
   const exe = name + '.exe';
+  const isSelf = !!d.selfPath && !!info.Path && info.Path.toLowerCase() === d.selfPath.toLowerCase();   // this running app's own file, not just its name
+  if (isSelf) runSelfCheck();
   const links = [];
   if (kb && kb[3]) links.push(`<a href="${kb[3]}" target="_blank" rel="noopener">Official page</a>`);
   if (origin === 'windows' || origin === 'microsoft') links.push(`<a href="https://learn.microsoft.com/en-us/search/?terms=${encodeURIComponent(exe)}" target="_blank" rel="noopener">Microsoft docs</a>`);
@@ -808,6 +835,7 @@ function showAppInfo(el) {
     `<div class="sec"><b>Risks</b>${esc(kb ? kb[2] : GENERIC_RISK[origin])}</div>` +
     `<div class="sec"><b>Where it lives</b>${info.Path ? `<div class="path">${esc(info.Path)}</div>` : `<span class="small" style="display:inline">${esc(noFileReason(name, d.admin))}</span>`}` +
     (signed || company ? `<div>${signed}${company}</div>` : '') + '</div>' +
+    (isSelf ? `<div class="sec" id="selfcheck">${selfCheckHtml()}</div>` : '') +
     `<div class="sec links"><b>Find it online</b>${links.join('')}</div>`;
   ainfo.style.display = 'block'; aiOpen = true;
   const r = el.getBoundingClientRect(), w = ainfo.offsetWidth, h = ainfo.offsetHeight;

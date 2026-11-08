@@ -41,6 +41,8 @@ Double-clicking it again while it's running just reopens the dashboard.
 
 Hover over any app name to see whether it's **built into Windows**, a Microsoft app or third-party, what it does, the Windows services inside it, its risks, where its file lives, who signed it, and links to look it up.
 
+Hover over **My Connections' own name** to check that this copy is the original: it compares the file's fingerprint with the one GitHub lists for that version. A tampered copy could fake this answer, so for a check that doesn't rely on the app, use `Get-FileHash` as described above.
+
 ![App details popup](docs/popup.png)
 
 ---

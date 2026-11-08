@@ -19,6 +19,7 @@ import ctypes
 import ctypes.wintypes as wt
 import datetime as dt
 import glob
+import hashlib
 import http.server
 import ipaddress
 import json
@@ -34,7 +35,9 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 import webbrowser
 import winreg
 from concurrent.futures import ThreadPoolExecutor
@@ -44,7 +47,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.5'
+APP_VERSION = '1.6'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -868,9 +871,71 @@ def issue(level, text):
     return {'Level': level, 'Text': text}
 
 
-def app_issues(info, admin):
+# ---- "Is this the original app?": compares this .exe with the fingerprint GitHub lists for its version.
+# Only runs when someone hovers over the app's own name; a tampered copy could fake it, and the popup says so.
+RELEASE_API = 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/web-v{}'
+_self_check = None
+_self_check_lock = threading.Lock()
+
+
+def self_exe():
+    """This app's program file, or '' when running from source."""
+    return sys.executable if FROZEN else ''
+
+
+def file_sha256(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def published_digest(version):
+    """The SHA-256 GitHub lists for this version's .exe, or '' if that version isn't published."""
+    req = urllib.request.Request(RELEASE_API.format(version), headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'MyConnections'})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            release = json.load(r)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return ''
+        raise
+    asset = next((a for a in release.get('assets', []) if a.get('name') == EXE_NAME), {})
+    m = re.match(r'^sha256:([a-f0-9]{64})$', str(asset.get('digest') or ''), re.I)
+    return m.group(1).lower() if m else ''
+
+
+def verify_self():
+    """match / mismatch / unpublished / unknown (GitHub couldn't be reached, so it's tried again next time)."""
+    global _self_check
+    with _self_check_lock:
+        if _self_check:
+            return _self_check
+        exe = self_exe()
+        if not exe:
+            return {'state': 'unknown', 'version': APP_VERSION, 'sha256': ''}
+        result = {'version': APP_VERSION, 'sha256': ''}
+        try:
+            result['sha256'] = file_sha256(exe)
+            published = published_digest(APP_VERSION)
+        except (OSError, ValueError):
+            return dict(result, state='unknown')
+        result['state'] = 'unpublished' if not published else 'match' if published == result['sha256'] else 'mismatch'
+        _self_check = result
+        return result
+
+
+def is_this_app(pid, path):
+    """True only for this running app: its own process, or the small launcher the .exe starts it from."""
+    return pid == os.getpid() or (FROZEN and pid == os.getppid() and path.lower() == sys.executable.lower())
+
+
+def app_issues(info, admin, pid):
     issues = []
     p, name = info['Path'], info['Name']
+    if is_this_app(pid, p):   # it may be running from a download folder, but it shouldn't warn about itself
+        return issues
     if p:
         if UNUSUAL_FOLDER.search(p):
             issues.append(issue('high', f"Runs from an unusual folder ({p}). Real programs live in Program Files or Windows. Fix: in File Explorer right-click the file > 'Scan with Microsoft Defender'. If you don't recognise it, end it in Task Manager and delete or uninstall it."))
@@ -1556,7 +1621,7 @@ class Monitor:
         for r in self.conns.values():
             info = self.proc_cache.get(r['PID'])
             if info and not r['Closed']:
-                r['Issues'] = app_issues(info, self.admin) + r['_conn_issues']
+                r['Issues'] = app_issues(info, self.admin, r['PID']) + r['_conn_issues']
                 r.update(Risk=risk_level(r['Issues']), Publisher=info['Publisher'], Description=info['Description'],
                          Path=info['Path'], Services=self.svc_map.get(r['PID'], r['Services']))
 
@@ -1585,7 +1650,7 @@ class Monitor:
             loopback = addr.startswith('127.') or addr == '::1'
             issues = []
             if not loopback:
-                issues += app_issues(info, self.admin)
+                issues += app_issues(info, self.admin, pid)
                 if proto == 'TCP' and port in EXPOSED_PORT_RISK:
                     issues.append(issue(*EXPOSED_PORT_RISK[port]))
                 if self.on_public and proto == 'TCP' and port in (139, 445):
@@ -1621,7 +1686,7 @@ class Monitor:
                    'blockedStatus': self.blocked_status, 'blockedError': self.blocked_error,
                    'fwBlocked': self.fw_blocked, 'fwIps': [{**{k: e[k] for k in ('Address', 'Directions', 'Rules', 'App', 'When')},
                               'Name': e['Name'] or ('' if '/' in e['Address'] else self.host_for(e['Address'], True))} for e in self.fw_ips],
-                   'fwSites': self.fw_sites, 'siteOpen': self.site_tabs > 0}
+                   'fwSites': self.fw_sites, 'siteOpen': self.site_tabs > 0, 'selfPath': self_exe()}
         self.latest_json = json.dumps(payload, separators=(',', ':'))
         # only processes currently shown in the dashboard may be ended
         self.dashboard_pids = frozenset([r['PID'] for r in self.conns.values() if not r['Closed']] + [l['PID'] for l in listeners])
@@ -1903,6 +1968,8 @@ def make_handler(monitor, page_bytes, token, port):
                 except (ValueError, KeyError, TypeError):
                     return self.send_json(400, {'ok': False, 'message': 'Bad request'})
                 return self.send_json(200, result)
+            if self.path == '/verify-self':
+                return self.send_json(200, verify_self())
             if self.path == '/openlog':
                 return self.send_json(200, monitor.open_activity_log())
             if self.path == '/audit':
