@@ -10,7 +10,7 @@
 :root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--footnote:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
   --brand:#0071e3;--brand-dark:#0077ed;--brand-text:#fff;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--head-accent:#2997ff;
   --in:#b64400;--in-bg:rgba(255,149,0,.14);--out:#0066cc;--out-bg:rgba(0,113,227,.10);--ext:#8944ab;--ext-bg:rgba(175,82,222,.12);--lan:#6e6e73;--lan-bg:rgba(110,110,115,.12);
-  --risk:#d70015;--risk-bg:rgba(255,59,48,.10);--caution:#a05a00;--caution-bg:rgba(255,204,0,.16)}
+  --risk:#d70015;--risk-bg:rgba(255,59,48,.10);--caution:#a05a00;--caution-bg:rgba(255,204,0,.16);--closed:#6e4bc4;--closed-bg:rgba(110,75,196,.13)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 header{background:var(--head);color:var(--head-text);border-bottom:0;padding:7px 16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:6px}
@@ -85,7 +85,6 @@ td{white-space:normal}td.num,td .pill,td .origin{white-space:nowrap}
 th{font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
 th.sorted::after{content:" ▾"}th.sorted.asc::after{content:" ▴"}
 tr:last-child td{border-bottom:0}
-tr.closed td{opacity:.45}
 td.host{position:relative;width:220px;min-width:220px}   /* fixed width, so the table doesn't shift when long names come and go */
 td.host .hn{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* one line, cut to fit */
 td.host[data-full]:hover::after{content:attr(data-full);position:absolute;left:0;top:0;padding:5px 8px;background:var(--panel);color:var(--text);border:0;white-space:nowrap;z-index:3;pointer-events:none}   /* full name while the mouse is over it */
@@ -100,6 +99,11 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:none}
 tr.risk-high td{background:var(--risk-bg)}
 tr.risk-high .app,tr.risk-high td:first-child{color:var(--risk)}
 tr.risk-medium td{background:var(--caution-bg)}
+/* recently closed connections stand out from the live ones */
+tbody tr.closed td{background:var(--closed-bg)}
+tbody tr.closed td:first-child{box-shadow:inset 3px 0 0 var(--closed)}
+.pill.closedp{color:#fff;background:var(--closed)}
+.showclosed tbody tr:not(.closed):not(.sel):not(:hover) td{opacity:.45}   /* with Recently closed on, open connections step back */
 tr[data-tip]{cursor:help}
 .risk{color:#fff;background:var(--risk)}.caution{color:var(--caution);background:var(--caution-bg);border:1px solid var(--caution)}
 .ok{color:var(--muted)}
@@ -331,22 +335,23 @@ function render() {
   $('#closed').disabled = S.tab === 'listen' || S.tab === 'blocked' || S.tab === 'sites'; $('#risky').disabled = S.tab === 'blocked' || S.tab === 'sites';
   $('#blockform').hidden = S.tab !== 'blocked' && S.tab !== 'sites';
 
+  document.body.classList.toggle('showclosed', (S.tab === 'conn' || S.tab === 'apps') && S.closed && filtered(d).some(c => c.Closed));   // only fade when there's something closed to see
   let out = '';
   if (S.tab === 'conn') {
     const rows = sortRows(filtered(d).map(c => ({...c, rr: RANK[c.Risk] || 0, Dur: (c.Closed ? new Date(c.Closed) : now) - new Date(c.FirstSeen)})), 'conn').map(c =>
       `<tr${rowAttrs(c.Risk, c.Issues, c.App, [c.Closed ? 'closed' : '', isSel([c.PID], c.App) ? 'sel' : ''].join(' ').trim())}${selData([c.PID], c.App, c.Path)}><td>${riskPill(c.Risk)}</td><td>${dirPill(c.Direction)}</td>
       <td><span class="app" data-ai="${esc(c.App)}" data-svc="${esc(c.Services)}">${esc(appLabel(c))}</span>${isFwBlocked(d, c.Path) ? '<span class="pill blk">Blocked by you</span>' : ''}<span class="small" title="${esc(c.Path)}">${esc(c.Path)}</span></td><td class="num">${c.PID}</td>
       <td class="host"${c.RemoteHost ? ` data-full="${esc(c.RemoteHost)}"` : ''}><span class="hn">${esc(c.RemoteHost || '—')}</span></td><td class="num${c.External ? ' ipcell' : ''}">${esc(c.RemoteAddress)}${ipBlocked(d, c.RemoteAddress) ? '<span class="pill blk">Blocked by you</span>' : c.External && d.admin ? `<button class="mini" data-blockip="${esc(c.RemoteAddress)}" data-app="${esc(c.App)}" data-host="${esc(c.RemoteHost || '')}" title="Block this address in Windows Firewall (asks first)">Block</button>` : ''}${c.External ? ipChecks(c.RemoteAddress).replace('small checks', 'small checks rowchecks') : ''}</td><td class="num">${c.RemotePort}</td><td class="num">${c.LocalPort}</td>
-      <td><span class="pill ${c.External?'ext':'lan'}">${c.External?'Internet':'Local'}</span></td><td>${c.Closed?'Closed':esc(c.State)}</td><td class="num">${dur(0, c.Dur)}</td></tr>`);
+      <td><span class="pill ${c.External?'ext':'lan'}">${c.External?'Internet':'Local'}</span></td><td>${c.Closed?'<span class="pill closedp">Closed</span>':esc(c.State)}</td><td class="num">${dur(0, c.Dur)}</td></tr>`);
     out = table([['rr','Risk'],['Direction','Dir'],['App','App'],['PID','PID'],['RemoteHost','Remote host'],['RemoteAddress','Remote IP'],['RemotePort','Port'],
       ['LocalPort','Local port'],['External','Scope'],['State','State'],['Dur','Age']], rows, 'conn');
   } else if (S.tab === 'apps') {
     const g = {};
-    filtered(d).forEach(c => { const a = g[c.App] ||= {App:c.App, label:appLabel(c), Path:c.Path, pids:new Set(), total:0, ext:0, extIn:0, extOut:0, hosts:new Set(), rr:0, issues:new Map(), svc:new Set()};
-      a.pids.add(c.PID); a.total++; if (c.External) { a.ext++; c.Direction==='Inbound' ? a.extIn++ : a.extOut++; } a.hosts.add(c.RemoteHost || c.RemoteAddress); if (!a.Path) a.Path = c.Path;
+    filtered(d).forEach(c => { const a = g[c.App] ||= {App:c.App, label:appLabel(c), Path:c.Path, pids:new Set(), total:0, closed:0, ext:0, extIn:0, extOut:0, hosts:new Set(), rr:0, issues:new Map(), svc:new Set()};
+      a.pids.add(c.PID); a.total++; if (c.Closed) a.closed++; if (c.External) { a.ext++; c.Direction==='Inbound' ? a.extIn++ : a.extOut++; } a.hosts.add(c.RemoteHost || c.RemoteAddress); if (!a.Path) a.Path = c.Path;
       a.rr = Math.max(a.rr, RANK[c.Risk] || 0); if (c.Services) c.Services.split(', ').forEach(s => a.svc.add(s)); [].concat(c.Issues || []).forEach(i => a.issues.set(i.Text, i)); });
     const rows = sortRows(Object.values(g).map(a => ({...a, nhosts:a.hosts.size})), 'apps').map(a => { const r = ['', 'medium', 'high'][a.rr]; return (
-      `<tr${rowAttrs(r, [...a.issues.values()], a.App, isSel([...a.pids], a.App) ? 'sel' : '')}${selData([...a.pids], a.App, a.Path)}><td>${riskPill(r)}</td><td><a class="link app" data-app="${esc(a.App)}" data-ai="${esc(a.App)}" data-svc="${esc([...a.svc].join(', '))}">${esc(a.label)}</a>${isFwBlocked(d, a.Path) ? '<span class="pill blk">Blocked by you</span>' : ''}<span class="small" title="${esc(a.Path)}">${esc(a.Path)}</span></td>
+      `<tr${rowAttrs(r, [...a.issues.values()], a.App, [a.closed ? 'closed' : '', isSel([...a.pids], a.App) ? 'sel' : ''].join(' ').trim())}${selData([...a.pids], a.App, a.Path)}><td>${riskPill(r)}</td><td><a class="link app" data-app="${esc(a.App)}" data-ai="${esc(a.App)}" data-svc="${esc([...a.svc].join(', '))}">${esc(a.label)}</a>${a.closed ? `<span class="pill closedp" style="margin-left:6px">${a.closed} closed</span>` : ''}${isFwBlocked(d, a.Path) ? '<span class="pill blk">Blocked by you</span>' : ''}<span class="small" title="${esc(a.Path)}">${esc(a.Path)}</span></td>
       <td class="num">${[...a.pids].join(', ')}</td><td class="num">${a.total}</td><td class="num">${a.ext}</td><td class="num">${a.extIn}</td><td class="num">${a.extOut}</td>
       <td><span class="small hosts" title="${esc([...a.hosts].join('\n'))}">${esc([...a.hosts].slice(0,6).join(', '))}${a.hosts.size>6?' …':''}</span></td></tr>`); });
     out = table([['rr','Risk'],['App','App'],['pids','PID'],['total','Connections'],['ext','External'],['extIn','Ext. in'],['extOut','Ext. out'],['nhosts','Remote hosts']], rows, 'apps');
