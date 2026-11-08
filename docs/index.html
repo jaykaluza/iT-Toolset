@@ -39,6 +39,14 @@ input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,
 .btn:hover{background:var(--red-dark);border-color:var(--red-dark)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .muted{color:var(--muted);font-size:12px}
+/* each tool's RUN button and its ⋯ menu of extra options */
+.tool-actions{display:flex;align-items:center;gap:8px;flex:none}
+.more{position:relative}
+.more-btn{display:grid;place-items:center;width:30px;height:30px;padding:0;font:inherit;font-size:16px;line-height:1;color:var(--muted);background:none;border:1px solid var(--line);border-radius:50%;cursor:pointer}
+.more-btn:hover,.more-btn[aria-expanded="true"]{color:var(--text);border-color:var(--muted)}
+.more-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:170px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.more-item{display:block;width:100%;padding:6px 10px;font:inherit;font-size:12px;text-align:left;white-space:nowrap;color:var(--text);background:none;border:0;border-radius:6px;cursor:pointer}
+.more-item:hover,.more-item:focus-visible{background:var(--bg);outline:none}
 .tool{display:flex;align-items:center;gap:18px;padding:14px 0;border-top:1px solid var(--line)}
 .tool:first-of-type{border-top:0}
 .icon{flex:none;width:52px;height:52px;border-radius:12px;background:var(--head);display:grid;place-items:center}
@@ -75,7 +83,7 @@ a:hover{text-decoration:underline}
 .hint .pop code{color:inherit;background:rgba(255,255,255,.14);border-color:transparent;word-break:normal;overflow-wrap:anywhere}
 .hint .pop b{color:#fff}
 @media (max-width:800px){.hint{position:static}.hint .pop{left:8px;right:8px;width:auto;top:auto}}
-@media (max-width:560px){.tool{flex-wrap:wrap}.run{width:100%}}
+@media (max-width:560px){.tool{flex-wrap:wrap}.tool-actions{width:100%}.run{flex:1}}
 </style>
 </head>
 <body>
@@ -112,9 +120,16 @@ a:hover{text-decoration:underline}
       <div class="info">
         <h3>My Connections</h3>
         <div class="muted">See every connection your PC makes, spot risky apps, and end or block them.</div>
-        <div class="muted"><a href="#" id="setupLink">First time on this PC? Set it up</a> · <a href="#" id="removeLink">Remove the RUN link</a></div>
       </div>
-      <button class="run" id="run">RUN</button>
+      <div class="tool-actions">
+        <button class="run" id="run">RUN</button>
+        <div class="more">
+          <button class="more-btn" aria-label="More options for My Connections" aria-haspopup="true" aria-expanded="false" title="More options">⋯</button>
+          <div class="more-menu hidden">
+            <button class="more-item" id="removeLink">Remove the RUN link</button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </main>
@@ -216,7 +231,6 @@ $('#launchSetup').onclick = () => { setup.set(false); showSetup(); };
 $('#launchMsg').addEventListener('click', e => { if (e.target.id === 'launchSetupLink') { e.preventDefault(); $('#launchSetup').click(); } });
 $('#launchRetry').onclick = () => startApp();
 
-$('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
 
 // ---- Is the app running on this PC? The app answers this page (and only this site) on localhost,
 // so RUN can turn into STOP. Browsers may ask once to allow the page to reach apps on this device.
@@ -275,6 +289,16 @@ $('#run').onclick = () => {
   startApp();
   watchApp();
 };
+
+// each tool's ⋯ menu: opens and closes on its button, closes on any other click or Esc
+const closeMenus = () => document.querySelectorAll('.more-menu').forEach(m => { m.classList.add('hidden'); m.previousElementSibling.setAttribute('aria-expanded', 'false'); });
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.more-btn');
+  const opening = btn && btn.nextElementSibling.classList.contains('hidden');
+  closeMenus();
+  if (opening) { btn.nextElementSibling.classList.remove('hidden'); btn.setAttribute('aria-expanded', 'true'); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
 
 // Remove the RUN link: asks MyConnections.exe (via its own link) to unregister itself on this PC
 $('#removeLink').onclick = e => {
