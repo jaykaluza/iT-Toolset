@@ -42,14 +42,14 @@ from concurrent.futures import ThreadPoolExecutor
 if sys.platform != 'win32':
     sys.exit('This app only runs on Windows.')
 
-APP_NAME = "What's My PC Connecting To?"
-EXE_NAME = 'WhatsMyPCConnectingTo.exe'   # the packaged app's file name
-APP_VERSION = '1.2'
+APP_NAME = "My Connections"
+EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
+APP_VERSION = '1.3'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
-FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged WhatsMyPCConnectingTo.exe
+FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)                # where dashboard.html is
-APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'MyNetworkMonitor')   # logs when run as the app
+APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'MyConnections')   # logs when run as the app
 
 # ---------------------------------------------------------------- Windows API
 
@@ -478,21 +478,21 @@ ConvertTo-Json -InputObject @{ ok = $true; setting = [string]@($row.PSObject.Pro
 '''
 PROTOCOLS = {'1': 'ICMP', '6': 'TCP', '17': 'UDP', '58': 'ICMPv6'}
 
-# Apps blocked from the dashboard: Windows Firewall rules in their own "WhatsMyPCConnectingTo" group, so only
+# Apps blocked from the dashboard: Windows Firewall rules in their own "MyConnections" group, so only
 # this app's rules are ever listed or removed. Program paths come in via environment variables.
-# Rules made before the rename are in the old "NetMonitor" group: they are still read and removed, and
+# Rules made before the renames are in the old "NetMonitor" or "WhatsMyPCConnectingTo" groups: they are still read and removed, and
 # renamed to the new name and group whenever the list is read with administrator rights.
-FW_GROUP = 'WhatsMyPCConnectingTo'
+FW_GROUP = 'MyConnections'
 FW_LIST_PS = r'''
-foreach ($r in @(Get-NetFirewallRule -Group 'NetMonitor' -ErrorAction SilentlyContinue)) {
+foreach ($r in @(Get-NetFirewallRule -Group 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue)) {
   try {
-    $r.Group = 'WhatsMyPCConnectingTo'
-    $r.DisplayName = ([string]$r.DisplayName) -replace '^NetMonitor block', 'WhatsMyPCConnectingTo block'
-    $r.Description = ([string]$r.Description) -replace 'My Windows Network/Internet Connection Monitor', 'What''s My PC Connecting To?'
+    $r.Group = 'MyConnections'
+    $r.DisplayName = ([string]$r.DisplayName) -replace '^(NetMonitor|MyConnections) block', 'MyConnections block'
+    $r.Description = ([string]$r.Description) -replace 'My Windows Network/Internet Connection Monitor|What''s My PC Connecting To\?', 'My Connections'
     Set-NetFirewallRule -InputObject $r -ErrorAction Stop
   } catch { }
 }
-$out = foreach ($r in @(Get-NetFirewallRule -Group 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue)) {
+$out = foreach ($r in @(Get-NetFirewallRule -Group 'MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue)) {
   [pscustomobject]@{ Id = [string]$r.Name; Program = [string]($r | Get-NetFirewallApplicationFilter).Program
                      Remote = @(($r | Get-NetFirewallAddressFilter).RemoteAddress) -join ','; Direction = [string]$r.Direction; Name = [string]$r.DisplayName
                      Description = [string]$r.Description }
@@ -502,7 +502,7 @@ ConvertTo-Json -InputObject @($out) -Compress
 FW_BLOCK_PS = r'''
 try {
   foreach ($dir in 'Outbound', 'Inbound') {
-    New-NetFirewallRule -DisplayName ('WhatsMyPCConnectingTo block: {0} ({1})' -f $env:NM_NAME, $dir.ToLower()) -Group 'WhatsMyPCConnectingTo' `
+    New-NetFirewallRule -DisplayName ('MyConnections block: {0} ({1})' -f $env:NM_NAME, $dir.ToLower()) -Group 'MyConnections' `
       -Direction $dir -Action Block -Program $env:NM_PATH -Profile Any -ErrorAction Stop `
       -Description 'Created by What''s My PC Connecting To? (Block app). Use Unblock in its Blocked tab to remove.' | Out-Null
   }
@@ -511,7 +511,7 @@ try {
 '''
 FW_UNBLOCK_PS = r'''
 try {
-  $rules = @(Get-NetFirewallRule -Group 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue |
+  $rules = @(Get-NetFirewallRule -Group 'MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue |
              Where-Object { ($_ | Get-NetFirewallApplicationFilter).Program -eq $env:NM_PATH })
   $names = @($rules | ForEach-Object { [string]$_.DisplayName })
   if ($rules.Count) { $rules | Remove-NetFirewallRule -ErrorAction Stop }
@@ -522,7 +522,7 @@ try {
 FW_BLOCK_IP_PS = r'''
 try {
   foreach ($dir in 'Outbound', 'Inbound') {
-    New-NetFirewallRule -DisplayName ('WhatsMyPCConnectingTo block address: {0} ({1})' -f $env:NM_ADDR, $dir.ToLower()) -Group 'WhatsMyPCConnectingTo' `
+    New-NetFirewallRule -DisplayName ('MyConnections block address: {0} ({1})' -f $env:NM_ADDR, $dir.ToLower()) -Group 'MyConnections' `
       -Direction $dir -Action Block -RemoteAddress $env:NM_ADDR -Profile Any -ErrorAction Stop `
       -Description $env:NM_DESC | Out-Null
   }
@@ -534,7 +534,7 @@ FW_REMOVE_PS = r'''
 try {
   $ids = $env:NM_IDS | ConvertFrom-Json
   $ids = @($ids)
-  $rules = @(Get-NetFirewallRule -Group 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.Name })
+  $rules = @(Get-NetFirewallRule -Group 'MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor' -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.Name })
   $names = @($rules | ForEach-Object { [string]$_.DisplayName })
   if ($rules.Count) { $rules | Remove-NetFirewallRule -ErrorAction Stop }
   ConvertTo-Json -InputObject @{ ok = $true; removed = $names } -Compress
@@ -682,10 +682,10 @@ def net_label(net):
 
 
 # Block site: Windows' hosts file sends the site's names to 0.0.0.0, so Windows and browsers can't find it.
-# Only lines this app added (marked with HOSTS_MARK, or OLD_HOSTS_MARK from before the rename) are ever read back or removed.
+# Only lines this app added (marked with one of HOSTS_MARKS) are ever read back or removed.
 HOSTS_FILE = os.path.join(WINDIR, 'System32', 'drivers', 'etc', 'hosts')
-HOSTS_MARK = '# WhatsMyPCConnectingTo block: '
-OLD_HOSTS_MARK = '# NetMonitor block: '   # lines added before the rename: still read and removed
+HOSTS_MARK = '# MyConnections block: '
+HOSTS_MARKS = (HOSTS_MARK, '# WhatsMyPCConnectingTo block: ', '# NetMonitor block: ')   # lines added before the renames are still read and removed
 SITE_RE = re.compile(r'^(?=.{3,253}$)(?:[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$')
 # Windows itself needs these to sign in, update and check the connection
 PROTECTED_SITES = ('localhost', 'local', 'microsoft.com', 'windows.com', 'windowsupdate.com', 'microsoftonline.com',
@@ -745,7 +745,7 @@ def hosts_sites():
     except OSError:
         return sites
     for line in text.splitlines():
-        mark = HOSTS_MARK if HOSTS_MARK in line else OLD_HOSTS_MARK if OLD_HOSTS_MARK in line else ''
+        mark = next((m for m in HOSTS_MARKS if m in line), '')
         if mark:
             site = line.split(mark, 1)[1].strip()
             parts = line.split('#', 1)[0].split()
@@ -1133,8 +1133,8 @@ class Monitor:
             return {'ok': False, 'message': f"Windows Firewall didn't accept the block for {name}. {row.get('error', '')}".strip()}
         self.fw_changes += 1
         self.refresh_fw()
-        msg = (f"Blocked {name} with Windows Firewall rules 'WhatsMyPCConnectingTo block: {name} (outbound)' and "
-               f"'WhatsMyPCConnectingTo block: {name} (inbound)': it can't connect in or out.")
+        msg = (f"Blocked {name} with Windows Firewall rules 'MyConnections block: {name} (outbound)' and "
+               f"'MyConnections block: {name} (inbound)': it can't connect in or out.")
         self.log_action('BLOCKED', [pid], name, path, msg)
         # close it too, so connections it already had open end now rather than when it next reconnects
         closed = self.end_program(pid, name)
@@ -1213,7 +1213,7 @@ class Monitor:
                 pass
         # Windows Firewall refuses descriptions containing '|', so the fields are separated with ';'
         clean = lambda v: re.sub(r'[|;\r\n]', ' ', str(v)).strip()[:120]
-        desc = (f"Created by What's My PC Connecting To? (Block address). Blocked on {dt.datetime.now():%Y-%m-%d %H:%M}; "
+        desc = (f"Created by My Connections (Block address). Blocked on {dt.datetime.now():%Y-%m-%d %H:%M}; "
                 f'App: {clean(app)}; Name: {clean(host)}; Use Unblock in its Blocked tab to remove.')
         row = next(iter(run_powershell(FW_BLOCK_IP_PS, {'NM_ADDR': label, 'NM_DESC': desc})), {})
         if not row.get('ok'):
@@ -1221,8 +1221,8 @@ class Monitor:
         closed = close_tcp_to([net])
         self.fw_changes += 1
         self.refresh_fw()
-        msg = (f"Blocked {label} with Windows Firewall rules 'WhatsMyPCConnectingTo block address: {label} (outbound)' and "
-               f"'WhatsMyPCConnectingTo block address: {label} (inbound)': nothing on this PC can connect to it, or be reached from it.")
+        msg = (f"Blocked {label} with Windows Firewall rules 'MyConnections block address: {label} (outbound)' and "
+               f"'MyConnections block address: {label} (inbound)': nothing on this PC can connect to it, or be reached from it.")
         if closed:
             msg += f" Closed {closed} open connection{'s' if closed != 1 else ''} to it."
         what = ' · '.join(x for x in (host, app and f'used by {app}') if x)
@@ -1309,7 +1309,7 @@ class Monitor:
             return {'ok': False, 'message': 'That site is not in the list of sites you blocked.'}
         try:
             lines = read_hosts().splitlines(keepends=True)
-            kept = [ln for ln in lines if not any(m in ln and ln.split(m, 1)[1].strip() == site for m in (HOSTS_MARK, OLD_HOSTS_MARK))]
+            kept = [ln for ln in lines if not any(m in ln and ln.split(m, 1)[1].strip() == site for m in HOSTS_MARKS)]
             write_hosts(''.join(kept))
         except OSError as e:
             return {'ok': False, 'message': f"Couldn't change Windows' hosts file ({HOSTS_FILE}): {e.strerror or e}."}
@@ -1343,7 +1343,7 @@ class Monitor:
                 continue
             blocks = ip in ('0.0.0.0', '127.0.0.1', '::', '::1')
             for n in names:
-                hosts.append({'Name': n, 'Address': ip, 'Blocks': blocks, 'Ours': HOSTS_MARK in line or OLD_HOSTS_MARK in line})
+                hosts.append({'Name': n, 'Address': ip, 'Blocks': blocks, 'Ours': any(m in line for m in HOSTS_MARKS)})
         return {'ok': True, 'rules': rules, 'hosts': hosts}
 
     def browser_sites(self):
@@ -1729,14 +1729,14 @@ class Monitor:
 # token that is embedded in the page, so other websites can't read the data or end processes.
 
 CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'"
-# The IT Toolset website may ask "is the app running?" (/status) and stop it (/site-stop), so its RUN
+# The Nesiam.com website may ask "is the app running?" (/status) and stop it (/site-stop), so its RUN
 # button can switch to STOP. Browsers only let these origins read the answer or send the stop.
-SITE_ORIGINS = ('https://jaykaluza.github.io',)
+SITE_ORIGINS = ('https://nesiam.com', 'https://www.nesiam.com', 'https://jaykaluza.github.io')
 
 
 def make_handler(monitor, page_bytes, token, port):
     class Handler(http.server.BaseHTTPRequestHandler):
-        server_version = 'WhatsMyPCConnectingTo'
+        server_version = 'MyConnections'
         sys_version = ''
 
         def log_message(self, *args):
@@ -1758,7 +1758,7 @@ def make_handler(monitor, page_bytes, token, port):
             self.send(status, 'application/json; charset=utf-8', json.dumps(obj).encode('utf-8'), extra)
 
         def site_origin(self):
-            """The IT Toolset website's origin if this request comes from it, else None."""
+            """The Nesiam.com website's origin if this request comes from it, else None."""
             origin = self.headers.get('Origin')
             return origin if origin in SITE_ORIGINS else None
 
@@ -1790,11 +1790,11 @@ def make_handler(monitor, page_bytes, token, port):
             if self.path == '/':
                 return self.send(200, 'text/html; charset=utf-8', page_bytes)
             if self.path == '/status':
-                # only "it's running" and the version; readable by the IT Toolset website alone
+                # only "it's running" and the version; readable by the Nesiam.com website alone
                 origin = self.site_origin()
                 if not origin:
                     return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
-                return self.send_json(200, {'app': 'WhatsMyPCConnectingTo', 'version': APP_VERSION, 'stopping': monitor.stopping},
+                return self.send_json(200, {'app': 'MyConnections', 'version': APP_VERSION, 'stopping': monitor.stopping},
                                       self.site_headers(origin))
             if not self.token_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Not allowed. Reload the dashboard.'})
@@ -1807,7 +1807,7 @@ def make_handler(monitor, page_bytes, token, port):
 
         def do_POST(self):
             if self.path == '/site-stop':
-                # the website's STOP button: only from the IT Toolset site, and only stopping this app itself
+                # the website's STOP button: only from the Nesiam.com site, and only stopping this app itself
                 origin = self.site_origin()
                 if not self.host_ok() or not origin:
                     return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
@@ -1896,14 +1896,14 @@ _instance_mutex = None
 def another_copy_running():
     """True if the app is already running as the app (one copy per Windows session)."""
     global _instance_mutex
-    _instance_mutex = kernel32.CreateMutexW(None, False, 'Local\\MyWindowsNetworkMonitor')
+    _instance_mutex = kernel32.CreateMutexW(None, False, 'Local\\MyConnections')
     return ctypes.get_last_error() == ERROR_ALREADY_EXISTS
 
 
-# ---- whatsmypcconnectingto:// link, so a web page's RUN button can start the app (per-user, no admin needed)
-LINK_SCHEME = 'whatsmypcconnectingto'
-OLD_LINK_SCHEME = 'netmonitor'   # the link versions before the rename set up; removed along with the new one
-LINK_PATTERN = re.compile(r'^(whatsmypcconnectingto|netmonitor):(//)?(run|unregister)?/?$', re.I)   # start the app, or remove the link
+# ---- myconnections:// link, so a web page's RUN button can start the app (per-user, no admin needed)
+LINK_SCHEME = 'myconnections'
+OLD_LINK_SCHEMES = ('whatsmypcconnectingto', 'netmonitor')   # the links versions before the renames set up; removed along with the new one
+LINK_PATTERN = re.compile(r'^(myconnections|whatsmypcconnectingto|netmonitor):(//)?(run|unregister)?/?$', re.I)   # start the app, or remove the link
 
 
 def _link_key(scheme):
@@ -1923,7 +1923,7 @@ def link_registered(exe, scheme=LINK_SCHEME):
 
 
 def register_link(exe, scheme=LINK_SCHEME):
-    """Make whatsmypcconnectingto:// links open this exe, for the signed-in Windows user only."""
+    """Make myconnections:// links open this exe, for the signed-in Windows user only."""
     base = _link_key(scheme)
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base) as k:
         winreg.SetValueEx(k, '', 0, winreg.REG_SZ, f'URL:{APP_NAME}')
@@ -1966,7 +1966,7 @@ def own_version():
 
 
 def link_target(scheme=LINK_SCHEME):
-    """The program file the whatsmypcconnectingto:// link currently opens ('' if none)."""
+    """The program file the myconnections:// link currently opens ('' if none)."""
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _link_key(scheme) + r'\shell\open\command') as k:
             command = winreg.QueryValueEx(k, '')[0]
@@ -2015,7 +2015,7 @@ MB_YESNO, MB_ICONINFORMATION, IDYES = 0x4, 0x40, 6
 def ask_start_after_setup():
     """After the first run sets up the RUN link: start now (Yes) or go back to the website (No)."""
     return user32.MessageBoxW(None, 'The app is set up on this PC.\n\n'
-                                    'The RUN button on the IT Toolset website can now start it.\n\n'
+                                    'The RUN button on the Nesiam.com website can now start it.\n\n'
                                     'Start it now?', APP_NAME, MB_YESNO | MB_ICONINFORMATION) == IDYES
 
 
@@ -2035,9 +2035,9 @@ def main():
                     help='app mode (default for the packaged .exe): one copy only, logs in %%LOCALAPPDATA%%, '
                          'stops a few minutes after the dashboard is closed')
     ap.add_argument('--idle-exit', type=int, default=3, help='app mode: minutes without an open dashboard before stopping')
-    ap.add_argument('--register-link', action='store_true', help='let whatsmypcconnectingto:// links (a website RUN button) start this app')
-    ap.add_argument('--unregister-link', action='store_true', help='remove the whatsmypcconnectingto:// link')
-    ap.add_argument('link', nargs='?', help=argparse.SUPPRESS)   # whatsmypcconnectingto://run, passed by Windows
+    ap.add_argument('--register-link', action='store_true', help='let myconnections:// links (a website RUN button) start this app')
+    ap.add_argument('--unregister-link', action='store_true', help='remove the myconnections:// link')
+    ap.add_argument('link', nargs='?', help=argparse.SUPPRESS)   # myconnections://run, passed by Windows
     args = ap.parse_args()
 
     exe = sys.executable if FROZEN else os.path.abspath(__file__)
@@ -2047,15 +2047,16 @@ def main():
         args.unregister_link = True   # a website's "Remove the RUN link" button
     if args.unregister_link:
         unregister_link()
-        unregister_link(OLD_LINK_SCHEME)   # and the old netmonitor:// link from before the rename
+        for old in OLD_LINK_SCHEMES:   # and the links from before the renames
+            unregister_link(old)
         if FROZEN:
             user32.MessageBoxW(None, 'The RUN button link was removed. Websites can no longer start this app on this PC.\n\n'
                                      f'Running {EXE_NAME} again sets it up again.', APP_NAME, 0x40)
-        print('whatsmypcconnectingto:// link removed.')
+        print('myconnections:// link removed.')
         return
     if args.register_link:
         if not FROZEN:
-            sys.exit(f'The whatsmypcconnectingto:// link can only be set up from {EXE_NAME}.')
+            sys.exit(f'The myconnections:// link can only be set up from {EXE_NAME}.')
         register_link(exe)
         user32.MessageBoxW(None, 'Done. A RUN button on a web page can now start this app on this PC.', APP_NAME, 0x40)
         return
@@ -2070,7 +2071,7 @@ def main():
             if not args.link and not ask_start_after_setup():
                 return
     if not args.outdir:
-        args.outdir = os.path.join(APP_DIR if args.app else HERE, 'WhatsMyPCConnectingToOutput')
+        args.outdir = os.path.join(APP_DIR if args.app else HERE, 'MyConnectionsOutput')
     url_file = os.path.join(APP_DIR, 'running.url')
 
     if args.app and not args.once and another_copy_running():

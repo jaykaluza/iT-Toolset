@@ -1,4 +1,4 @@
-# IT toolset
+# Nesiam.com tools
 
 Handy tools that every admin/user should have access to. Small and dependency-free: they use only what ships with Windows (the Python version needs Python itself, nothing more).
 
@@ -19,7 +19,7 @@ Each tool has its own version numbers and releases on the [Releases](../../relea
 | --- | --- |
 | Connection monitor (PowerShell) | `ps-v1.2`, `ps-v1.3`, … (earlier releases: `v1.0`, `v1.1`) |
 | Connection monitor (Python) | `py-v1.0`, `py-v1.1` |
-| Connection monitor, web version: What's My PC Connecting To? (WhatsMyPCConnectingTo.exe with the website RUN button; NetMonitor.exe up to `web-v1.1`) | `web-v1.0`, `web-v1.1`, `web-v1.2`, … |
+| Connection monitor, web version: My Connections (MyConnections.exe with the website RUN button; WhatsMyPCConnectingTo.exe in `web-v1.2`, NetMonitor.exe before that) | `web-v1.0`, `web-v1.1`, `web-v1.2`, `web-v1.3`, … |
 
 A release's notes give the master fingerprint for that tool.
 

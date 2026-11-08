@@ -1,4 +1,4 @@
-# What's My PC Connecting To?: quick guide
+# My Connections: quick guide
 
 A small app that shows, live in your browser, every network connection your Windows PC is making, names the app behind each one, flags anything risky, and lets you stop or block apps.
 
@@ -8,16 +8,16 @@ A small app that shows, live in your browser, every network connection your Wind
 
 ## 1. Get it and start it
 
-1. Download **WhatsMyPCConnectingTo.exe** from the latest release (`web-v…`) on the [Releases page](https://github.com/jaykaluza/iT-Toolset/releases/latest), or from the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/).
-2. **Check it's genuine:** in PowerShell, in the folder with the file, run `Get-FileHash .\WhatsMyPCConnectingTo.exe -Algorithm SHA256` and compare the result with the fingerprint in the release notes. They must match exactly.
-3. Put it in a folder of its own (for example `Documents\WhatsMyPCConnectingTo`), then **double-click it**.
+1. Download **MyConnections.exe** from the latest release (`web-v…`) on the [Releases page](https://github.com/jaykaluza/iT-Toolset/releases/latest), or from the [Nesiam.com page](https://jaykaluza.github.io/iT-Toolset/).
+2. **Check it's genuine:** in PowerShell, in the folder with the file, run `Get-FileHash .\MyConnections.exe -Algorithm SHA256` and compare the result with the fingerprint in the release notes. They must match exactly.
+3. Put it in a folder of its own (for example `Documents\MyConnections`), then **double-click it**.
 4. Windows may say **"Windows protected your PC"** (the app isn't digitally signed): click **More info → Run anyway**.
 5. Click **Yes** when Windows asks to allow it to make changes. It needs administrator rights to see every app and to end or block programs.
 6. The dashboard opens in your browser at `http://localhost:8765`. No install, no Python needed.
 
 Double-clicking it again while it's running just reopens the dashboard.
 
-**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [IT Toolset page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove it, use **"To remove the RUN button link from this PC later, click here"** in the page's setup steps, or run `WhatsMyPCConnectingTo.exe --unregister-link`. Save WhatsMyPCConnectingTo.exe in a fixed folder first: if you open it straight from the browser's download bar, it runs from a temporary folder and RUN stops working once the browser deletes it.
+**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [Nesiam.com page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove it, use **"To remove the RUN button link from this PC later, click here"** in the page's setup steps, or run `MyConnections.exe --unregister-link`. Save MyConnections.exe in a fixed folder first: if you open it straight from the browser's download bar, it runs from a temporary folder and RUN stops working once the browser deletes it.
 
 ---
 
@@ -62,7 +62,7 @@ Click a row to select its program (all its rows are highlighted; click again or 
 ![Blocked tab (example data)](docs/blocked.png)
 
 - **Block an address or site:** type an IP address, a range or a site and click **Block IP/URL**. Addresses are blocked in Windows Firewall, sites in Windows' hosts file.
-- **Apps you blocked:** each blocked app, its location, the firewall rules created for it (`WhatsMyPCConnectingTo block: <app> (outbound/inbound)`), and an **Unblock** button. Blocked apps also get a red **Blocked by you** tag in the other tabs.
+- **Apps you blocked:** each blocked app, its location, the firewall rules created for it (`MyConnections block: <app> (outbound/inbound)`), and an **Unblock** button. Blocked apps also get a red **Blocked by you** tag in the other tabs.
 - **Addresses you blocked** and **Sites you blocked:** each with **Unblock** and check links (who owns it, blacklists, reputation and more).
 - **Show all blocks:** every block rule in Windows Firewall and every hosts-file entry on the PC, including ones made by other programs.
 - **Attempts to connect:** each time a blocked app tries to connect, with the address, how many times, and the **Firewall rule** that stopped it.
@@ -71,27 +71,27 @@ Seeing attempts needs Windows to record blocked connections, which is off by def
 
 ![Turn on recording](docs/recording.png)
 
-The rules live in their own **WhatsMyPCConnectingTo** group in Windows Defender Firewall. Unblock only ever removes the app's own rules. Rules made by earlier versions (**NetMonitor** group) still work and are renamed the next time the app runs as Administrator.
+The rules live in their own **MyConnections** group in Windows Defender Firewall. Unblock only ever removes the app's own rules. Rules made by earlier versions (under the app's older names) still work and are renamed the next time the app runs as Administrator.
 
 ---
 
 ## 5. Activity log
 
-Every **Block app**, **Block IP/URL** and **Unblock** is written to **`activity-log.txt`**, stored **in the same folder as WhatsMyPCConnectingTo.exe**.
+Every **Block app**, **Block IP/URL** and **Unblock** is written to **`activity-log.txt`**, stored **in the same folder as MyConnections.exe**.
 
 - Open it with the **Activity log** button at the top of the dashboard (it opens in your normal text editor), or open the file directly.
 - It keeps the **last 10 days**; older lines are removed automatically.
 - Each line shows the time, action, app, process IDs, file location, the firewall rules added or removed, and the result:
 
 ```
-2026-10-29 18:02:41  BLOCKED    iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Blocked iCloudHome with Windows Firewall rules 'WhatsMyPCConnectingTo block: iCloudHome (outbound)' and 'WhatsMyPCConnectingTo block: iCloudHome (inbound)': it can't connect in or out.
+2026-10-29 18:02:41  BLOCKED    iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Blocked iCloudHome with Windows Firewall rules 'MyConnections block: iCloudHome (outbound)' and 'MyConnections block: iCloudHome (inbound)': it can't connect in or out.
 2026-10-29 18:02:46  ENDED      iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Closed iCloudHome.
 2026-10-29 18:05:12  UNBLOCKED  iCloudHome  C:\...\iCloudHome.exe  Unblocked iCloudHome: removed Windows Firewall rules ...
 ```
 
-If the app's folder can't be written to, the log goes to `%LOCALAPPDATA%\MyNetworkMonitor\WhatsMyPCConnectingToOutput` instead.
+If the app's folder can't be written to, the log goes to `%LOCALAPPDATA%\MyConnections\MyConnectionsOutput` instead.
 
-**Other files** (all in `%LOCALAPPDATA%\MyNetworkMonitor\WhatsMyPCConnectingToOutput`; paste that into File Explorer's address bar):
+**Other files** (all in `%LOCALAPPDATA%\MyConnections\MyConnectionsOutput`; paste that into File Explorer's address bar):
 - `connections-YYYYMMDD.csv`: a daily log of every new connection.
 - `unblocked.json`: when apps were unblocked (so old blocked attempts aren't listed again).
 
@@ -110,7 +110,7 @@ Everything stays on your PC; nothing is sent anywhere.
 
 | What you see | What to do |
 | --- | --- |
-| Page stuck on "Starting up…" | Close the tab and double-click WhatsMyPCConnectingTo.exe again (it opens a fresh tab). |
+| Page stuck on "Starting up…" | Close the tab and double-click MyConnections.exe again (it opens a fresh tab). |
 | "Windows protected your PC" | Normal for an unsigned app: **More info → Run anyway**, after checking the fingerprint. |
 | Antivirus warns about the app | Packaged apps like this are sometimes flagged by mistake. Check the fingerprint matches the release notes, then scan it: right-click → **Scan with Microsoft Defender**. |
 | Blocked tab says recording is off | Click **Turn on recording**. |

@@ -4,16 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="only light">
-<title>IT Toolset</title>
+<title>Nesiam.com</title>
 <style>
-/* same look as the What's My PC Connecting To? dashboard: light grey page, white cards, black header bar */
+/* same look as the My Connections dashboard: light grey page, white cards, black header bar */
 :root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
   --red:#8c1515;--red-dark:#820000;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--warn:#a05a00;--warn-bg:rgba(255,204,0,.16)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 header{background:var(--head);color:var(--head-text);padding:10px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 header h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;
-  color:#fff;background-color:#fff;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 6px rgba(255,255,255,.35))}   /* bright white with a soft glow, plus yellow, green, blue and red specks added by speckle() */
+  color:#fff}
+/* the name's three 3D balls: the dot of the i (blue), the dot before com (green), behind the right leg of the n (red) */
+header h1 .lt{display:inline-block;position:relative}
+header h1 .gap{color:transparent;margin:0 .02em}
+header h1 i{position:absolute;left:50%;width:.26em;height:.26em;margin-left:-.13em;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.6)}
+header h1 .blue{top:.16em;background:radial-gradient(circle at 32% 28%,#fff 0,#6fc3ff 10%,#0090ff 42%,#0060ff 100%)}
+header h1 .green{top:.77em;background:radial-gradient(circle at 32% 28%,#fff 0,#7dffa8 10%,#00ff55 42%,#00d13f 100%)}
+header h1{isolation:isolate}
+    header h1 .red{top:.75em;left:84%;z-index:-1;background:radial-gradient(circle at 32% 28%,#fff 0,#ff8a80 10%,#ff1400 42%,#f00000 100%)}
 header .who{margin-left:auto;font-size:13px;color:var(--head-muted)}
 header button{font:inherit;font-size:12px;font-weight:500;color:var(--head-text);background:transparent;border:1px solid var(--head-muted);border-radius:980px;padding:2px 12px;cursor:pointer}
 header button:hover{border-color:var(--head-text)}
@@ -50,7 +58,7 @@ a:hover{text-decoration:underline}
 </head>
 <body>
 <header>
-  <h1>it_toolset</h1>
+  <h1 aria-label="nesiam.com"><span aria-hidden="true"><span class="lt">n<i class="red"></i></span>es<span class="lt">ı<i class="blue"></i></span>am<span class="lt gap">.<i class="green"></i></span>com</span></h1>
   <span class="who hidden" id="who"></span>
   <button class="hidden" id="signout">Sign out</button>
 </header>
@@ -80,7 +88,7 @@ a:hover{text-decoration:underline}
           <path d="M7 14.5h3.5l2-4.5 3.2 8.5 2.6-6 1.7 2h5"/></svg>
       </div>
       <div class="info">
-        <h3>What's My PC Connecting To?</h3>
+        <h3>My Connections</h3>
         <div class="muted">See every connection your PC makes, spot risky apps, and end or block them.</div>
         <div class="muted"><a href="#" id="setupLink">First time on this PC? Set it up</a></div>
         <div class="muted hidden" id="runStatus">Starting the app… If the Microsoft Store opened instead, the app isn't set up on this PC yet: close the Store and <a href="#" id="notStarted">click here to show the setup steps</a>.</div>
@@ -90,12 +98,12 @@ a:hover{text-decoration:underline}
     <div class="help" id="help">
       <b>Set up on this PC (one time):</b>
       <ol>
-        <li>Download <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/WhatsMyPCConnectingTo.exe">WhatsMyPCConnectingTo.exe</a> and <b>save it</b> in a folder of its own (for example <code>Documents\WhatsMyPCConnectingTo</code>). Don't open it straight from your browser's download bar: that runs it from a temporary folder the browser deletes later, and RUN would stop working.</li>
-        <li>Check it's genuine: compare <code>Get-FileHash .\WhatsMyPCConnectingTo.exe</code> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</li>
+        <li>Download <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/MyConnections.exe">MyConnections.exe</a> and <b>save it</b> in a folder of its own (for example <code>Documents\MyConnections</code>). Don't open it straight from your browser's download bar: that runs it from a temporary folder the browser deletes later, and RUN would stop working.</li>
+        <li>Check it's genuine: compare <code>Get-FileHash .\MyConnections.exe</code> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</li>
         <li>Double-click it once and click <b>Yes</b> on the Windows prompt. When the app says it's set up, click <b>No</b> (don't start it yet) and come back here.</li>
         <li>Then click the button below. Your browser will ask to open the app: click <b>Open</b> (tick "always allow" to skip this next time). From then on, <b>RUN</b> starts it directly.</li>
       </ol>
-      <p><button class="btn" id="setupDone">I've run WhatsMyPCConnectingTo.exe, start it now</button></p>
+      <p><button class="btn" id="setupDone">I've run MyConnections.exe, start it now</button></p>
       <p class="muted" style="margin:8px 0 0"><a href="#" id="removeLink">To remove the RUN button link from this PC later, click here.</a></p>
     </div>
   </section>
@@ -126,14 +134,14 @@ $('#signout').onclick = () => { store.set(''); show(''); };
 // Browsers won't tell a page which apps are installed, so this browser remembers whether
 // the app has been set up on this PC (set by "Done, start it now", cleared by the remove link).
 const setup = {
-  done: () => { try { return localStorage.getItem('whatsmypcconnectingto-setup') === '1'; } catch (e) { return false; } },
-  set: on => { try { on ? localStorage.setItem('whatsmypcconnectingto-setup', '1') : localStorage.removeItem('whatsmypcconnectingto-setup'); } catch (e) {} }
+  done: () => { try { return localStorage.getItem('myconnections-setup') === '1'; } catch (e) { return false; } },
+  set: on => { try { on ? localStorage.setItem('myconnections-setup', '1') : localStorage.removeItem('myconnections-setup'); } catch (e) {} }
 };
 const showSetup = () => { $('#runStatus').classList.add('hidden'); $('#help').classList.add('show'); $('#help').scrollIntoView({behavior: 'smooth', block: 'nearest'}); };
 const startApp = () => {
   $('#help').classList.remove('show');
   $('#runStatus').classList.remove('hidden');
-  location.href = 'whatsmypcconnectingto://run';   // starts WhatsMyPCConnectingTo.exe through the link it set up
+  location.href = 'myconnections://run';   // starts MyConnections.exe through the link it set up
 };
 
 $('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
@@ -147,7 +155,7 @@ async function findApp() {
   for (const p of PORTS) {
     try {
       const r = await fetch(`http://localhost:${p}/status`, {cache: 'no-store', signal: AbortSignal.timeout(1500)});
-      if (r.ok) { const s = await r.json(); if ((s.app === 'WhatsMyPCConnectingTo' || s.app === 'NetMonitor') && !s.stopping) return p; }
+      if (r.ok) { const s = await r.json(); if (['MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor'].includes(s.app) && !s.stopping) return p; }
     } catch (e) { /* not running on this port, or the browser didn't allow the check */ }
   }
   return null;
@@ -193,7 +201,7 @@ $('#run').onclick = () => {
 
 $('#setupDone').onclick = () => {
   // the page can't check this itself, so ask: starting before setup sends Windows to the Microsoft Store
-  if (!confirm('Did you double-click the downloaded WhatsMyPCConnectingTo.exe and click Yes?\n\nThat one-time step sets up the RUN button. If you haven\'t yet, click Cancel and do step 3 first.')) return;
+  if (!confirm('Did you double-click the downloaded MyConnections.exe and click Yes?\n\nThat one-time step sets up the RUN button. If you haven\'t yet, click Cancel and do step 3 first.')) return;
   setup.set(true);
   startApp();
   watchApp();
@@ -202,29 +210,17 @@ $('#setupDone').onclick = () => {
 // it was set up, but nothing started (e.g. the link was removed outside the website)
 $('#notStarted').onclick = e => { e.preventDefault(); setup.set(false); showSetup(); };
 
-// Remove the RUN link: asks WhatsMyPCConnectingTo.exe (via its own link) to unregister itself on this PC
+// Remove the RUN link: asks MyConnections.exe (via its own link) to unregister itself on this PC
 $('#removeLink').onclick = e => {
   e.preventDefault();
   if (!confirm('Remove the RUN link from this PC?\n\nYour browser will ask to open the app, then Windows asks for administrator rights. The app removes its link and confirms; it does not start the monitor.\n\nAfterwards the RUN button shows the setup steps again on this PC.')) return;
   setup.set(false);
-  location.href = 'whatsmypcconnectingto://unregister';
+  location.href = 'myconnections://unregister';
 };
 
 show(store.get());
 if (store.get() && setup.done() && isWindows) watchApp();
 $('#signinForm').addEventListener('submit', () => { if (setup.done() && isWindows) watchApp(); });
-
-// yellow, green, blue and red specks in the bright white title
-(function speckle() {
-  const h = document.querySelector('header h1'); if (!h) return;
-  const dots = [];
-  const colors = ['#ffd60a', '#30d158', '#0a84ff', '#ff3b30'];
-  for (let i = 0; i < 32; i++) {
-    const r = (1.5 + Math.random() * (i < 4 ? 4 : 2)).toFixed(1);
-    dots.push(`radial-gradient(circle at ${(Math.random() * 100).toFixed(1)}% ${(15 + Math.random() * 70).toFixed(1)}%, ${colors[i % 4]} ${r}px, transparent ${(+r + 0.6).toFixed(1)}px)`);
-  }
-  h.style.backgroundImage = dots.join(',');
-})();
 </script>
 </body>
 </html>

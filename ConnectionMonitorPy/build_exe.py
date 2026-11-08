@@ -1,9 +1,9 @@
 r"""
-Builds WhatsMyPCConnectingTo.exe: a double-click app version of NetMonitor.py.
+Builds MyConnections.exe: a double-click app version of NetMonitor.py.
 
 Needs PyInstaller on the build PC only (pip install pyinstaller); people who run the .exe need nothing.
 Run from this folder:  py build_exe.py
-Output: dist\WhatsMyPCConnectingTo.exe, plus its SHA-256 fingerprint.
+Output: dist\MyConnections.exe, plus its SHA-256 fingerprint.
 """
 
 import hashlib
@@ -77,13 +77,13 @@ def write_icon(path, sizes=(256, 64, 48, 32, 16)):
 
 # ---------------------------------------------------------------- version details shown in the file's Properties
 
-EXE = 'WhatsMyPCConnectingTo'   # the app's file name (the source stays NetMonitor.py)
+EXE = 'MyConnections'   # the app's file name (the source stays NetMonitor.py)
 
 
 def write_version_file(path, name, version):
     parts = (list(map(int, re.findall(r'\d+', version))) + [0, 0, 0, 0])[:4]
     four = '.'.join(map(str, parts))
-    strings = {'CompanyName': 'iT-Toolset', 'FileDescription': name, 'FileVersion': four,
+    strings = {'CompanyName': 'Nesiam.com', 'FileDescription': name, 'FileVersion': four,
                'InternalName': EXE, 'OriginalFilename': EXE + '.exe', 'ProductName': name,
                'ProductVersion': version, 'LegalCopyright': 'jaykaluza'}
     table = ', '.join(f'StringStruct({k!r}, {v!r})' for k, v in strings.items())

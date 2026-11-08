@@ -14,17 +14,17 @@ Pick whichever suits you:
 
 ## Easiest: the double-click app
 
-**WhatsMyPCConnectingTo.exe** ("What's My PC Connecting To?"; called NetMonitor.exe up to web-v1.1) is this Python version packaged as a single app: nothing to install, not even Python. Download it from the latest web version release (`web-v…`) on the [Releases](../../releases) page.
+**MyConnections.exe** ("My Connections", part of the Nesiam.com tools; called WhatsMyPCConnectingTo.exe in web-v1.2 and NetMonitor.exe before that) is this Python version packaged as a single app: nothing to install, not even Python. Download it from the latest web version release (`web-v…`) on the [Releases](../../releases) page.
 
-1. Check its fingerprint first (see the release notes): in PowerShell, `Get-FileHash .\WhatsMyPCConnectingTo.exe -Algorithm SHA256`.
-2. Double-click **WhatsMyPCConnectingTo.exe** and click **Yes** when Windows asks to allow it to make changes (it needs administrator rights to see every app and to end programs).
+1. Check its fingerprint first (see the release notes): in PowerShell, `Get-FileHash .\MyConnections.exe -Algorithm SHA256`.
+2. Double-click **MyConnections.exe** and click **Yes** when Windows asks to allow it to make changes (it needs administrator rights to see every app and to end programs).
 3. The dashboard opens in your browser.
 
-The app isn't digitally signed, so the first time you run it Windows may show **"Windows protected your PC"**: click **More info**, check the publisher reads *Unknown publisher* and the file name is WhatsMyPCConnectingTo.exe, then click **Run anyway**.
+The app isn't digitally signed, so the first time you run it Windows may show **"Windows protected your PC"**: click **More info**, check the publisher reads *Unknown publisher* and the file name is MyConnections.exe, then click **Run anyway**.
 
-There's no window to close: use the **Stop monitor** button on the dashboard, or just close the dashboard tab and the app stops itself after 3 minutes. Double-clicking it again while it's running simply reopens the dashboard. Logs are kept in `%LOCALAPPDATA%\MyNetworkMonitor`.
+There's no window to close: use the **Stop monitor** button on the dashboard, or just close the dashboard tab and the app stops itself after 3 minutes. Double-clicking it again while it's running simply reopens the dashboard. Logs are kept in `%LOCALAPPDATA%\MyConnections`.
 
-To build the app yourself from this folder: `py -m pip install pyinstaller`, then `py build_exe.py`. The result is `dist\WhatsMyPCConnectingTo.exe`.
+To build the app yourself from this folder: `py -m pip install pyinstaller`, then `py build_exe.py`. The result is `dist\MyConnections.exe`.
 
 ## Install Python (once)
 
@@ -73,7 +73,7 @@ Options:
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--interval` | 3 | Seconds between refreshes |
-| `--outdir` | `.\WhatsMyPCConnectingToOutput` | Where logs go |
+| `--outdir` | `.\MyConnectionsOutput` | Where logs go |
 | `--closed-retention` | 10 | Minutes closed connections stay visible |
 | `--no-browser` | off | Don't open the browser automatically |
 | `--once` | off | Take one snapshot (saved as `data.json`) and exit |
@@ -81,12 +81,12 @@ Options:
 
 ## Start it from a web page (RUN button)
 
-When WhatsMyPCConnectingTo.exe runs, it registers a `whatsmypcconnectingto://` link for the signed-in Windows user (no administrator rights needed for that part). After that, any web page with a RUN button pointing to `whatsmypcconnectingto://run` starts the app: the browser asks to open it, Windows asks for administrator rights as usual, and the dashboard opens. The link can only start the app; anything else in it is rejected.
+When MyConnections.exe runs, it registers a `myconnections://` link for the signed-in Windows user (no administrator rights needed for that part). After that, any web page with a RUN button pointing to `myconnections://run` starts the app: the browser asks to open it, Windows asks for administrator rights as usual, and the dashboard opens. The link can only start the app; anything else in it is rejected.
 
 - Try it on the [demo page](https://jaykaluza.github.io/iT-Toolset/) (proof of concept, demo sign-in only).
-- Remove the link with the **"click here"** line in the demo page's setup steps (it sends `whatsmypcconnectingto://unregister`, the only other action a link can trigger) or `WhatsMyPCConnectingTo.exe --unregister-link`; add it again by starting the app, or with `WhatsMyPCConnectingTo.exe --register-link`. Removing it also removes the older `netmonitor://` link that versions up to web-v1.1 set up.
+- Remove the link with the **"click here"** line in the demo page's setup steps (it sends `myconnections://unregister`, the only other action a link can trigger) or `MyConnections.exe --unregister-link`; add it again by starting the app, or with `MyConnections.exe --register-link`. Removing it also removes the older links that earlier versions set up.
 - The demo page remembers, per browser, whether this PC has been set up: if not, RUN shows the setup steps instead of trying to start the app.
-- **RUN becomes STOP while the app runs.** The app answers two requests from the IT Toolset site only (`https://jaykaluza.github.io`, enforced by the browser): `/status` (just "the app is running" and its version) and `/site-stop`. STOP closes the dashboard tab and ends the app. Everything else (data, blocking and unblocking) still needs the dashboard's secret key. Browsers may ask once to let the page reach apps on this device; if that's blocked, RUN still works, it just doesn't turn into STOP.
+- **RUN becomes STOP while the app runs.** The app answers two requests from the Nesiam.com site only (`https://nesiam.com`, `https://www.nesiam.com` and `https://jaykaluza.github.io`, enforced by the browser): `/status` (just "the app is running" and its version) and `/site-stop`. STOP closes the dashboard tab and ends the app. Everything else (data, blocking and unblocking) still needs the dashboard's secret key. Browsers may ask once to let the page reach apps on this device; if that's blocked, RUN still works, it just doesn't turn into STOP.
 - With several copies on one PC, the RUN link goes to the newest saved copy: a copy only takes it over if there's no link yet, the linked file is gone, the linked copy runs from a temporary download folder, or it's the same version or newer. A copy opened straight from a browser's download bar never takes it from a saved one. `--register-link` forces it.
 
 ## Blocking apps
@@ -95,7 +95,7 @@ Select a row and click **Block app** to cut a program off from the network: the 
 
 Blocked apps get a red **Blocked by you** tag and are listed under **Apps you blocked** in the Blocked tab, each with an **Unblock** button.
 
-- The rules are named `WhatsMyPCConnectingTo block: <app>` and kept in their own **WhatsMyPCConnectingTo** group in Windows Defender Firewall, so you can also see or remove them there. Unblock only ever removes the app's own rules. Rules made by earlier versions (`NetMonitor block: …`, **NetMonitor** group) still work and are renamed the next time the app runs as Administrator.
+- The rules are named `MyConnections block: <app>` and kept in their own **MyConnections** group in Windows Defender Firewall, so you can also see or remove them there. Unblock only ever removes the app's own rules. Rules made by earlier versions (named `NetMonitor block: …` or `WhatsMyPCConnectingTo block: …`) still work and are renamed the next time the app runs as Administrator.
 - Core Windows processes, Microsoft Defender and programs shared by many apps (PowerShell, Edge WebView2, dllhost and similar) can't be blocked, since that would cut off much more than one app.
 - Blocking needs administrator rights (the app has them).
 - Each blocked attempt in the Blocked tab shows the **Firewall rule** that stopped it (normally your own block rule; anything else means another rule or security product did the blocking).
@@ -104,8 +104,8 @@ Blocked apps get a red **Blocked by you** tag and are listed under **Apps you bl
 
 In the **Blocked** tab, type an IP address (`203.0.113.7`), a range (`203.0.113.0/24`) or a site (`example.com`) and click **Block IP/URL**. You can also click **Block** next to an internet address in the Connections tab, or **Block site** on a row in the Open tabs tab. You always get a confirmation prompt first.
 
-- **Addresses** are blocked with two Windows Firewall rules (`WhatsMyPCConnectingTo block address: <address>`), in the same group as app blocks. The rule's description saves the date and the app and name it was blocked from.
-- **Sites** are blocked in Windows' hosts file (lines marked `# WhatsMyPCConnectingTo block:`), so no browser or app on this PC can find them. Windows' own sign-in and update sites can't be blocked.
+- **Addresses** are blocked with two Windows Firewall rules (`MyConnections block address: <address>`), in the same group as app blocks. The rule's description saves the date and the app and name it was blocked from.
+- **Sites** are blocked in Windows' hosts file (lines marked `# MyConnections block:`), so no browser or app on this PC can find them. Windows' own sign-in and update sites can't be blocked.
 - Both are listed under **Addresses you blocked** and **Sites you blocked**, each with **Unblock** and check links: who owns it, blacklists, abuse reports, reputation and exposure for addresses; reputation, Safe Browsing, breaches and who owns it for sites. The same address links appear under each internet address in the Connections tab when you hover over a row.
 - **Show all blocks** lists every block rule in Windows Firewall and every hosts-file entry on the PC, including ones made by other programs (read only).
 
@@ -115,10 +115,10 @@ The **Open tabs** tab lists the tabs open in your browsers (Chrome, Edge, Firefo
 
 ## Activity log
 
-Every **Block app**, **Block IP/URL** and **Unblock** is written to `activity-log.txt` **next to WhatsMyPCConnectingTo.exe** (or next to NetMonitor.py when run as a script), one line each, with the time, app, process IDs, file location, the firewall rules added or removed, and the result. It keeps the last 10 days; older lines are removed automatically. The **Activity log** button at the top of the dashboard opens it in your text editor. If that folder can't be written to, the log goes to `%LOCALAPPDATA%\MyNetworkMonitor\WhatsMyPCConnectingToOutput` instead.
+Every **Block app**, **Block IP/URL** and **Unblock** is written to `activity-log.txt` **next to MyConnections.exe** (or next to NetMonitor.py when run as a script), one line each, with the time, app, process IDs, file location, the firewall rules added or removed, and the result. It keeps the last 10 days; older lines are removed automatically. The **Activity log** button at the top of the dashboard opens it in your text editor. If that folder can't be written to, the log goes to `%LOCALAPPDATA%\MyConnections\MyConnectionsOutput` instead.
 
 ```
-2026-10-29 18:02:41  BLOCKED    iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Blocked iCloudHome with Windows Firewall rules 'WhatsMyPCConnectingTo block: iCloudHome (outbound)' and ...
+2026-10-29 18:02:41  BLOCKED    iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Blocked iCloudHome with Windows Firewall rules 'MyConnections block: iCloudHome (outbound)' and ...
 2026-10-29 18:02:46  ENDED      iCloudHome (PID 10532)  C:\...\iCloudHome.exe  Closed iCloudHome.
 2026-10-29 18:05:12  UNBLOCKED  iCloudHome  C:\...\iCloudHome.exe  Unblocked iCloudHome: removed Windows Firewall rules ...
 ```

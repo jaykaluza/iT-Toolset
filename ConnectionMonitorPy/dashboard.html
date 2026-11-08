@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="only light">
-<title>What's My PC Connecting To?</title>
+<title>My Connections</title>
 <style>
 :root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--footnote:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
   --brand:#0071e3;--brand-dark:#0077ed;--brand-text:#fff;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--head-accent:#2997ff;
@@ -146,7 +146,7 @@ tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0
 </style>
 </head>
 <body>
-<header><h1>what's_my_pc_connecting_to?</h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop the monitor and close the app">Stop monitor</button></header>
+<header><h1>my_connections</h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every Block, Unblock and End process from the last 10 days">Activity log</button><button id="quit" title="Stop the monitor and close the app">Stop monitor</button></header>
 <div class="stats" id="stats"></div>
 <div class="bar">
   <div class="tabs" id="tabs">
@@ -442,7 +442,7 @@ function allBlocksSection() {
   if (!ALLB) return head + '<div class="none">Reading Windows Firewall and the hosts file…</div></div>';
   const q = S.q.trim().toLowerCase(), hit = o => !q || Object.values(o).join(' ').toLowerCase().includes(q);
   const any = v => v && v !== 'Any';
-  const madeBy = g => g === 'WhatsMyPCConnectingTo' || g === 'NetMonitor' ? '<b>This app</b>' : g ? esc(g.startsWith('@') ? 'Windows' : g) : 'Another program or you';
+  const madeBy = g => ['MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor'].includes(g) ? '<b>This app</b>' : g ? esc(g.startsWith('@') ? 'Windows' : g) : 'Another program or you';
   const rules = ALLB.rules.filter(hit), hosts = ALLB.hosts.filter(hit);
   const rulesHtml = rules.length ? '<table><thead><tr><th>Rule</th><th>Direction</th><th>What it blocks</th><th>Made by</th><th>On</th></tr></thead><tbody>' +
     rules.map(r => {
@@ -532,7 +532,7 @@ const AUDIT_OFF = 'auditpol /set /subcategory:"{0CCE9226-69AE-11D9-BED3-50505450
 function blockedNotice(d, shown) {
   const s = d.blockedStatus;
   if (s === 'checking') return '<div class="none">Checking…</div>';   // just started: don't offer Turn on recording before Windows has been asked
-  if (s === 'admin') return '<div class="note">Seeing blocked connections needs administrator rights. Start the app as Administrator (WhatsMyPCConnectingTo.exe does this automatically).</div>';
+  if (s === 'admin') return '<div class="note">Seeing blocked connections needs administrator rights. Start the app as Administrator (MyConnections.exe does this automatically).</div>';
   if (s === 'error') return `<div class="note">Couldn't read blocked connections from the Windows Security log: ${esc(d.blockedError)}</div>`;
   const anyBlocked = (d.fwBlocked || []).length + (d.fwIps || []).length > 0;
   if (s === 'on') {   // the explanation lives in the Turn off recording button's hover label
@@ -829,13 +829,13 @@ $('#quit').onclick = async () => {
   closeDashboard();
 };
 
-// close this tab once the app has stopped (Stop monitor here, or STOP on the IT Toolset website)
+// close this tab once the app has stopped (Stop monitor here, or STOP on the Nesiam.com website)
 function closeDashboard() {
   stopped = true;
   // browsers only let a page close a tab it was opened in fresh (as the app opens it); otherwise say it's done
   window.close();
   setTimeout(() => {
-    document.body.innerHTML = '<header><h1>what\'s_my_pc_connecting_to?</h1></header>' +
+    document.body.innerHTML = '<header><h1>my_connections</h1></header>' +
       '<div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.<br>' +
       '<span class="small" style="display:inline">Start the app again to reopen the dashboard.</span></div>';
     speckle();
