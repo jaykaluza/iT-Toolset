@@ -595,17 +595,19 @@ function updateKillBar() {
   if (!SEL) { info.textContent = 'Click a row to select it'; info.title = ''; btn.disabled = true; btn.title = ''; bb.disabled = true; bb.textContent = 'Block app'; bb.title = ''; document.querySelector('.killbar').dataset.tip = 'Select an app in the list first'; return; }
   // Block app / Unblock app for the selected program
   const blockedNow = d && isFwBlocked(d, SEL.path);
-  const blockWhy = !d || !d.admin ? 'Needs the app to run as Administrator.'
+  const isSelf = !!d && !!d.selfPath && !!SEL.path && SEL.path.toLowerCase() === d.selfPath.toLowerCase();   // this running app's own file
+  const selfWhy = isSelf ? 'This is My Connections itself, so it can\'t be blocked or ended here. Use Stop monitor to close it.' : '';
+  const blockWhy = selfWhy || (!d || !d.admin ? 'Needs the app to run as Administrator.'
     : noKillReason(SEL.name) ? 'Core part of Windows or Microsoft Defender: blocking it could cut off the whole PC.'
     : SHARED_HOSTS.includes(SEL.name.toLowerCase()) ? 'Used by many programs: blocking it would cut off more than one app.'
-    : !SEL.path ? 'Its location is unknown, so it can\'t be blocked by its file.' : '';
+    : !SEL.path ? 'Its location is unknown, so it can\'t be blocked by its file.' : '');
   bb.textContent = blockedNow ? 'Unblock app' : 'Block app';
   bb.disabled = !blockedNow && !!blockWhy;
   document.querySelector('.killbar').dataset.tip = blockedNow ? 'Remove the Windows Firewall block for this app' : (blockWhy || 'Block this app in Windows Firewall and close it (asks first)');
   bb.title = '';
   info.textContent = `Selected: ${SEL.name}.exe · PID ${SEL.pids.join(', ')}`;
   info.title = SEL.path || '';
-  const why = noKillReason(SEL.name);
+  const why = selfWhy || noKillReason(SEL.name);
   btn.disabled = !!why;
   btn.title = why || (closesWholeApp(SEL) ? 'Close this program completely, every copy of it (asks first)' : 'End the selected process only (asks first)');
 }
