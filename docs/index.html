@@ -245,7 +245,7 @@ $('#launchRetry').onclick = () => startApp();
 // ---- Is the app running on this PC? The app answers this page (and only this site) on localhost,
 // so RUN can turn into STOP. Browsers may ask once to allow the page to reach apps on this device.
 const PORTS = [8765, 8766, 8767];
-let appPort = null, stopRequested = false, watching = false, siteEvents = null;
+let appPort = null, stopRequested = false, watching = false, checking = false, siteEvents = null;
 
 async function findApp() {
   for (const p of PORTS) {
@@ -266,7 +266,10 @@ function updateRunButton() {
 }
 
 async function checkApp() {
+  if (checking) return;   // one at a time, so an older answer can't overwrite a newer one
+  checking = true;
   appPort = await findApp();
+  checking = false;
   if (appPort) { setup.set(true); closeLaunch(); }   // seeing it run proves setup worked
   else stopRequested = false;
   // while the app runs, it knows this page is open and can ask it to refresh (the dashboard's title link)
@@ -283,6 +286,9 @@ function watchApp() {
   watching = true;
   checkApp();
   setInterval(checkApp, 3000);
+  // browsers slow or pause timers in background tabs, so also check the moment this tab is back in view
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkApp(); });
+  window.addEventListener('focus', checkApp);
 }
 
 async function stopApp() {
