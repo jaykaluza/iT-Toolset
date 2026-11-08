@@ -231,9 +231,15 @@ const closeLaunch = () => { if ($('#launch').open) $('#launch').close(); };
 $('#launch').addEventListener('close', () => clearTimeout(launchTimer));
 // the two setup steps, in the popup; it closes by itself as soon as the app is seen running
 const showSetup = () => { clearTimeout(launchTimer); openLaunch('', false, false); watchApp(); };
+// follow the app's link from a hidden frame, so the browser never treats this tab as the one leaving for the link
+let linkFrame = null;
+const openLink = link => {
+  if (!linkFrame) { linkFrame = document.createElement('iframe'); linkFrame.hidden = true; document.body.appendChild(linkFrame); }
+  linkFrame.src = link;
+};
 const startApp = () => {
   openLaunch('Attempting to launch My Connections. If your browser asks, choose <b>Open</b>.<span class="muted launch-note">If nothing opens, <a href="#" id="launchSetupLink">run the first-time setup</a>.</span>');
-  location.href = 'myconnections://run';   // starts MyConnections.exe through the link it set up
+  openLink('myconnections://run');   // starts MyConnections.exe through the link it set up
   clearTimeout(launchTimer);
   launchTimer = setTimeout(() => openLaunch('My Connections wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, complete the one-time setup.', true, true), LAUNCH_WAIT_MS);
 };
@@ -321,7 +327,7 @@ $('#removeLink').onclick = e => {
   e.preventDefault();
   if (!confirm('Remove the RUN link from this PC?\n\nYour browser will ask to open the app, then Windows asks for administrator rights. The app removes its link and confirms; it does not start the monitor.\n\nAfterwards the RUN button shows the setup steps again on this PC.')) return;
   setup.set(false);
-  location.href = 'myconnections://unregister';
+  openLink('myconnections://unregister');
 };
 
 show(store.get());
