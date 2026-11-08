@@ -231,9 +231,12 @@ const closeLaunch = () => { if ($('#launch').open) $('#launch').close(); };
 $('#launch').addEventListener('close', () => clearTimeout(launchTimer));
 // the two setup steps, in the popup; it closes by itself as soon as the app is seen running
 const showSetup = () => { clearTimeout(launchTimer); openLaunch('', false, false); watchApp(); };
-// follow the app's link from a hidden frame, so the browser never treats this tab as the one leaving for the link
+// follow the app's link in a throwaway tab: once the link is accepted the browser can close the tab that followed it,
+// and that must not be this page. If the tab is blocked, fall back to a hidden frame.
 let linkFrame = null;
 const openLink = link => {
+  const w = window.open(link, '_blank');
+  if (w) { setTimeout(() => { try { w.close(); } catch (e) {} }, LAUNCH_WAIT_MS); return; }
   if (!linkFrame) { linkFrame = document.createElement('iframe'); linkFrame.hidden = true; document.body.appendChild(linkFrame); }
   linkFrame.src = link;
 };
@@ -241,7 +244,7 @@ const startApp = () => {
   openLaunch('Attempting to launch My Connections. If your browser asks, choose <b>Open</b>.<span class="muted launch-note">If nothing opens, <a href="#" id="launchSetupLink">run the first-time setup</a>.</span>');
   openLink('myconnections://run');   // starts MyConnections.exe through the link it set up
   clearTimeout(launchTimer);
-  launchTimer = setTimeout(() => openLaunch('My Connections wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, complete the one-time setup.', true, true), LAUNCH_WAIT_MS);
+  launchTimer = setTimeout(() => openLaunch('My Connections wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, or the app was moved or deleted, complete the one-time setup.', true, true), LAUNCH_WAIT_MS);
 };
 $('#launchSetup').onclick = () => { setup.set(false); showSetup(); };
 $('#launchMsg').addEventListener('click', e => { if (e.target.id === 'launchSetupLink') { e.preventDefault(); $('#launchSetup').click(); } });
