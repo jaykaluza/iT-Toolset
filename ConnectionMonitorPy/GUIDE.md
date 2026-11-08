@@ -28,14 +28,14 @@ Double-clicking it again while it's running just reopens the dashboard.
 - **Top cards:** risky apps, active connections, internet connections in and out, apps talking out, and total download/upload speed.
 - **Tabs:**
   - **Connections:** every live connection, with app, remote host and address, port and state. Hover over a row for check links on its internet address (who owns it, blacklists, abuse reports, reputation, exposure) and a **Block** button.
-  - **By app:** one row per app, with its connection counts and the hosts it talks to.
+  - **Apps:** one row per app, with its connection counts and the hosts it talks to.
   - **Listening:** ports open for incoming connections and whether other devices can reach them.
   - **Open tabs:** the tabs open in your browsers and the site each one is on, with **Block site** on hover.
   - **Blocked:** apps, addresses and sites you've blocked, and their attempts to connect (see section 4).
 - **Filters:** search box, direction (In, Out, or *This PC* for one program on this PC talking to another), and slide toggles for *External only* (internet connections only), *Recently closed* (also show connections that ended in the last 10 minutes; hover over it for details) and *Risky only* (red = on). Filters start fresh each time the dashboard opens; if they hide everything, a **Clear filters** button appears.
 - **Risk column:** **red** rows need attention, **amber** rows are worth a look. Hover over a coloured row to see what's wrong and how to fix it.
 
-![By app tab](docs/apps.png)
+![Apps tab](docs/apps.png)
 
 ### App details on hover
 

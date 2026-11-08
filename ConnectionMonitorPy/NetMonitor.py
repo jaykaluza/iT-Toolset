@@ -47,7 +47,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.6'
+APP_VERSION = '1.7'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -1808,7 +1808,7 @@ class Monitor:
 # Served on localhost only. Every request except the page itself must carry a random per-run
 # token that is embedded in the page, so other websites can't read the data or end processes.
 
-CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'"
+CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; frame-ancestors 'none'"
 # The Nesiam.com website may ask "is the app running?" (/status) and stop it (/site-stop), so its RUN
 # button can switch to STOP. Browsers only let these origins read the answer or send the stop.
 SITE_ORIGINS = ('https://nesiam.com', 'https://www.nesiam.com', 'https://jaykaluza.github.io')

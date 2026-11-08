@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="only light">
-<title>My Connections</title>
+<title>my_connections</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cdefs%3E%3CradialGradient id=%22r%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%23ff8a80%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%23ff1400%22/%3E%3Cstop offset=%221%22 stop-color=%22%23f00000%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22b%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%236fc3ff%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%230090ff%22/%3E%3Cstop offset=%221%22 stop-color=%22%230060ff%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22g%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%237dffa8%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%2300ff55%22/%3E%3Cstop offset=%221%22 stop-color=%22%2300d13f%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23161617%22/%3E%3Ccircle cx=%2219.5%22 cy=%2224%22 r=%224%22 fill=%22url%28%23r%29%22/%3E%3Cpath d=%22M7.5 27V12.5M7.5 18c0-4 2.6-6.2 6-6.2s6 2.2 6 6.2V27%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%224%22/%3E%3Ccircle cx=%2219%22 cy=%226.5%22 r=%224%22 fill=%22url%28%23b%29%22/%3E%3Ccircle cx=%2227%22 cy=%2224%22 r=%223.6%22 fill=%22url%28%23g%29%22/%3E%3C/svg%3E">
 <style>
 :root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--footnote:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
   --brand:#0071e3;--brand-dark:#0077ed;--brand-text:#fff;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--head-accent:#2997ff;
@@ -49,9 +50,9 @@ tbody tr:hover .mini,tbody tr.sel .mini{visibility:visible}   /* hidden (not rem
 .auditbtn{font:inherit;font-weight:500;color:#fff;background:var(--brand);border:0;border-radius:980px;padding:7px 18px;margin:8px 0;cursor:pointer}
 .auditbtn.secondary{color:var(--brand);background:transparent;border:1px solid var(--brand);padding:3px 10px;margin:0 0 0 8px;font-size:13px}
 .note details{margin-top:6px}.note summary{cursor:pointer;color:var(--accent)}
-#quit{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:3px 14px;cursor:pointer}
+#quit{margin-left:auto;align-self:center;font:inherit;font-size:11px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:1px 9px;cursor:pointer}
 #quit:hover{background:#820000;border-color:#820000}#quit:disabled{opacity:.5;cursor:default}
-#openlog{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:500;color:#72a3f7;background:transparent;border:1.5px solid #4d74b5;border-radius:980px;padding:3px 14px;cursor:pointer}
+#openlog{margin-left:auto;align-self:center;font:inherit;font-size:11px;font-weight:500;color:#72a3f7;background:transparent;border:1px solid #4d74b5;border-radius:980px;padding:1px 9px;cursor:pointer}
 #openlog:hover{background:rgba(114,163,247,.14)}
 #openlog + #quit{margin-left:0}
 .stats{display:flex;flex-wrap:nowrap;gap:5px;padding:2px 16px}   /* always one line: labels shorten with … on narrow windows */
@@ -150,7 +151,7 @@ tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0
 <div class="stats" id="stats"></div>
 <div class="bar">
   <div class="tabs" id="tabs">
-    <button data-t="conn">Connections</button><button data-t="apps">By app</button><button data-t="listen">Listening</button><button data-t="sites">Open tabs</button><button data-t="blocked">Blocked</button>
+    <button data-t="conn">Connections</button><button data-t="apps">Apps</button><button data-t="listen">Listening</button><button data-t="sites">Open tabs</button><button data-t="blocked">Blocked</button>
   </div>
   <input type="search" id="q" placeholder="Filter app, host, IP, port…">
   <span class="tipwrap" id="dirwrap" data-tip="How to read the direction (who started the connection):&#10;↓ In: a device on your network or on the internet connected to an app on this PC.&#10;↑ Out: an app on this PC connected to a device on your network or on the internet.&#10;⇄ This PC: one program talking to another on this PC. Nothing leaves the PC."><select id="dir"><option value="all">All directions</option><option value="Inbound">Inbound only</option><option value="Outbound">Outbound only</option><option value="This PC">This PC only</option></select></span>
@@ -519,7 +520,7 @@ async function loadBrowserSites() {
 // ---- Blocked tab: apps blocked with the Block app button
 function fwSection(d) {
   const list = d.fwBlocked || [];
-  if (!list.length) return '<div class="fwlist"><h3>Apps you blocked</h3><div class="none">None yet. To block one, click its row in the Connections, By app or Listening tab, then <b>Block app</b>.</div></div>';
+  if (!list.length) return '<div class="fwlist"><h3>Apps you blocked</h3><div class="none">None yet. To block one, click its row in the Connections, Apps or Listening tab, then <b>Block app</b>.</div></div>';
   return '<div class="fwlist"><h3>Apps you blocked</h3><table><thead><tr><th>App</th><th>Location</th><th>Blocked</th><th>Firewall rules</th><th></th></tr></thead><tbody>' +
     list.map(b => `<tr><td><span class="app" data-ai="${esc(b.App)}">${esc(b.App)}</span><span class="pill blk">Blocked by you</span></td>
       <td><span class="small" title="${esc(b.Path)}">${esc(b.Path)}</span></td><td>${esc(b.Directions.map(x => x === 'Inbound' ? 'Incoming' : 'Outgoing').join(' + '))}</td>
