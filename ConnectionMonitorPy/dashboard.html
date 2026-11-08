@@ -14,7 +14,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 header{background:var(--head);color:var(--head-text);border-bottom:0;padding:7px 16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:6px}
-h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;font-kerning:normal;-webkit-font-smoothing:antialiased;margin:0}
+h1{font:600 17.3px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;font-kerning:normal;-webkit-font-smoothing:antialiased;margin:0}
 .sub{color:var(--muted);font-size:13px}
 .warn{color:var(--in)}
 header .sub{color:var(--head-muted)}
@@ -80,6 +80,12 @@ html{overflow-y:scroll;scrollbar-gutter:stable}   /* always keep the scrollbar s
 .wrap{padding:0 16px 30px;overflow-x:auto}
 .wrap table{font-size:13px}
 table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+table.fixed{table-layout:fixed;min-width:680px}
+table.fixed td.host .hn,table.fixed .small{max-width:none}   /* long text uses all of its column, however wide */
+/* smaller windows: the least important columns drop out so the rest still fit */
+@media (max-width:1120px){table.conn :is(col,th,td):nth-child(8),table.conn :is(col,th,td):nth-child(9),table.apps :is(col,th,td):nth-child(6),table.apps :is(col,th,td):nth-child(7){display:none}}
+@media (max-width:860px){table.conn :is(col,th,td):nth-child(7),table.conn :is(col,th,td):nth-child(11),table.apps :is(col,th,td):nth-child(5){display:none}}
+table.fixed td.num{white-space:normal;overflow-wrap:anywhere}   /* long values wrap inside their fixed column */
 th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
 td{white-space:normal}td.num,td .pill,td .origin{white-space:nowrap}
 th{font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
@@ -280,7 +286,9 @@ const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rate = b => b == null ? '—' : b < 1024 ? b.toFixed(0)+' B/s' : b < 1048576 ? (b/1024).toFixed(1)+' KB/s' : (b/1048576).toFixed(2)+' MB/s';
 const dur = (a, b) => { let s = Math.max(0, (b - a) / 1000) | 0; if (s < 60) return s+'s'; if (s < 3600) return (s/60|0)+'m '+(s%60)+'s'; return (s/3600|0)+'h '+((s%3600)/60|0)+'m'; };
-const appLabel = c => c.Services ? c.App + ' · ' + c.Services : (c.Description && c.Description.toLowerCase() !== c.App.toLowerCase() ? c.App + ' · ' + c.Description : c.App);
+// this running app's own file, not just anything with its name
+const isThisApp = c => { const me = (window.NETDATA || {}).selfPath; return !!me && !!c.Path && c.Path.toLowerCase() === me.toLowerCase(); };
+const appLabel = c => isThisApp(c) ? 'My Connections by NESIAM' : c.Services ? c.App + ' · ' + c.Services : (c.Description && c.Description.toLowerCase() !== c.App.toLowerCase() ? c.App + ' · ' + c.Description : c.App);
 
 const RANK = {high:2, medium:1};
 let TIPS = [];
@@ -306,10 +314,14 @@ function sortRows(rows, key) {
     return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? ''), undefined, {numeric:true})) * dir; });
 }
 
+// column widths come from the window, never the rows, so filtering can't shift the table:
+// numbers for columns whose content is always about the same size, % and '' (the space that's left) for the rest
+const COL_WIDTHS = {conn: [80, 92, '', 62, '16%', '13%', 54, 92, 78, 96, 60], apps: [80, '30%', 110, 106, 90, 72, 80, '']};
 function table(cols, rows, key) {
   if (!rows.length) return emptyMessage();
-  const [sk, sd] = S.sort[key];
-  return '<table><thead><tr>' + cols.map(c => `<th data-k="${c[0]}" data-key="${key}" class="${c[0]===sk?'sorted'+(sd>0?' asc':''):''}">${c[1]}</th>`).join('') +
+  const [sk, sd] = S.sort[key], w = COL_WIDTHS[key];
+  const head = w ? `<table class="fixed ${key}"><colgroup>` + w.map(x => x ? `<col style="width:${typeof x === 'number' ? x + 'px' : x}">` : '<col>').join('') + '</colgroup>' : '<table>';
+  return head + '<thead><tr>' + cols.map(c => `<th data-k="${c[0]}" data-key="${key}" class="${c[0]===sk?'sorted'+(sd>0?' asc':''):''}">${c[1]}</th>`).join('') +
     '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
 }
 
