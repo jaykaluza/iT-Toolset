@@ -44,7 +44,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.3'
+APP_VERSION = '1.4'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -656,6 +656,17 @@ def is_external(ip):
     if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped:
         addr = addr.ipv4_mapped
     return addr.is_global and not addr.is_multicast
+
+
+def is_this_pc(remote, local):
+    """True when both ends of a connection are on this PC, so it never leaves the computer."""
+    try:
+        addr = ipaddress.ip_address(remote.split('%')[0])
+    except ValueError:
+        return False
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped:
+        addr = addr.ipv4_mapped
+    return addr.is_loopback or remote == local
 
 
 def parse_address(text):
@@ -1520,7 +1531,7 @@ class Monitor:
                     r['RemoteHost'] = host
                 continue
             info = self.proc_cache[pid]
-            direction = 'Inbound' if lport in listen_ports else 'Outbound'
+            direction = 'This PC' if is_this_pc(raddr, laddr) else 'Inbound' if lport in listen_ports else 'Outbound'
             issues = []   # issues about this connection itself; the app's own issues are added below
             if external and direction == 'Inbound':
                 issues.append(issue('high', f"A computer on the internet ({raddr}) is connected INTO '{info['Name']}'. Unexpected unless you run a server or game host. Fix: end the app in Task Manager, then Windows Security > Firewall & network protection > Allow an app through firewall > untick it. Also check your router's port-forwarding settings."))
@@ -2009,16 +2020,6 @@ def _key_exists(path):
         return False
 
 
-MB_YESNO, MB_ICONINFORMATION, IDYES = 0x4, 0x40, 6
-
-
-def ask_start_after_setup():
-    """After the first run sets up the RUN link: start now (Yes) or go back to the website (No)."""
-    return user32.MessageBoxW(None, 'The app is set up on this PC.\n\n'
-                                    'The RUN button on the Nesiam.com website can now start it.\n\n'
-                                    'Start it now?', APP_NAME, MB_YESNO | MB_ICONINFORMATION) == IDYES
-
-
 def show_error(message):
     user32.MessageBoxW(None, message, APP_NAME, 0x10)   # MB_ICONERROR
 
@@ -2066,10 +2067,6 @@ def main():
             register_link(exe)
         except OSError:
             pass
-        else:
-            # first run of this copy: it's a setup step, so let people go back to the website instead of opening now
-            if not args.link and not ask_start_after_setup():
-                return
     if not args.outdir:
         args.outdir = os.path.join(APP_DIR if args.app else HERE, 'MyConnectionsOutput')
     url_file = os.path.join(APP_DIR, 'running.url')

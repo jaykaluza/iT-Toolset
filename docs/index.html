@@ -5,12 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="only light">
 <title>Nesiam.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <style>
 /* same look as the My Connections dashboard: light grey page, white cards, black header bar */
 :root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
   --red:#8c1515;--red-dark:#820000;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--warn:#a05a00;--warn-bg:rgba(255,204,0,.16)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 header{background:var(--head);color:var(--head-text);padding:10px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 header h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;
   color:#fff}
@@ -22,37 +25,55 @@ header h1 .blue{top:.16em;background:radial-gradient(circle at 32% 28%,#fff 0,#6
 header h1 .green{top:.77em;background:radial-gradient(circle at 32% 28%,#fff 0,#7dffa8 10%,#00ff55 42%,#00d13f 100%)}
 header h1{isolation:isolate}
     header h1 .red{top:.75em;left:84%;z-index:-1;background:radial-gradient(circle at 32% 28%,#fff 0,#ff8a80 10%,#ff1400 42%,#f00000 100%)}
-header .who{margin-left:auto;font-size:13px;color:var(--head-muted)}
-header button{font:inherit;font-size:12px;font-weight:500;color:var(--head-text);background:transparent;border:1px solid var(--head-muted);border-radius:980px;padding:2px 12px;cursor:pointer}
+header .who{margin-left:auto;font-size:12px;color:var(--head-muted)}
+header button{font:inherit;font-size:11.5px;font-weight:500;color:var(--head-text);background:transparent;border:1px solid var(--head-muted);border-radius:980px;padding:2px 12px;cursor:pointer}
 header button:hover{border-color:var(--head-text)}
-.demo{background:var(--warn-bg);color:var(--warn);text-align:center;font-size:12px;padding:5px 16px}
+.demo{background:var(--warn-bg);color:var(--warn);text-align:center;font-size:11.5px;padding:5px 16px}
 main{max-width:1040px;margin:28px auto;padding:0 16px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin-bottom:18px}
-h2{font:600 19px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.015em;margin:0 0 8px}
-label{display:block;font-weight:600;font-size:13px;margin:14px 0 4px}
+h2{font:600 16px/1.3 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;letter-spacing:-.011em;margin:0 0 8px}
+label{display:block;font-weight:600;font-size:12px;margin:14px 0 4px}
 input{font:inherit;width:100%;max-width:340px;padding:6px 14px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:980px}
 input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,102,204,.15)}
-.btn{font:inherit;font-size:13px;font-weight:500;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:5px 16px;cursor:pointer}
+.btn{font:inherit;font-size:12px;font-weight:500;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:5px 16px;cursor:pointer}
 .btn:hover{background:var(--red-dark);border-color:var(--red-dark)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
-.muted{color:var(--muted);font-size:13px}
+.muted{color:var(--muted);font-size:12px}
 .tool{display:flex;align-items:center;gap:18px;padding:14px 0;border-top:1px solid var(--line)}
 .tool:first-of-type{border-top:0}
 .icon{flex:none;width:52px;height:52px;border-radius:12px;background:var(--head);display:grid;place-items:center}
 .tool .info{flex:1;min-width:0}
-.tool h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
-.run{font:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:6px 24px;cursor:pointer}
+.tool h3{margin:0;font-size:14px;font-weight:600;letter-spacing:-.006em}
+.run{font:inherit;font-size:12px;font-weight:600;letter-spacing:.04em;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:6px 24px;cursor:pointer}
 .run:hover{background:var(--red-dark);border-color:var(--red-dark)}
 .run:disabled{opacity:.4;cursor:not-allowed}
 .run.stop{background:var(--head);border-color:var(--head)}
-.help{display:none;margin-top:14px;padding:12px 16px;background:var(--panel-2);border-radius:12px;font-size:13px;line-height:1.55}
-.help.show{display:block}
-.help ol{margin:6px 0 0;padding-left:20px}
-.help li{margin:3px 0}
-code{font:12px Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px;word-break:break-all}
+#launchSteps ol{margin:8px 0 0;padding-left:20px}
+#launchSteps li{margin:4px 0}
+code{font:11.5px Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px;word-break:break-all}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 .hidden{display:none}
+/* the dialog shown while the app is launching */
+#launch{overflow:visible;width:min(480px,calc(100vw - 32px));padding:24px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+#launch::backdrop{background:rgba(0,0,0,.45)}
+#launch p{margin:16px 0 0}
+.launch-head{display:flex;align-items:center;gap:14px}
+.launch-head h2{margin:0;font-size:18px}
+.launch-x{margin-left:auto;align-self:flex-start;font:inherit;font-size:22px;line-height:1;color:var(--muted);background:none;border:0;padding:0 4px;cursor:pointer}
+.launch-x:hover{color:var(--text)}
+.launch-foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:20px}
+.launch-close{font:inherit;font-size:12px;font-weight:500;color:var(--accent);background:none;border:1px solid var(--line);border-radius:980px;padding:5px 18px;cursor:pointer}
+.launch-close:hover{border-color:var(--accent)}
+/* step-by-step popup shown on hover (or keyboard focus or tap) */
+.hint{position:relative;display:inline-block;cursor:help;outline:none}
+.hint:focus-visible code{outline:2px solid var(--accent)}
+.hint .pop{display:none;position:absolute;z-index:10;top:100%;left:0;width:500px;padding:12px 14px;background:var(--head);color:var(--head-text);border-radius:12px;font-size:12px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.28);cursor:auto}
+.hint:hover .pop,.hint:focus .pop,.hint:focus-within .pop{display:block}
+.hint .pop span{display:block;margin-top:5px;padding-left:18px;text-indent:-18px}
+.hint .pop code{color:inherit;background:rgba(255,255,255,.14);border-color:transparent;word-break:normal;overflow-wrap:anywhere}
+.hint .pop b{color:#fff}
+@media (max-width:800px){.hint{position:static}.hint .pop{left:8px;right:8px;width:auto;top:auto}}
 @media (max-width:560px){.tool{flex-wrap:wrap}.run{width:100%}}
 </style>
 </head>
@@ -90,27 +111,58 @@ a:hover{text-decoration:underline}
       <div class="info">
         <h3>My Connections</h3>
         <div class="muted">See every connection your PC makes, spot risky apps, and end or block them.</div>
-        <div class="muted"><a href="#" id="setupLink">First time on this PC? Set it up</a></div>
-        <div class="muted hidden" id="runStatus">Starting the app… If the Microsoft Store opened instead, the app isn't set up on this PC yet: close the Store and <a href="#" id="notStarted">click here to show the setup steps</a>.</div>
+        <div class="muted"><a href="#" id="setupLink">First time on this PC? Set it up</a> · <a href="#" id="removeLink">Remove the RUN link</a></div>
       </div>
       <button class="run" id="run">RUN</button>
-    </div>
-    <div class="help" id="help">
-      <b>Set up on this PC (one time):</b>
-      <ol>
-        <li>Download <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/MyConnections.exe">MyConnections.exe</a> and <b>save it</b> in a folder of its own (for example <code>Documents\MyConnections</code>). Don't open it straight from your browser's download bar: that runs it from a temporary folder the browser deletes later, and RUN would stop working.</li>
-        <li>Check it's genuine: compare <code>Get-FileHash .\MyConnections.exe</code> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</li>
-        <li>Double-click it once and click <b>Yes</b> on the Windows prompt. When the app says it's set up, click <b>No</b> (don't start it yet) and come back here.</li>
-        <li>Then click the button below. Your browser will ask to open the app: click <b>Open</b> (tick "always allow" to skip this next time). From then on, <b>RUN</b> starts it directly.</li>
-      </ol>
-      <p><button class="btn" id="setupDone">I've run MyConnections.exe, start it now</button></p>
-      <p class="muted" style="margin:8px 0 0"><a href="#" id="removeLink">To remove the RUN button link from this PC later, click here.</a></p>
     </div>
   </section>
 </main>
 
+<!-- shown while the browser asks to open the app; closes by itself once the app is seen running -->
+<dialog id="launch" aria-labelledby="launchTitle">
+  <form method="dialog">
+    <div class="launch-head">
+      <div class="icon" id="launchIcon" aria-hidden="true"></div>
+      <h2 id="launchTitle">My Connections</h2>
+      <button class="launch-x" aria-label="Close">×</button>
+    </div>
+    <p id="launchMsg"></p>
+    <div id="launchSteps">
+      <p><b>First time on this PC? Two steps:</b></p>
+      <ol>
+        <li><a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/MyConnections.exe">Download MyConnections.exe</a> and save it somewhere you'll keep, such as Documents.</li>
+        <li>Double-click it and click <b>Yes</b>. If Windows warns you, click <b>More info</b>, then <b>Run anyway</b>.</li>
+      </ol>
+      <p class="muted">This window closes by itself when the app starts, and RUN works from then on. If your browser asks to connect to apps on this device, choose <b>Allow</b>.</p>
+      <p class="muted">Check it's genuine: compare <span class="hint" tabindex="0"><code>Get-FileHash .\MyConnections.exe</code><span class="pop"><b>How to check, step by step:</b><span>1. In File Explorer, open the folder where you saved <b>MyConnections.exe</b>.</span><span>2. Click the address bar at the top of that window, type <code>powershell.exe</code> and press <b>Enter</b>. A PowerShell window opens in that folder.</span><span>3. Type or paste <code>Get-FileHash .\MyConnections.exe</code> and press <b>Enter</b>.</span><span id="fpStep">4. Open the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest" style="color:#6fc3ff">release page</a> and find the fingerprint under <b>Check it's genuine</b>.</span><span>5. Compare it with the long line of letters and numbers next to <b>Hash</b>. They must match exactly. If they don't, don't run the file.</span></span></span> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</p>
+    </div>
+    <div class="launch-foot">
+      <button type="button" class="btn" id="launchSetup">Complete first-time setup</button>
+      <button type="button" class="launch-close" id="launchRetry">Try again</button>
+      <button class="launch-close">Close</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 const $ = s => document.querySelector(s);
+
+// The first time the how-to-check popup opens, show the latest release's real fingerprint in it.
+// If GitHub can't be reached, the step keeps pointing to the release page.
+async function showFingerprint() {
+  try {
+    const res = await fetch('https://api.github.com/repos/jaykaluza/iT-Toolset/releases/latest', {headers: {Accept: 'application/vnd.github+json'}});
+    if (!res.ok) return;
+    const rel = await res.json();
+    const asset = (rel.assets || []).find(a => a.name === 'MyConnections.exe');
+    const found = String(asset && asset.digest || '').match(/^sha256:([a-f0-9]{64})$/i) || String(rel.body || '').match(/\b([a-f0-9]{64})\b/i);
+    if (!found) return;
+    const code = document.createElement('code');
+    code.textContent = found[1].toUpperCase();
+    $('#fpStep').replaceChildren('4. The correct fingerprint for the latest version is ', code);
+  } catch (e) { /* the release page link stays */ }
+}
+for (const type of ['mouseenter', 'focusin']) $('.hint').addEventListener(type, showFingerprint, {once: true});
 const isWindows = /Windows/i.test(navigator.userAgent);
 const store = {
   get: () => { try { return sessionStorage.getItem('demo-user') || ''; } catch (e) { return ''; } },
@@ -137,12 +189,30 @@ const setup = {
   done: () => { try { return localStorage.getItem('myconnections-setup') === '1'; } catch (e) { return false; } },
   set: on => { try { on ? localStorage.setItem('myconnections-setup', '1') : localStorage.removeItem('myconnections-setup'); } catch (e) {} }
 };
-const showSetup = () => { $('#runStatus').classList.add('hidden'); $('#help').classList.add('show'); $('#help').scrollIntoView({behavior: 'smooth', block: 'nearest'}); };
-const startApp = () => {
-  $('#help').classList.remove('show');
-  $('#runStatus').classList.remove('hidden');
-  location.href = 'myconnections://run';   // starts MyConnections.exe through the link it set up
+$('#launchIcon').append($('.tool .icon svg').cloneNode(true));
+const LAUNCH_WAIT_MS = 30000;   // long enough to answer the browser's and Windows' prompts
+let launchTimer = null;
+// the one popup RUN opens: launching, not set up yet, or not detected after launching
+const openLaunch = (html, offerSetup, offerRetry) => {
+  $('#launchMsg').innerHTML = html;
+  $('#launchMsg').classList.toggle('hidden', !html);
+  $('#launchSteps').classList.toggle('hidden', !!html);
+  $('#launchSetup').classList.toggle('hidden', !offerSetup);
+  $('#launchRetry').classList.toggle('hidden', !offerRetry);
+  if (!$('#launch').open) $('#launch').showModal();
 };
+const closeLaunch = () => { if ($('#launch').open) $('#launch').close(); };
+$('#launch').addEventListener('close', () => clearTimeout(launchTimer));
+// the two setup steps, in the popup; it closes by itself as soon as the app is seen running
+const showSetup = () => { clearTimeout(launchTimer); openLaunch('', false, false); watchApp(); };
+const startApp = () => {
+  openLaunch('Attempting to launch My Connections. If your browser asks, choose <b>Open</b>.');
+  location.href = 'myconnections://run';   // starts MyConnections.exe through the link it set up
+  clearTimeout(launchTimer);
+  launchTimer = setTimeout(() => openLaunch('My Connections wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, complete the one-time setup.', true, true), LAUNCH_WAIT_MS);
+};
+$('#launchSetup').onclick = () => { setup.set(false); showSetup(); };
+$('#launchRetry').onclick = () => startApp();
 
 $('#setupLink').onclick = e => { e.preventDefault(); showSetup(); };
 
@@ -171,7 +241,7 @@ function updateRunButton() {
 
 async function checkApp() {
   appPort = await findApp();
-  if (appPort) { setup.set(true); $('#runStatus').classList.add('hidden'); }   // seeing it run proves setup worked
+  if (appPort) { setup.set(true); closeLaunch(); }   // seeing it run proves setup worked
   else stopRequested = false;
   updateRunButton();
 }
@@ -198,17 +268,6 @@ $('#run').onclick = () => {
   startApp();
   watchApp();
 };
-
-$('#setupDone').onclick = () => {
-  // the page can't check this itself, so ask: starting before setup sends Windows to the Microsoft Store
-  if (!confirm('Did you double-click the downloaded MyConnections.exe and click Yes?\n\nThat one-time step sets up the RUN button. If you haven\'t yet, click Cancel and do step 3 first.')) return;
-  setup.set(true);
-  startApp();
-  watchApp();
-};
-
-// it was set up, but nothing started (e.g. the link was removed outside the website)
-$('#notStarted').onclick = e => { e.preventDefault(); setup.set(false); showSetup(); };
 
 // Remove the RUN link: asks MyConnections.exe (via its own link) to unregister itself on this PC
 $('#removeLink').onclick = e => {

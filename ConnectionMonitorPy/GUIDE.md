@@ -17,7 +17,7 @@ A small app that shows, live in your browser, every network connection your Wind
 
 Double-clicking it again while it's running just reopens the dashboard.
 
-**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [Nesiam.com page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove it, use **"To remove the RUN button link from this PC later, click here"** in the page's setup steps, or run `MyConnections.exe --unregister-link`. Save MyConnections.exe in a fixed folder first: if you open it straight from the browser's download bar, it runs from a temporary folder and RUN stops working once the browser deletes it.
+**Start it from a web page:** after the app has run once on a PC, the **RUN** button on the [Nesiam.com page](https://jaykaluza.github.io/iT-Toolset/) starts it too: your browser asks to open the app (click **Open**; tick "always allow" to skip this next time), then click **Yes** on the administrator prompt. To remove it, use **Remove the RUN link** on the page, or run `MyConnections.exe --unregister-link`. Save MyConnections.exe in a fixed folder first: if you open it straight from the browser's download bar, it runs from a temporary folder and RUN stops working once the browser deletes it.
 
 ---
 
@@ -32,7 +32,7 @@ Double-clicking it again while it's running just reopens the dashboard.
   - **Listening:** ports open for incoming connections and whether other devices can reach them.
   - **Open tabs:** the tabs open in your browsers and the site each one is on, with **Block site** on hover.
   - **Blocked:** apps, addresses and sites you've blocked, and their attempts to connect (see section 4).
-- **Filters:** search box, In/Out, and slide toggles for *External only* (internet connections only), *Recently closed* (also show connections that ended in the last 10 minutes; hover over it for details) and *Risky only* (red = on). Filters start fresh each time the dashboard opens; if they hide everything, a **Clear filters** button appears.
+- **Filters:** search box, direction (In, Out, or *This PC* for one program on this PC talking to another), and slide toggles for *External only* (internet connections only), *Recently closed* (also show connections that ended in the last 10 minutes; hover over it for details) and *Risky only* (red = on). Filters start fresh each time the dashboard opens; if they hide everything, a **Clear filters** button appears.
 - **Risk column:** **red** rows need attention, **amber** rows are worth a look. Hover over a coloured row to see what's wrong and how to fix it.
 
 ![By app tab](docs/apps.png)

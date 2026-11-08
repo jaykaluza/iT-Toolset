@@ -92,7 +92,7 @@ td.host[data-full]:hover::after{content:attr(data-full);position:absolute;left:0
 .small.hosts{color:var(--text);white-space:normal;overflow-wrap:anywhere;max-width:none;min-width:150px}
 .small{color:var(--muted);font-size:13px;white-space:nowrap;max-width:min(420px,28vw);overflow:hidden;text-overflow:ellipsis;display:block}
 .pill{display:inline-block;padding:0 7px;border-radius:99px;font-size:13px;font-weight:600}
-.in{color:var(--in);background:var(--in-bg)}.out{color:var(--out);background:var(--out-bg)}
+.in{color:var(--in);background:var(--in-bg)}.out{color:var(--out);background:var(--out-bg)}.thispc{color:var(--lan);background:var(--lan-bg)}
 .ext{color:var(--ext);background:var(--ext-bg)}.lan{color:var(--lan);background:var(--lan-bg)}
 a.link{color:var(--accent);cursor:pointer;text-decoration:none}
 .empty{padding:30px;text-align:center;color:var(--muted)}
@@ -133,7 +133,7 @@ tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0
 #recbtn:hover,#allbtn:hover{background:var(--out-bg)}
 #allbtn{font:inherit;font-size:11px;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:1px 9px;cursor:pointer;margin-left:8px}
 .tipwrap{position:relative;display:inline-flex}
-#closedwrap{position:relative}#closedwrap[data-tip]:hover::after{right:auto;left:0}
+#closedwrap{position:relative}#closedwrap[data-tip]:hover::after{right:auto;left:0}#dirwrap{position:relative;display:inline-block}#dirwrap[data-tip]:hover::after{right:auto;left:0;max-width:min(420px,calc(100vw - 32px));white-space:pre-line}#dirwrap.tipleft[data-tip]:hover::after{left:auto;right:0}
 .killbar[data-tip]:hover::after,.rec[data-tip]:hover::after,.tipwrap[data-tip]:hover::after{content:attr(data-tip);max-width:320px;white-space:normal;text-align:left;line-height:1.4;position:absolute;top:100%;right:0;margin-top:6px;background:#1d1d1f;color:#fff;font-size:12px;font-weight:500;padding:5px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:9;pointer-events:none;width:max-content}
 #selinfo{display:none;color:var(--muted);font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #kill{font:inherit;font-size:11px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:1px 9px;cursor:pointer}
@@ -153,7 +153,7 @@ tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0
     <button data-t="conn">Connections</button><button data-t="apps">By app</button><button data-t="listen">Listening</button><button data-t="sites">Open tabs</button><button data-t="blocked">Blocked</button>
   </div>
   <input type="search" id="q" placeholder="Filter app, host, IP, port…">
-  <select id="dir"><option value="all">In + out</option><option value="Inbound">Inbound only</option><option value="Outbound">Outbound only</option></select>
+  <span class="tipwrap" id="dirwrap" data-tip="How to read the direction (who started the connection):&#10;↓ In: a device on your network or on the internet connected to an app on this PC.&#10;↑ Out: an app on this PC connected to a device on your network or on the internet.&#10;⇄ This PC: one program talking to another on this PC. Nothing leaves the PC."><select id="dir"><option value="all">All directions</option><option value="Inbound">Inbound only</option><option value="Outbound">Outbound only</option><option value="This PC">This PC only</option></select></span>
   <label><input type="checkbox" id="ext"> External only</label>
   <label class="tipwrap" id="closedwrap" data-tip="Also show connections that ended in the last 10 minutes (dimmed, State: Closed). Many apps connect for only a second or two, for example to check for updates or send usage data, and would otherwise disappear before you see them."><input type="checkbox" id="closed"> Recently closed</label>
   <label><input type="checkbox" id="risky"> Risky only</label>
@@ -333,7 +333,7 @@ function render() {
   let out = '';
   if (S.tab === 'conn') {
     const rows = sortRows(filtered(d).map(c => ({...c, rr: RANK[c.Risk] || 0, Dur: (c.Closed ? new Date(c.Closed) : now) - new Date(c.FirstSeen)})), 'conn').map(c =>
-      `<tr${rowAttrs(c.Risk, c.Issues, c.App, [c.Closed ? 'closed' : '', isSel([c.PID], c.App) ? 'sel' : ''].join(' ').trim())}${selData([c.PID], c.App, c.Path)}><td>${riskPill(c.Risk)}</td><td><span class="pill ${c.Direction==='Inbound'?'in':'out'}">${c.Direction==='Inbound'?'↓ In':'↑ Out'}</span></td>
+      `<tr${rowAttrs(c.Risk, c.Issues, c.App, [c.Closed ? 'closed' : '', isSel([c.PID], c.App) ? 'sel' : ''].join(' ').trim())}${selData([c.PID], c.App, c.Path)}><td>${riskPill(c.Risk)}</td><td>${dirPill(c.Direction)}</td>
       <td><span class="app" data-ai="${esc(c.App)}" data-svc="${esc(c.Services)}">${esc(appLabel(c))}</span>${isFwBlocked(d, c.Path) ? '<span class="pill blk">Blocked by you</span>' : ''}<span class="small" title="${esc(c.Path)}">${esc(c.Path)}</span></td><td class="num">${c.PID}</td>
       <td class="host"${c.RemoteHost ? ` data-full="${esc(c.RemoteHost)}"` : ''}><span class="hn">${esc(c.RemoteHost || '—')}</span></td><td class="num${c.External ? ' ipcell' : ''}">${esc(c.RemoteAddress)}${ipBlocked(d, c.RemoteAddress) ? '<span class="pill blk">Blocked by you</span>' : c.External && d.admin ? `<button class="mini" data-blockip="${esc(c.RemoteAddress)}" data-app="${esc(c.App)}" data-host="${esc(c.RemoteHost || '')}" title="Block this address in Windows Firewall (asks first)">Block</button>` : ''}${c.External ? ipChecks(c.RemoteAddress).replace('small checks', 'small checks rowchecks') : ''}</td><td class="num">${c.RemotePort}</td><td class="num">${c.LocalPort}</td>
       <td><span class="pill ${c.External?'ext':'lan'}">${c.External?'Internet':'Local'}</span></td><td>${c.Closed?'Closed':esc(c.State)}</td><td class="num">${dur(0, c.Dur)}</td></tr>`);
@@ -380,7 +380,7 @@ function emptyMessage() {
   const searchOnly = S.tab === 'sites';   // Open tabs only uses the search box
   if (S.risky && S.tab !== 'blocked' && !searchOnly) on.push('Risky only');
   if (S.ext && S.tab !== 'listen' && !searchOnly) on.push('External only');
-  if (S.dir !== 'all' && S.tab !== 'listen' && !searchOnly) on.push(S.dir === 'Inbound' ? 'Inbound only' : 'Outbound only');
+  if (S.dir !== 'all' && S.tab !== 'listen' && !searchOnly) on.push(S.dir + ' only');
   if (S.q.trim()) on.push(`search "${S.q.trim()}"`);
   if (!on.length) return '<div class="empty">Nothing to show here right now.</div>';
   const lead = S.risky && S.tab !== 'blocked' && !searchOnly ? 'No risky apps right now. ' : 'Nothing matches the current filters. ';
@@ -403,6 +403,8 @@ function ipBlocked(d, ip) {   // exact address, or inside a blocked IPv4 range
     return Math.floor(a / size) === Math.floor(n / size);
   });
 }
+const dirPill = d => d === 'This PC' ? '<span class="pill thispc" title="Both ends are on this PC: one program talking to another. Nothing came in from, or went out to, another device.">⇄ This PC</span>' : d === 'Inbound' ? '<span class="pill in" title="A device on your network or on the internet connected to an app on this PC.">↓ In</span>' : '<span class="pill out" title="An app on this PC connected to a device on your network or on the internet.">↑ Out</span>';
+document.getElementById('dirwrap').addEventListener('mouseenter', e => e.currentTarget.classList.toggle('tipleft', e.currentTarget.getBoundingClientRect().left + 440 > document.documentElement.clientWidth));   // open the explanation toward the side with room
 const dirsText = dirs => esc(dirs.map(x => x === 'Inbound' ? 'Incoming' : 'Outgoing').join(' + '));
 // look-ups on well-known sites; each opens in your browser only when clicked (the address or name is sent to that site)
 const chk = (url, label, what) => `<a class="link" href="${url}" target="_blank" rel="noopener" title="${what}">${label}</a>`;
