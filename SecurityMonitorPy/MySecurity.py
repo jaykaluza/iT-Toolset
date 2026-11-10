@@ -44,7 +44,7 @@ import scans_deep as D   # adds its scans to S.SCANS
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.1'
+APP_VERSION = '0.1.2'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -471,13 +471,13 @@ class App:
         for key, s in self.scans.items():
             for f in s['findings']:
                 if SEV_RANK[f['Sev']] >= 2 and not f.get('Done'):
-                    items.append({**self._public(f), 'From': s['label']})
+                    items.append({**self._public(f), 'From': s['label'], 'Scan': key})
         for f in self.tab_findings.values():
             if SEV_RANK[f['Sev']] >= 2 and not f.get('Done'):
-                items.append({**self._public(f), 'From': 'Open browser tabs'})
+                items.append({**self._public(f), 'From': 'Open browser tabs', 'Scan': '_tabs'})
         for e in self.events:
             if e['Running'] and SEV_RANK[e['Sev']] >= 2 and not e['Existing'] or e['Running'] and SEV_RANK[e['Sev']] >= 3:
-                items.append({'Id': f"event:{e['Id']}", 'EventId': e['Id'], 'Cat': 'processes', 'Sev': e['Sev'], 'Title': f"{e['Name']}: {e['Reasons'][0]['Title']}", 'What': e['Reasons'][0]['Why'], 'Risk': '', 'Evidence': e['Cmd'] or e['Path'], 'Fix': 'End it if you did not start it.', 'Action': None, 'From': 'Running programs', 'Active': e['Sev'] == 'critical'})
+                items.append({'Id': f"event:{e['Id']}", 'EventId': e['Id'], 'Cat': 'processes', 'Sev': e['Sev'], 'Title': f"{e['Name']}: {e['Reasons'][0]['Title']}", 'What': e['Reasons'][0]['Why'], 'Risk': '', 'Evidence': e['Cmd'] or e['Path'], 'Fix': 'End it if you did not start it.', 'Action': None, 'From': 'Running programs', 'Scan': '_running', 'Active': e['Sev'] == 'critical'})
         for it in items:
             it['Bucket'] = 'now' if it['Sev'] == 'critical' or (it['Sev'] == 'high' and it.get('Active')) else 'week' if it['Sev'] == 'high' else 'later'
         items.sort(key=lambda x: (-SEV_RANK[x['Sev']], not x.get('Active'), x['Title']))

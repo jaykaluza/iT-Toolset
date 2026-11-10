@@ -53,6 +53,10 @@ h3{font-size:14px;font-weight:600;margin:16px 0 4px}h3:first-child{margin-top:0}
 .hero .txt{flex:1 1 320px;min-width:0}.hero .txt b.v{font-size:16px;font-weight:600;display:block;margin-bottom:2px}
 .progress{height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:var(--brand);transition:width .3s}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.chip{font-size:11px;padding:0 7px;border-radius:99px;background:var(--panel-2);color:var(--muted);white-space:nowrap}.chip.done{background:var(--good-bg);color:var(--good)}.chip.running{background:var(--brand);color:#fff}.chip.error{background:var(--crit-bg);color:var(--crit)}
+.chip[data-chip]{cursor:pointer}.chip[data-chip]:hover{outline:1px solid currentColor}.chip.pick{outline:2px solid var(--brand);background:var(--brand);color:#fff}
+.chip .cn{font-style:normal;font-weight:700;margin-left:5px}
+.score.filtered{cursor:pointer;flex-direction:column;display:flex;justify-content:center;align-items:center;gap:4px}.score small{font-size:10px;font-weight:600;letter-spacing:.02em}
+.how{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 16px;margin-bottom:10px;font-size:13px}.how summary{cursor:pointer;font-weight:600}.how p{margin:6px 0}
 .card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px}
 .card.critical{border-left-color:var(--crit)}.card.high{border-left-color:var(--high)}.card.medium{border-left-color:var(--med)}.card.low{border-left-color:var(--low)}.card.ok{border-left-color:var(--good)}
 .card .top{display:flex;gap:8px;align-items:baseline}.card .top .title{flex:1;min-width:0}.card .top .acts{flex:none;display:flex;gap:5px}
@@ -83,7 +87,7 @@ const TABS = [['auto','Autopilot',[]],['ports','Ports',['ports']],['shares','Sha
   ['malware','Malware',['malware']],['processes','Processes',[]],['downloads','Downloads',['downloads']],['apps','Apps',['apps','userapps']],['patches','Patches',['patches']],['threats','Threats',['threats','attacks']],['browsers','Browsers',['browsers','extensions']],['events','Events',['events']],['health','Health',['health']],['blocked','Blocked',[]]];
 const LEAD = {shares:'Shared folders and how Windows file sharing (SMB) is set up. This is the most attacked part of Windows.',protocols:'Old network languages that attackers abuse. Most can be turned off with no effect on modern devices.',accounts:'Who can sign in and who has administrator rights.',services:'Background programs that start with Windows, and remote-control tools that can act as a back door.',system:'The main protections: antivirus, firewall, User Account Control, disk encryption, and signs that traffic is being redirected.',malware:'Signs of malware, spyware and keyloggers, and everything that starts automatically.',downloads:'Programs and scripts in Downloads, Desktop, Documents and temporary folders. Clearing moves a file to quarantine, which can be undone.',patches:'Missing Windows updates.',apps:'Apps with newer versions, and apps installed only for this user, with what makes each one risky.',firewall:'Rules that let the network in. These are the rules attackers add or abuse.',backdoors:'The places attackers hide so they survive a restart, and the settings they change to get more rights.',lateral:'How an intruder could move from this PC to your other devices, or into this PC from them. Close the doors here. While the app is open it also warns you when an account gains admin rights or a suspicious service appears.',pentest:'Inside: can a normal account or malware get more privileges, and what can someone on your network reach? Outside: what can the internet see of your connection? It only looks: nothing is exploited or changed.',events:'Errors and critical events from Event Viewer in the last 7 days, explained.',health:'What is slowing this PC down, memory leaks, and disks that are filling up or failing.'};
 const SEVL = {critical:'Critical',high:'High',medium:'Medium',low:'Low',info:'Info',ok:'OK'}, RANK = {critical:4,high:3,medium:2,low:1,info:0,ok:-1};
-const S = {tab:'auto', q:'', problems:false};
+const S = {tab:'auto', q:'', problems:false, chip:'', how:false};
 try { S.tab = localStorage.getItem('mysec-tab') || 'auto'; } catch(e) {}
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -212,17 +216,22 @@ function verdict() {
   return ['No problems found', 'Run Autopilot again every week or so, and after installing anything new.'];
 }
 function bucket(title, sub, items) {
+  if (S.chip) items = items.filter(x => x.Scan === S.chip);
   if (!items.length) return '';
   return `<h3>${title} <span class="small">${items.length} · ${sub}</span></h3>` + items.filter(hit).map(f => card(f, `From: ${esc(f.From)}. `)).join('');
 }
 function autoTab() {
   const [cls, val] = SCORE(D.score), [v, sub] = verdict(), j = D.job;
   const pct = j ? Math.round((j.done / j.total) * 100) : 0;
-  const chips = Object.entries(D.scans).map(([k, s]) => `<span class="chip ${s.status === 'done' ? 'done' : s.status === 'running' ? 'running' : s.status === 'error' ? 'error' : ''}" title="${s.at ? 'Finished ' + time(s.at) + ' in ' + s.secs + 's' : ''}">${esc(s.label)}</span>`).join('');
-  const hero = `<div class="hero"><div class="score ${cls}" title="Security score out of 100">${val}</div><div class="txt"><b class="v">${esc(v)}</b><span class="small">${esc(sub)}</span>${j ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ''}<div class="chips">${chips}</div></div><button class="btn big solid" id="autopilot" ${j ? 'disabled' : ''}>${j ? `Scanning ${j.done + 1} of ${j.total}…` : 'Autopilot'}</button></div>`;
-  const p = D.plan;
+  const p = D.plan, per = {};
+  p.forEach(x => per[x.Scan] = (per[x.Scan] || 0) + 1);
+  const chips = Object.entries(D.scans).map(([k, s]) => `<span class="chip ${s.status === 'done' ? 'done' : s.status === 'running' ? 'running' : s.status === 'error' ? 'error' : ''}${S.chip === k ? ' pick' : ''}" data-chip="${k}" title="${per[k] ? 'Show only these ' + per[k] + ' items. ' : 'Nothing to fix from this check. '}${s.at ? 'Finished ' + time(s.at) + ' in ' + s.secs + 's' : ''}">${esc(s.label)}${per[k] ? `<i class="cn">${per[k]}</i>` : ''}</span>`).join('');
+  const scoreTip = S.chip ? 'Click to show everything again' : 'Security score out of 100. Click a check on the right to see only its items, and click here to show everything again.';
+  const hero = `<div class="hero"><div class="score ${cls}${S.chip ? ' filtered' : ''}" id="score" title="${scoreTip}">${val}${S.chip ? '<small>show all</small>' : ''}</div><div class="txt"><b class="v">${esc(v)}</b><span class="small">${esc(sub)}</span>${j ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ''}<div class="chips">${chips}</div></div><button class="btn big solid" id="autopilot" ${j ? 'disabled' : ''}>${j ? `Scanning ${j.done + 1} of ${j.total}…` : 'Autopilot'}</button></div>`;
+  const how = D.ran ? `<details class="how"${S.how ? ' open' : ''}><summary>How to read the score</summary><p>100 means none of the checks found anything worth fixing. Each problem takes points off: a <b>critical</b> one 18, a <b>high</b> one 6, a <b>medium</b> one 1.5 (at most 20 in all), and minor items at most 5 together. So a few high items lower it a lot, and many small ones can't sink it by themselves.</p><p><b>85 to 100</b> green: good. <b>65 to 84</b> amber: fair, fix the listed items when you can. <b>40 to 64</b> orange: poor, several important problems. <b>Below 40</b> red: many important problems, start with "Fix now", then "This week".</p><p>Your ${D.score}: ${D.counts.critical} critical, ${D.counts.high} high, ${D.counts.medium} medium and ${D.counts.low} minor items. Fixing the high items raises it the most. Press a button on an item to fix it, then run Autopilot again to update the score.</p><p>Click a check on the right (a green label) to see only its items. Click the circle to show everything again.</p></details>` : '';
   const adm = D.admin ? '' : '<div class="note"><b>My Security is not running as Administrator,</b> so some checks and all system fixes are unavailable. MySecurity.exe asks for it by itself.</div>';
-  return hero + adm + bucket('Fix now', 'an attacker could use these today', p.filter(x => x.Bucket === 'now')) + bucket('This week', 'important, not an emergency', p.filter(x => x.Bucket === 'week')) + bucket('When you have time', 'worth doing', p.filter(x => x.Bucket === 'later')) +
+  const pick = S.chip && D.scans[S.chip] ? `<div class="note">Showing only <b>${esc(D.scans[S.chip].label)}</b>${per[S.chip] ? '' : ': nothing to fix from this check. Its minor items and what passed are in its tab'}. Click the score circle to show everything again.</div>` : '';
+  return hero + how + adm + pick + bucket('Fix now', 'an attacker could use these today', p.filter(x => x.Bucket === 'now')) + bucket('This week', 'important, not an emergency', p.filter(x => x.Bucket === 'week')) + bucket('When you have time', 'worth doing', p.filter(x => x.Bucket === 'later')) +
     (D.ran ? `<p class="small">${D.counts.low} minor items and everything that passed are in each tab. The score is a rough guide: it can't prove that a PC is clean.</p>` : '');
 }
 
@@ -264,6 +273,10 @@ $('#openlog').onclick = async () => toast(await post('/openlog'));
 $('#view').addEventListener('change', async e => { if (e.target.id === 'guard') { toast(await post('/guard', {on: e.target.checked})); } });
 $('#view').onclick = async e => {
   const t = e.target;
+  if (t.closest('.how summary')) { S.how = !t.closest('details').open; return; }
+  const chip = t.closest('[data-chip]');
+  if (chip) { S.chip = S.chip === chip.dataset.chip ? '' : chip.dataset.chip; return render(); }
+  if (t.closest('#score')) { if (S.chip) { S.chip = ''; render(); } return; }
   if (t.id === 'autopilot') { toast(await post('/autopilot')); return poll(true); }
   if (t.id === 'bbtn') { const port = +$('#bport').value, proto = $('#bproto').value; if (!(port >= 1 && port <= 65535)) return toast({ok: false, message: 'Type a port number from 1 to 65535.'}); if (!confirm(`Block incoming ${proto} port ${port}?\n\nOther devices will not be able to connect to it.`)) return; return toast(await post('/block-port', {port, proto})); }
   if (t.dataset.act) { const f = lookup(t.dataset.act); if (!f || !f.Action || !confirm(f.Action.confirm)) return; BUSY.add(f.Id); render(); const r = await post('/action', {id: f.Id}); BUSY.delete(f.Id); toast(r); return poll(true); }

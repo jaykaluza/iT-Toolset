@@ -320,15 +320,28 @@ def unblock_port(key):
     return result(ps(REMOVE_RULES_PS, i=e['Ids']), f"Unblocked {e['Proto']} port {e['Port']}.")
 
 
-def block_ip(ip):
+LAN_BLOCK_PS = """
+$mine = @(Get-NetIPAddress -ErrorAction SilentlyContinue | ForEach-Object { $_.IPAddress })
+$gw = @(Get-NetRoute -DestinationPrefix '0.0.0.0/0','::/0' -ErrorAction SilentlyContinue | ForEach-Object { $_.NextHop })
+if ($mine -contains $env:MS_A) { throw "That is this PC's own address." }
+if ($gw -contains $env:MS_A) { throw "That is your router. Blocking it would cut this PC off the internet." }
+New-NetFirewallRule -DisplayName ('MySecurity block address {0} (Inbound)' -f $env:MS_A) -Group 'MySecurity' -Direction Inbound -Action Block -RemoteAddress $env:MS_A -Profile Any -ErrorAction Stop | Out-Null
+"""
+
+
+def block_ip(ip, lan=False):
     try:
         addr = ipaddress.ip_address(str(ip).split('%')[0])
     except ValueError:
         return bad(f'{ip} is not an IP address.')
-    if not addr.is_global:
+    if addr.is_global:
+        row = ps(ps_try("foreach ($d in 'Inbound','Outbound') { New-NetFirewallRule -DisplayName ('MySecurity block address {0} ({1})' -f $env:MS_A, $d) -Group 'MySecurity' -Direction $d -Action Block -RemoteAddress $env:MS_A -Profile Any -ErrorAction Stop | Out-Null }"), a=str(addr))
+        return result(row, f'Blocked {addr} in Windows Firewall, in both directions.')
+    if not lan or addr.is_loopback or addr.is_multicast or addr.is_unspecified:
         return bad(f'{ip} is a private address, so My Security won\'t block it from here.')
-    row = ps(ps_try("foreach ($d in 'Inbound','Outbound') { New-NetFirewallRule -DisplayName ('MySecurity block address {0} ({1})' -f $env:MS_A, $d) -Group 'MySecurity' -Direction $d -Action Block -RemoteAddress $env:MS_A -Profile Any -ErrorAction Stop | Out-Null }"), a=str(addr))
-    return result(row, f'Blocked {addr} in Windows Firewall, in both directions.')
+    # a device on your own network: refuse only what it sends in, so this PC can still reach it (a printer, a NAS)
+    row = ps(ps_try(LAN_BLOCK_PS), a=str(addr))
+    return result(row, f'Blocked connections from {addr} to this PC. This PC can still reach it, for example to print.')
 
 
 def unblock_ip(address):
