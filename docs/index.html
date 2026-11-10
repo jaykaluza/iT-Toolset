@@ -74,7 +74,7 @@ a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 .hidden{display:none}
 /* the dialog shown while the app is launching */
-#launch{overflow:visible;width:min(480px,calc(100vw - 32px));padding:24px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+#launch{overflow-y:auto;overscroll-behavior:contain;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);width:min(480px,calc(100vw - 32px));padding:24px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
 #launch::backdrop{background:rgba(0,0,0,.45)}
 #launch p{margin:16px 0 0}
 .launch-note{display:block;margin-top:10px}
@@ -93,6 +93,7 @@ a:hover{text-decoration:underline}
 .hint .pop span{display:block;margin-top:5px;padding-left:18px;text-indent:-18px}
 .hint .pop code{color:inherit;background:rgba(255,255,255,.14);border-color:transparent;word-break:normal;overflow-wrap:anywhere}
 .hint .pop b{color:#fff}
+#launch .hint{position:static}#launch .hint .pop{left:16px;right:16px;width:auto;top:auto}
 @media (max-width:800px){.hint{position:static}.hint .pop{left:8px;right:8px;width:auto;top:auto}}
 @media (max-width:560px){.tool{flex-wrap:wrap}.tool-actions{width:100%}.run{flex:1}}
 </style>
@@ -303,19 +304,53 @@ $('#launch').addEventListener('close', () => clearTimeout(launchTimer));
 const showSetup = t => { useTool(t); clearTimeout(launchTimer); openLaunch('', false, false); watchApp(t); };
 // follow the app's link in a throwaway tab: once the link is accepted the browser can close the tab that followed it,
 // and that must not be this page. If the tab is blocked, fall back to a hidden frame.
-let linkFrame = null;
-const openLink = link => {
+let linkFrame = null, linkTab = null;
+const closeLinkTab = () => { try { if (linkTab && !linkTab.closed) linkTab.close(); } catch (e) {} linkTab = null; };
+// The throwaway tab stays blank when the link isn't set up on this PC, so write into it what is happening,
+// with a way back to the setup steps. It is this page's own blank tab, so this page can write to it and close it.
+function explainLinkTab(w, t) {
+  try {
+    const d = w.document;
+    d.title = `Opening ${t.name}`;
+    d.body.style.cssText = 'margin:0;font:15px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif;background:#f5f5f7;color:#1d1d1f;display:grid;place-items:center;min-height:100vh';
+    d.body.innerHTML = `<div style="max-width:440px;margin:16px;padding:24px;background:#fff;border:1px solid #d2d2d7;border-radius:12px">
+      <b style="font-size:18px">Opening ${t.name}…</b>
+      <p>If your browser asks, choose <b>Open</b>. This tab closes by itself once ${t.name} starts.</p>
+      <p style="color:#6e6e73">Nothing happened, or Windows says it can't open this link? Then ${t.name} isn't set up on this PC yet, or it was moved or deleted.</p>
+      <button id="back" style="font:inherit;font-weight:600;color:#fff;background:#8b1010;border:0;border-radius:980px;padding:8px 20px;cursor:pointer">Back to first-time setup</button></div>`;
+    d.getElementById('back').onclick = () => { closeLinkTab(); setup.set(t, false); showSetup(t); window.focus(); };
+  } catch (e) { /* the browser didn't let this page write to the tab: it still closes when the app starts or after the wait */ }
+}
+const openLink = (link, t) => {
+  closeLinkTab();
   const w = window.open(link, '_blank');
-  if (w) { setTimeout(() => { try { w.close(); } catch (e) {} }, LAUNCH_WAIT_MS); return; }
+  if (w) {
+    linkTab = w;
+    if (t) explainLinkTab(w, t);
+    setTimeout(() => { if (linkTab === w) closeLinkTab(); }, LAUNCH_WAIT_MS);
+    return;
+  }
   if (!linkFrame) { linkFrame = document.createElement('iframe'); linkFrame.hidden = true; document.body.appendChild(linkFrame); }
   linkFrame.src = link;
 };
+const START_DELAY_S = 3;   // the popup shows first, so people know what the browser's question is about
 const startApp = t => {
   useTool(t);
-  openLaunch(`Attempting to launch ${t.name}. If your browser asks, choose <b>Open</b>.<span class="muted launch-note">If nothing opens, <a href="#" id="launchSetupLink">run the first-time setup</a>.</span>`);
-  openLink(`${t.scheme}://run`);   // starts the app through the link it set up
   clearTimeout(launchTimer);
-  launchTimer = setTimeout(() => openLaunch(`${t.name} wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, or the app was moved or deleted, complete the one-time setup.`, true, true), LAUNCH_WAIT_MS);
+  const setupLink = `<span class="muted launch-note">Not set up on this PC yet? <a href="#" id="launchSetupLink">Run the first-time setup</a>.</span>`;
+  let left = START_DELAY_S;
+  const tick = () => {
+    if (left > 0) {
+      openLaunch(`Starting ${t.name} in <b>${left}</b>… Your browser will then ask to open it: choose <b>Open</b>.${setupLink}`);
+      left--;
+      launchTimer = setTimeout(tick, 1000);
+      return;
+    }
+    openLaunch(`Waiting for ${t.name} to start. If your browser asks, choose <b>Open</b>.${setupLink}`);
+    openLink(`${t.scheme}://run`, t);   // starts the app through the link it set up; still within the click's few seconds, so the browser allows the tab
+    launchTimer = setTimeout(() => { closeLinkTab(); openLaunch(`${t.name} wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, or the app was moved or deleted, complete the one-time setup.`, true, true); }, LAUNCH_WAIT_MS);
+  };
+  tick();
 };
 $('#launchSetup').onclick = () => { setup.set(current, false); showSetup(current); };
 $('#launchMsg').addEventListener('click', e => { if (e.target.id === 'launchSetupLink') { e.preventDefault(); $('#launchSetup').click(); } });
@@ -347,7 +382,7 @@ async function checkApp(t) {
   t.checking = true;
   t.appPort = await findApp(t);
   t.checking = false;
-  if (t.appPort) { setup.set(t, true); closeLaunch(t); }   // seeing it run proves setup worked
+  if (t.appPort) { setup.set(t, true); if (t === current) closeLinkTab(); closeLaunch(t); }   // seeing it run proves setup worked
   else t.stopRequested = false;
   // while My Connections runs, it knows this page is open and can ask it to refresh (the dashboard's title link)
   if (t.events && t.appPort && !t.siteEvents) {
