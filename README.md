@@ -6,6 +6,7 @@ Handy tools that every admin/user should have access to. Small and dependency-fr
 | --- | --- | --- |
 | [Connection monitor](ConnectionMonitor/README.md) | `ConnectionMonitor` | Live dashboard of every network connection, mapped to the app behind it, with risky items flagged in red |
 | [Connection monitor (Python)](ConnectionMonitorPy/README.md) | `ConnectionMonitorPy` | The same dashboard rewritten in Python (standard library only, needs Python installed) |
+| [My Security](SecurityMonitorPy/README.md) | `SecurityMonitorPy` | Security assessment of this PC: ports, shares, malware signs, patches, lateral movement, a pentest from inside and outside, and an Autopilot that says what to fix first |
 
 Each tool lives in its own folder and is developed and released independently.
 

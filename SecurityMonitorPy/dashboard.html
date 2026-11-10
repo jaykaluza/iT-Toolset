@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<title>my_security</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23161617%22/%3E%3Cpath d=%22M16 4.5l9.5 3.4v7.3c0 6-3.9 10.3-9.5 12.3-5.600-2-9.500-6.300-9.500-12.300V7.900z%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222.400%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M11.500 15.800l3.200 3.200 6-6.400%22 fill=%22none%22 stroke=%22%2300e04a%22 stroke-width=%222.800%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--line:#d2d2d7;--accent:#0066cc;--brand:#0071e3;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;
+  --crit:#b00020;--crit-bg:rgba(215,0,21,.10);--high:#c2410c;--high-bg:rgba(255,120,0,.11);--med:#a05a00;--med-bg:rgba(255,204,0,.16);--low:#6e6e73;--low-bg:rgba(110,110,115,.10);--good:#17803d;--good-bg:rgba(30,160,80,.11);--red:#8c1515}
+*{box-sizing:border-box}
+html{overflow-y:scroll;scrollbar-gutter:stable}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+header{background:var(--head);color:var(--head-text);padding:7px 16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:6px}
+h1{font:600 17.3px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;color:#fff}
+h1 a{color:inherit;text-decoration:none}h1 a:hover{text-decoration:underline}
+.sub{color:var(--head-muted);font-size:13px}.warn{color:#ffd60a}
+#openlog,#quit{align-self:center;font:inherit;font-size:11px;font-weight:500;border-radius:980px;padding:1px 9px;cursor:pointer}
+#openlog{margin-left:auto;color:#72a3f7;background:transparent;border:1px solid #4d74b5}#openlog:hover{background:rgba(114,163,247,.14)}
+#quit{color:#fff;background:#8c1515;border:1px solid #8c1515}#quit:hover{background:#820000}
+.stats{display:flex;flex-wrap:nowrap;gap:5px;padding:2px 16px}
+.stat{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--accent);border-radius:8px;padding:2px 8px}
+.stat b{font-size:13px;line-height:1.3;font-weight:700}.stat span{color:var(--muted);font-size:11px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.stat.c-critical{border-color:var(--crit);background:var(--crit-bg)}.stat.c-critical b{color:var(--crit)}.stat.c-high{border-color:var(--high);background:var(--high-bg)}.stat.c-high b{color:var(--high)}.stat.c-medium{border-color:var(--med);background:var(--med-bg)}.stat.c-good{border-color:var(--good);background:var(--good-bg)}.stat.c-good b{color:var(--good)}
+.bar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:6px 16px}
+.tabs{display:flex;flex-wrap:wrap;gap:2px 3px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:3px}
+.tabs button{border:0;background:none;color:var(--muted);padding:3px 10px;border-radius:980px;font:inherit;cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--brand);color:#fff}.tabs button.auto{font-weight:600;color:var(--text)}.tabs button.auto.on{color:#fff}
+.tabs .n{display:inline-block;min-width:15px;margin-left:4px;padding:0 4px;border-radius:99px;background:var(--high);color:#fff;font-size:10.5px;font-weight:700;text-align:center;line-height:15px}.tabs .n.critical{background:var(--crit)}.tabs .n.medium{background:var(--med)}
+input[type=search],input[type=number],select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:980px;padding:4px 10px}
+input[type=search]{flex:0 1 190px;min-width:110px;width:190px}
+label.tog{color:var(--muted);display:flex;gap:7px;align-items:center;cursor:pointer}
+label.tog input{appearance:none;-webkit-appearance:none;flex:none;width:34px;height:18px;margin:0;border-radius:9px;background:#d1d1d6;position:relative;cursor:pointer;transition:background .15s}
+label.tog input::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+label.tog input:checked{background:var(--brand)}label.tog input:checked::after{left:18px}label.tog:has(input:checked){color:var(--text)}
+.btn{font:inherit;font-size:11px;font-weight:500;border-radius:980px;padding:1px 9px;cursor:pointer;color:var(--accent);background:transparent;border:1px solid var(--accent);white-space:nowrap}
+.btn:hover{background:rgba(0,113,227,.1)}.btn.danger{color:#fff;background:#8c1515;border-color:#8c1515}.btn.danger:hover{background:#820000}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.big{font-size:13px;padding:7px 22px;font-weight:600}.btn.solid{color:#fff;background:var(--brand);border-color:var(--brand)}.btn.solid:hover{background:#0077ed}
+.wrap{padding:0 16px 30px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;table-layout:fixed}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+th{font-size:13px;color:var(--muted);font-weight:600;background:var(--panel)}tr:last-child td{border-bottom:0}
+tr.s-critical td{background:var(--crit-bg)}tr.s-high td{background:var(--high-bg)}tr.s-medium td{background:var(--med-bg)}
+.pill{display:inline-block;padding:0 7px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.p-critical{color:#fff;background:var(--crit)}.p-high{color:#fff;background:var(--high)}.p-medium{color:var(--med);background:var(--med-bg);border:1px solid var(--med)}.p-low{color:var(--low);background:var(--low-bg)}.p-info{color:var(--accent);background:rgba(0,113,227,.1)}.p-ok{color:var(--good);background:var(--good-bg)}.p-done{color:#fff;background:var(--good)}
+.title{font-weight:600}.small{color:var(--muted);font-size:12px}.mono{font:11.5px Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-all}
+.note{background:var(--panel-2);color:var(--muted);border-radius:12px;padding:9px 14px;margin:0 0 10px;line-height:1.5;font-size:12px}.note b{color:var(--text);font-weight:600}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+h3{font-size:14px;font-weight:600;margin:16px 0 4px}h3:first-child{margin-top:0}h3 .small{font-weight:400}
+.hero{display:flex;flex-wrap:wrap;gap:16px 26px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:10px}
+.score{flex:none;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font:700 25px/1 -apple-system,"Segoe UI",system-ui;color:#fff;background:var(--low)}.score.good{background:var(--good)}.score.fair{background:var(--med)}.score.poor{background:var(--high)}.score.bad{background:var(--crit)}
+.hero .txt{flex:1 1 320px;min-width:0}.hero .txt b.v{font-size:16px;font-weight:600;display:block;margin-bottom:2px}
+.progress{height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:var(--brand);transition:width .3s}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.chip{font-size:11px;padding:0 7px;border-radius:99px;background:var(--panel-2);color:var(--muted);white-space:nowrap}.chip.done{background:var(--good-bg);color:var(--good)}.chip.running{background:var(--brand);color:#fff}.chip.error{background:var(--crit-bg);color:var(--crit)}
+.card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.card.critical{border-left-color:var(--crit)}.card.high{border-left-color:var(--high)}.card.medium{border-left-color:var(--med)}.card.low{border-left-color:var(--low)}.card.ok{border-left-color:var(--good)}
+.card .top{display:flex;gap:8px;align-items:baseline}.card .top .title{flex:1;min-width:0}.card .top .acts{flex:none;display:flex;gap:5px}
+.card p{margin:3px 0 0}.card .why{color:var(--text)}.card .hint{color:var(--muted);font-size:12px}
+.card .mono{margin-top:4px;max-height:92px;overflow:auto}
+a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text-decoration:underline}
+[data-tip]{cursor:help}
+#tip{position:fixed;z-index:10;width:400px;max-width:calc(100vw - 16px);background:var(--panel);color:var(--text);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;pointer-events:none;display:none}
+#tip h4{margin:0 0 6px;font-size:14px}#tip b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:7px}#tip .path{font:11.5px Consolas,monospace;word-break:break-all;color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:12;max-width:min(560px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:none}#toast.bad{border-left-color:var(--crit)}
+.form{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:10px}
+@media (max-width:760px){.stats{flex-wrap:wrap}table{table-layout:auto}}
+</style>
+</head>
+<body>
+<header><h1><a href="https://jaykaluza.github.io/iT-Toolset/" target="nesiam-landing" title="Go to the Nesiam.com landing page">my_security</a></h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every detection, fix, block and undo from the last 30 days">Activity log</button><button id="quit" title="Stop My Security and close the app">Stop</button></header>
+<div class="stats" id="stats"></div>
+<div class="bar"><div class="tabs" id="tabs"></div><input type="search" id="q" placeholder="Filter…"><label class="tog"><input type="checkbox" id="problems"> Problems only</label><button class="btn" id="rescan">Scan this tab</button></div>
+<div class="wrap" id="view"></div>
+<div id="tip"></div><div id="toast"></div>
+<script>
+const TOKEN = '__MYSEC_TOKEN__';
+const TABS = [['auto','Autopilot',[]],['ports','Ports',['ports']],['shares','Shares',['shares']],['protocols','Protocols',['protocols']],['accounts','Accounts',['accounts','adminsetup']],['services','Services',['services']],['system','System',['system']],
+  ['firewall','Firewall',['firewall']],['backdoors','Hacker tricks',['tricks']],['lateral','Lateral',['lateral']],['pentest','Pentest',['pentest','outside']],
+  ['malware','Malware',['malware']],['processes','Processes',[]],['downloads','Downloads',['downloads']],['apps','Apps',['apps','userapps']],['patches','Patches',['patches']],['threats','Threats',['threats','attacks']],['browsers','Browsers',['browsers','extensions']],['events','Events',['events']],['health','Health',['health']],['blocked','Blocked',[]]];
+const LEAD = {shares:'Shared folders and how Windows file sharing (SMB) is set up. This is the most attacked part of Windows.',protocols:'Old network languages that attackers abuse. Most can be turned off with no effect on modern devices.',accounts:'Who can sign in and who has administrator rights.',services:'Background programs that start with Windows, and remote-control tools that can act as a back door.',system:'The main protections: antivirus, firewall, User Account Control, disk encryption, and signs that traffic is being redirected.',malware:'Signs of malware, spyware and keyloggers, and everything that starts automatically.',downloads:'Programs and scripts in Downloads, Desktop, Documents and temporary folders. Clearing moves a file to quarantine, which can be undone.',patches:'Missing Windows updates.',apps:'Apps with newer versions, and apps installed only for this user, with what makes each one risky.',firewall:'Rules that let the network in. These are the rules attackers add or abuse.',backdoors:'The places attackers hide so they survive a restart, and the settings they change to get more rights.',lateral:'How an intruder could move from this PC to your other devices, or into this PC from them. Close the doors here. While the app is open it also warns you when an account gains admin rights or a suspicious service appears.',pentest:'Inside: can a normal account or malware get more privileges, and what can someone on your network reach? Outside: what can the internet see of your connection? It only looks: nothing is exploited or changed.',events:'Errors and critical events from Event Viewer in the last 7 days, explained.',health:'What is slowing this PC down, memory leaks, and disks that are filling up or failing.'};
+const SEVL = {critical:'Critical',high:'High',medium:'Medium',low:'Low',info:'Info',ok:'OK'}, RANK = {critical:4,high:3,medium:2,low:1,info:0,ok:-1};
+const S = {tab:'auto', q:'', problems:false};
+try { S.tab = localStorage.getItem('mysec-tab') || 'auto'; } catch(e) {}
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeLink = u => /^https:\/\//i.test(String(u||'')) ? esc(u) : '';
+const pill = s => `<span class="pill p-${s}">${SEVL[s]}</span>`;
+const time = t => t ? new Date(t).toLocaleTimeString() : '';
+let D = null, BUSY = new Set(), REV = 0;
+const hit = o => { const q = S.q.trim().toLowerCase(); return !q || JSON.stringify(o).toLowerCase().includes(q); };
+
+function findings(tab) { const t = TABS.find(x => x[0] === tab); return t[2].flatMap(c => (D.scans[c] || {findings: []}).findings); }
+function actButton(f) {
+  if (f.Done) return '<span class="pill p-done">Done</span>';
+  if (!f.Action) return '';
+  const danger = /block|end|remove|turn off|stop|quarantine|disable/i.test(f.Action.label);
+  return `<button class="btn ${danger ? 'danger' : ''}" data-act="${esc(f.Id)}" ${BUSY.has(f.Id) ? 'disabled' : ''}>${BUSY.has(f.Id) ? 'Working…' : esc(f.Action.label)}</button>`;
+}
+function card(f, extra) {
+  const links = [];
+  if (f.Link && safeLink(f.Link)) links.push(`<a class="link" href="${safeLink(f.Link)}" target="_blank" rel="noopener">More about this</a>`);
+  return `<div class="card ${f.Sev}"><div class="top">${pill(f.Sev)}<span class="title">${esc(f.Title)}</span><span class="acts">${f.EventId ? eventButtons(f.EventId) : actButton(f)}</span></div>
+    <p class="why">${esc(f.What)}${f.Risk ? ' <b>Why it matters:</b> ' + esc(f.Risk) : ''}</p>${f.Evidence ? `<div class="mono">${esc(f.Evidence)}</div>` : ''}${f.Fix ? `<p class="hint"><b>What to do:</b> ${esc(f.Fix)}</p>` : ''}${links.length || extra ? `<p class="hint">${extra || ''}${links.join(' · ')}</p>` : ''}</div>`;
+}
+function scanNote(keys) {
+  const s = keys.map(k => D.scans[k]);
+  if (D.job && keys.includes(D.job.current)) return `<div class="note"><b>Scanning…</b> ${esc(D.scans[D.job.current].label)}.</div>`;
+  if (s.every(x => x.status === 'never')) return `<div class="empty">Not scanned yet. Use <b>Scan this tab</b>, or run <b>Autopilot</b> to do everything.</div>`;
+  return '';
+}
+function genericTab(tab) {
+  const keys = TABS.find(x => x[0] === tab)[2], note = scanNote(keys);
+  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= 1)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  return (LEAD[tab] ? `<div class="note">${esc(LEAD[tab])}</div>` : '') + note + (list.length ? list.map(f => card(f)).join('') : note ? '' : '<div class="empty">Nothing to show here.</div>');
+}
+
+// ---- Ports
+const allowText = f => !f.Exposed ? '<span class="pill p-ok">This PC only</span>' : f.Allowed === true ? '<span class="pill p-medium">Open to network</span>' : f.Allowed === false ? '<span class="pill p-low">Firewall closes it</span>' : '<span class="pill p-low">Listening</span>';
+let PTIPS = {};
+function portsTab() {
+  const note = scanNote(['ports']), blocked = new Set((D.blocks.ports || []).map(p => p.Key));
+  PTIPS = {};
+  const rows = findings('ports').filter(f => f.Port && hit(f) && (!S.problems || (RANK[f.Sev] >= 2))).sort((a, b) => RANK[b.Sev] - RANK[a.Sev] || a.Port - b.Port).map(f => {
+    PTIPS[f.Id] = f; const isB = blocked.has(f.Proto + ':' + f.Port);
+    return `<tr class="${RANK[f.Sev] >= 2 ? 's-' + f.Sev : ''}" data-tip="${esc(f.Id)}"><td>${pill(f.Sev)}</td><td><b>${f.Port}</b> <span class="small">${esc(f.Proto)}</span></td><td class="title">${esc(f.Title.split(' · ')[1])}</td><td>${esc(f.App)}<div class="small">PID ${f.PID}</div></td><td>${allowText(f)}</td><td>${isB ? `<button class="btn" data-unblock="port" data-key="${esc(f.Proto + ':' + f.Port)}">Unblock</button>` : actButton(f)}</td></tr>`;
+  });
+  return `<div class="note">Everything listening for connections on this PC. <b>Hover over a row</b> to see how that port works, what can go wrong and what blocking it breaks. Blocks stop other devices reaching the port, and are listed in the Blocked tab.</div>` + note +
+    (rows.length ? `<table><colgroup><col style="width:82px"><col style="width:90px"><col><col style="width:24%"><col style="width:130px"><col style="width:100px"></colgroup><thead><tr><th>Risk</th><th>Port</th><th>Service</th><th>Program</th><th>Reach</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>` : note ? '' : '<div class="empty">Nothing matches.</div>');
+}
+const tip = $('#tip');
+document.addEventListener('mousemove', e => {
+  const r = e.target.closest && e.target.closest('tr[data-tip]'), f = r && PTIPS[r.dataset.tip];
+  if (!f) { tip.style.display = 'none'; return; }
+  tip.innerHTML = `<h4>Port ${f.Port} ${esc(f.Proto)} · ${esc(f.Title.split(' · ')[1])}</h4><b>How it works</b>${esc(f.What)}<b>Possible risk</b>${esc(f.Risk)}${f.Evidence ? `<b>On this PC</b>${esc(f.Evidence)}` : ''}<b>If you block it</b>${esc(f.Breaks)}<b>Used by</b>${esc(f.App)}${f.Publisher ? ' · signed by ' + esc(f.Publisher) : ''}<div class="path">${esc(f.Path)}</div><b>Listening on</b>${esc(f.Addr)}`;
+  tip.style.display = 'block';
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px';
+  tip.style.top = (e.clientY + 16 + h > innerHeight ? Math.max(8, e.clientY - h - 12) : e.clientY + 16) + 'px';
+});
+
+// ---- Processes
+function eventButtons(id) {
+  const e = D.events.find(x => x.Id === id); if (!e || !e.Running) return '<span class="small">Ended</span>';
+  return `<button class="btn danger" data-kill="${id}">End</button><button class="btn danger" data-blockp="${id}">End and block</button>`;
+}
+function processesTab() {
+  const list = D.events.filter(e => hit(e) && (!S.problems || RANK[e.Sev] >= 2));
+  const intro = `<div class="note">My Security looks at every program the moment it starts, for as long as this app is open: what it is, where it lives, who started it and what it was told to do. <b>${D.watching ? 'Watching now.' : 'Starting…'}</b> A very short-lived program can finish before it is seen.</div>`;
+  if (!list.length) return intro + '<div class="empty">No risky programs have been seen.</div>';
+  return intro + list.map(e => `<div class="card ${e.Sev}"><div class="top">${pill(e.Sev)}<span class="title">${esc(e.Name)} <span class="small">PID ${e.PID}${e.Parent ? ' · started by ' + esc(e.Parent) : ''} · ${e.Existing ? 'already running' : time(e.When)}${e.Running ? '' : ' · ended'}</span></span><span class="acts">${eventButtons(e.Id)}</span></div>
+    ${e.Reasons.map(r => `<p class="why"><b>${esc(r.Title)}.</b> ${esc(r.Why)}</p>`).join('')}${e.Publisher ? `<p class="hint">Signed by ${esc(e.Publisher)}</p>` : ''}<div class="mono">${esc(e.Cmd || e.Path)}</div>${e.Decoded ? `<p class="hint"><b>Decoded command:</b></p><div class="mono">${esc(e.Decoded)}</div>` : ''}</div>`).join('');
+}
+
+// ---- Threats
+const THREAT_STATE = {exposed:['Looks unpatched','p-critical'],check:['On this PC: check version','p-medium'],patched:['On this PC: looks patched','p-ok'],none:['Not on this PC','p-low']};
+function threatsTab() {
+  const note = scanNote(['threats','attacks']), all = findings('threats'), sum = all.find(f => f.Latest);
+  const list = all.filter(f => !f.Latest && hit(f) && (!S.problems || RANK[f.Sev] >= 1)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  const latest = sum ? sum.Latest.filter(v => hit(v)) : [];
+  return `<div class="note">Attacks recorded in this PC's own logs, and CISA's list of vulnerabilities being exploited in the wild right now, checked against the software on this PC.</div>` + note + list.map(f => card(f)).join('') +
+    (sum ? `<h3>Latest published threats <span class="small">${esc(sum.What)}</span></h3><table><colgroup><col style="width:88px"><col style="width:176px"><col><col style="width:160px"></colgroup><thead><tr><th>Added</th><th>Status here</th><th>Threat</th><th>ID</th></tr></thead><tbody>` +
+      latest.map(v => { const st = THREAT_STATE[v.State]; return `<tr><td>${esc(v.Added)}</td><td><span class="pill ${st[1]}">${st[0]}</span>${v.Match ? `<div class="small">${esc(v.Match)}</div>` : ''}</td><td><span class="title">${esc(v.Name)}</span>${v.Ransomware ? ' <span class="pill p-critical">Ransomware</span>' : ''}<div class="small">${esc(v.Desc)}</div></td><td><a class="link" href="https://nvd.nist.gov/vuln/detail/${encodeURIComponent(v.Cve)}" target="_blank" rel="noopener">${esc(v.Cve)}</a></td></tr>`; }).join('') + '</tbody></table>' : '');
+}
+
+// ---- Browsers
+function browsersTab() {
+  const tf = D.tabFindings || {};
+  const tabs = D.tabs.filter(t => hit(t) && (!S.problems || t.Sev)).sort((a, b) => (RANK[b.Sev] ?? -2) - (RANK[a.Sev] ?? -2));
+  const rows = tabs.map(t => { const f = tf[t.FindingId];
+    return `<tr class="${RANK[t.Sev] >= 2 ? 's-' + t.Sev : ''}"><td>${t.Sev ? pill(t.Sev) : '<span class="pill p-ok">OK</span>'}</td><td><span class="title">${esc(t.Title)}</span><div class="small">${t.Url ? esc(t.Url.slice(0, 180)) : 'Address not in the browser history yet'}</div>${t.Hits.map(h => `<div style="margin-top:3px"><b>${esc(h.Title)}.</b> ${esc(h.Why)}</div>`).join('')}</td><td>${esc(t.Browser)}</td><td>${t.Blocked ? '<span class="pill p-done">Blocked</span>' : f ? actButton(f) : ''}</td></tr>`; });
+  const exts = genericTabList('browsers');
+  return `<div class="form"><label class="tog"><input type="checkbox" id="guard" ${D.guard ? 'checked' : ''}> Live browser guard</label><span class="small">${D.tabAt ? 'Checked ' + time(D.tabAt) + ', every 12 seconds' : 'Checking…'}</span></div>
+  <div class="note">Checks every open tab for fake sign-in pages (Microsoft 365 and others), lookalike names, missing or bad certificates, tokens in addresses, fake updates and "paste this command" tricks. Critical tabs raise a warning on your screen. Each new site that isn't a major one gets its certificate checked and its page text read once, without your cookies. <b>Limit:</b> without a browser extension, My Security can't see scripts as they run inside a page. Browsers starting command tools are caught in the Processes tab.</div>` +
+    (rows.length ? `<table><colgroup><col style="width:82px"><col><col style="width:80px"><col style="width:100px"></colgroup><thead><tr><th>Risk</th><th>Open tab</th><th>Browser</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>` : `<div class="empty">${D.guard ? 'No open browser tabs were found.' : 'Browser guard is off.'}</div>`) +
+    (D.alerts.length ? '<h3>Warnings shown this session</h3>' + D.alerts.map(a => `<div class="small">${time(a.When)} · <b>${esc(a.Site)}</b>: ${esc(a.Title)}</div>`).join('') : '') + '<h3>Extensions</h3>' + exts;
+}
+function genericTabList(tab) {
+  const note = scanNote(TABS.find(x => x[0] === tab)[2]);
+  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= 1)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  return note + list.map(f => card(f)).join('');
+}
+
+// ---- Blocked
+function blockedTab() {
+  const b = D.blocks, tbl = (cols, rows, none) => rows.length ? `<table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : `<div class="small">${none}</div>`;
+  const ub = (kind, key, label = 'Unblock', cls = '') => `<button class="btn ${cls}" data-unblock="${kind}" data-key="${esc(key)}">${label}</button>`;
+  return `<div class="form"><b>Block a port</b><input type="number" id="bport" min="1" max="65535" placeholder="Port" style="width:100px"><select id="bproto"><option>TCP</option><option>UDP</option></select><button class="btn danger" id="bbtn" ${D.admin ? '' : 'disabled title="Needs Administrator rights"'}>Block incoming</button></div>` +
+    `<h3>Ports</h3>` + tbl(['Port', 'Service', ''], b.ports.map(p => `<tr><td><b>${p.Port}</b> ${esc(p.Proto)}</td><td>${esc(p.Name)}</td><td>${ub('port', p.Key)}</td></tr>`), 'No ports blocked yet. Use Block in the Ports tab.') +
+    `<h3>Programs</h3>` + tbl(['Program', 'File', ''], b.programs.map(p => `<tr><td class="title">${esc(p.Name)}</td><td class="small">${esc(p.Path)}</td><td>${ub('program', p.Path)}</td></tr>`), 'No programs blocked yet.') +
+    `<h3>Addresses</h3>` + tbl(['Address', ''], b.ips.map(p => `<tr><td>${esc(p.Address)}</td><td>${ub('ip', p.Address)}</td></tr>`), 'No addresses blocked yet.') +
+    `<h3>Websites</h3>` + tbl(['Site', ''], b.sites.map(s => `<tr><td>${esc(s)}</td><td>${ub('site', s)}</td></tr>`), 'No sites blocked yet.') +
+    `<h3>Quarantine</h3>` + tbl(['File', 'Came from', 'When', ''], b.quarantine.map(q => `<tr><td class="title">${esc(q.Name)}</td><td class="small">${esc(q.Path)}</td><td>${esc(q.When)}</td><td>${ub('restore', q.Id, 'Restore')} ${ub('delete', q.Id, 'Delete', 'danger')}</td></tr>`), 'Quarantine is empty.') +
+    `<h3>Changes you can undo</h3>` + tbl(['Change', ''], D.undo.map(u => `<tr><td><b>${esc(u.What)}</b><div class="small">${esc(u.Label)}</div></td><td><button class="btn" data-undo="${esc(u.Id)}">Undo</button></td></tr>`), 'Nothing to undo in this session. Undo is available until My Security closes.');
+}
+
+// ---- Autopilot
+const SCORE = s => s == null ? ['', '—'] : s >= 85 ? ['good', s] : s >= 65 ? ['fair', s] : s >= 40 ? ['poor', s] : ['bad', s];
+function verdict() {
+  const c = D.counts;
+  if (D.job) return ['Autopilot is checking this PC…', 'You can keep working. Results appear as each check finishes.'];
+  if (!D.ran) return ['Press Autopilot to check this PC', 'It runs every scan, then tells you what is critical and what can wait. Nothing is changed unless you press a Fix button and confirm.'];
+  if (c.critical) return [`${c.critical} critical problem${c.critical > 1 ? 's' : ''} to fix now`, 'Start at the top. These are the ones an attacker could use today, or signs that something is already wrong.'];
+  if (c.high) return [`Nothing critical. ${c.high} important item${c.high > 1 ? 's' : ''} for this week`, 'No emergency, but do not leave these for long.'];
+  if (c.medium) return ['This PC is in good shape', 'A few improvements are listed below for when you have time.'];
+  return ['No problems found', 'Run Autopilot again every week or so, and after installing anything new.'];
+}
+function bucket(title, sub, items) {
+  if (!items.length) return '';
+  return `<h3>${title} <span class="small">${items.length} · ${sub}</span></h3>` + items.filter(hit).map(f => card(f, `From: ${esc(f.From)}. `)).join('');
+}
+function autoTab() {
+  const [cls, val] = SCORE(D.score), [v, sub] = verdict(), j = D.job;
+  const pct = j ? Math.round((j.done / j.total) * 100) : 0;
+  const chips = Object.entries(D.scans).map(([k, s]) => `<span class="chip ${s.status === 'done' ? 'done' : s.status === 'running' ? 'running' : s.status === 'error' ? 'error' : ''}" title="${s.at ? 'Finished ' + time(s.at) + ' in ' + s.secs + 's' : ''}">${esc(s.label)}</span>`).join('');
+  const hero = `<div class="hero"><div class="score ${cls}" title="Security score out of 100">${val}</div><div class="txt"><b class="v">${esc(v)}</b><span class="small">${esc(sub)}</span>${j ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ''}<div class="chips">${chips}</div></div><button class="btn big solid" id="autopilot" ${j ? 'disabled' : ''}>${j ? `Scanning ${j.done + 1} of ${j.total}…` : 'Autopilot'}</button></div>`;
+  const p = D.plan;
+  const adm = D.admin ? '' : '<div class="note"><b>My Security is not running as Administrator,</b> so some checks and all system fixes are unavailable. MySecurity.exe asks for it by itself.</div>';
+  return hero + adm + bucket('Fix now', 'an attacker could use these today', p.filter(x => x.Bucket === 'now')) + bucket('This week', 'important, not an emergency', p.filter(x => x.Bucket === 'week')) + bucket('When you have time', 'worth doing', p.filter(x => x.Bucket === 'later')) +
+    (D.ran ? `<p class="small">${D.counts.low} minor items and everything that passed are in each tab. The score is a rough guide: it can't prove that a PC is clean.</p>` : '');
+}
+
+function render() {
+  if (!D) return;
+  $('#meta').innerHTML = `[${esc(D.host)} · v${esc(D.version)}]` + (D.admin ? '' : ' · <span class="warn">not elevated: some checks and fixes are unavailable</span>');
+  const c = D.counts, sc = D.score;
+  $('#stats').innerHTML = [[sc == null ? '—' : sc, 'Security score', sc == null ? '' : sc >= 85 ? 'c-good' : ''], [c.critical, 'Critical', c.critical ? 'c-critical' : ''], [c.high, 'High', c.high ? 'c-high' : ''], [c.medium, 'Medium', c.medium ? 'c-medium' : ''], [D.events.filter(e => e.Running).length, 'Risky programs running', ''], [D.tabs.filter(t => t.Sev === 'critical' || t.Sev === 'high').length, 'Risky browser tabs', ''], [(D.blocks.ports || []).length + (D.blocks.programs || []).length + (D.blocks.sites || []).length, 'Blocked by you', '']].map(s => `<div class="stat ${s[2]}"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
+  $('#tabs').innerHTML = TABS.map(([id, label, cats]) => {
+    let n = cats.flatMap(k => D.scans[k].findings).filter(f => RANK[f.Sev] >= 2 && !f.Done);
+    if (id === 'processes') n = D.events.filter(e => e.Running && RANK[e.Sev] >= 3);
+    if (id === 'browsers') n = n.concat(D.tabs.filter(t => RANK[t.Sev] >= 3));
+    const top = n.reduce((m, f) => Math.max(m, RANK[f.Sev]), 0);
+    return `<button data-t="${id}" class="${id === 'auto' ? 'auto ' : ''}${id === S.tab ? 'on' : ''}">${label}${n.length ? `<span class="n ${top === 4 ? 'critical' : top === 2 ? 'medium' : ''}">${n.length}</span>` : ''}</button>`;
+  }).join('');
+  const scannable = TABS.find(t => t[0] === S.tab)[2];
+  $('#rescan').style.display = scannable.length ? '' : 'none'; $('#rescan').disabled = !!D.job;
+  $('#q').style.display = $('#problems').parentElement.style.display = S.tab === 'auto' || S.tab === 'blocked' ? 'none' : '';
+  // a redraw while someone types in the Blocked tab's port box would wipe it
+  const keep = document.activeElement && document.activeElement.id === 'bport' ? $('#bport').value : null;
+  const y = scrollY;
+  $('#view').innerHTML = ({auto: autoTab, ports: portsTab, processes: processesTab, threats: threatsTab, browsers: browsersTab, blocked: blockedTab}[S.tab] || (() => genericTab(S.tab)))();
+  if (keep !== null) { $('#bport').value = keep; $('#bport').focus(); }
+  scrollTo(0, y);
+}
+
+let toastT = null;
+function toast(r) { const t = $('#toast'); t.className = r.ok ? '' : 'bad'; t.textContent = r.message; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 9000); }
+async function post(url, body) {
+  try { const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-MySec-Token': TOKEN}, body: JSON.stringify(body || {})}); return await r.json(); }
+  catch (e) { return {ok: false, message: 'The app is not running, so nothing was changed.'}; }
+}
+function lookup(id) { for (const s of Object.values(D.scans)) { const f = s.findings.find(x => x.Id === id); if (f) return f; } return (D.tabFindings || {})[id]; }
+$('#tabs').onclick = e => { const b = e.target.closest('button[data-t]'); if (b) { S.tab = b.dataset.t; try { localStorage.setItem('mysec-tab', S.tab); } catch(x) {} render(); } };
+$('#q').oninput = e => { S.q = e.target.value; render(); };
+$('#problems').onchange = e => { S.problems = e.target.checked; render(); };
+$('#rescan').onclick = async () => toast(await post('/scan', {keys: TABS.find(t => t[0] === S.tab)[2]}));
+$('#openlog').onclick = async () => toast(await post('/openlog'));
+$('#view').addEventListener('change', async e => { if (e.target.id === 'guard') { toast(await post('/guard', {on: e.target.checked})); } });
+$('#view').onclick = async e => {
+  const t = e.target;
+  if (t.id === 'autopilot') { toast(await post('/autopilot')); return poll(true); }
+  if (t.id === 'bbtn') { const port = +$('#bport').value, proto = $('#bproto').value; if (!(port >= 1 && port <= 65535)) return toast({ok: false, message: 'Type a port number from 1 to 65535.'}); if (!confirm(`Block incoming ${proto} port ${port}?\n\nOther devices will not be able to connect to it.`)) return; return toast(await post('/block-port', {port, proto})); }
+  if (t.dataset.act) { const f = lookup(t.dataset.act); if (!f || !f.Action || !confirm(f.Action.confirm)) return; BUSY.add(f.Id); render(); const r = await post('/action', {id: f.Id}); BUSY.delete(f.Id); toast(r); return poll(true); }
+  if (t.dataset.kill) { const ev = D.events.find(x => x.Id === +t.dataset.kill); if (!confirm(`End ${ev.Name} (PID ${ev.PID})?\n\nUnsaved work in it will be lost.`)) return; toast(await post('/kill', {id: ev.Id})); return poll(true); }
+  if (t.dataset.blockp) { const ev = D.events.find(x => x.Id === +t.dataset.blockp); if (!confirm(`End and block ${ev.Name}?\n\n${ev.Path}\n\nIt will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id})); return poll(true); }
+  if (t.dataset.unblock) { const k = t.dataset.unblock; if (!confirm(k === 'delete' ? 'Permanently delete this file?\n\nThis cannot be undone.' : k === 'restore' ? 'Put this file back where it was?' : 'Remove this block?')) return; toast(await post('/unblock', {kind: k, key: t.dataset.key})); return poll(true); }
+  if (t.dataset.undo) { if (!confirm('Undo this change?')) return; toast(await post('/undo', {id: t.dataset.undo})); return poll(true); }
+};
+let stopped = false;
+function closed() { stopped = true; window.close(); setTimeout(() => { document.body.innerHTML = '<header><h1>my_security</h1></header><div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.</div>'; }, 300); }
+$('#quit').onclick = async () => { if (!confirm('Stop My Security?\n\nLive watching of programs and browser tabs stops too.')) return; try { await fetch('/quit', {method: 'POST', headers: {'X-MySec-Token': TOKEN}}); } catch(e) {} closed(); };
+addEventListener('pagehide', e => { if (!e.persisted && !stopped) navigator.sendBeacon('/tab-closed', TOKEN); });
+let timer = null;
+async function poll(once) {
+  if (stopped) return;
+  clearTimeout(timer);
+  try {
+    const r = await fetch('/data?rev=' + REV, {headers: {'X-MySec-Token': TOKEN}, cache: 'no-store'});
+    if (r.status === 403) { $('#meta').textContent = 'The app restarted, reconnecting…'; setTimeout(() => location.reload(), 1000); return; }
+    if (r.ok) { const d = await r.json(); if (d.stopping) return closed(); if (!d.same) { D = d; REV = d.rev; render(); } }
+  } catch (e) { return closed(); }
+  timer = setTimeout(poll, 2000);
+}
+poll();
+</script>
+</body>
+</html>

@@ -142,6 +142,27 @@ a:hover{text-decoration:underline}
         </div>
       </div>
     </div>
+    <div class="tool">
+      <div class="icon" aria-hidden="true">
+        <!-- shield with a tick; outlines only, like the icon above -->
+        <svg width="34" height="34" viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 3.5l10 3.6v7.7c0 6.3-4.1 10.9-10 13.2-5.9-2.3-10-6.9-10-13.2V7.1z"/>
+          <path d="M11.3 15.8l3.3 3.3 6.2-6.6"/></svg>
+      </div>
+      <div class="info">
+        <h3>My Security</h3>
+        <div class="muted">Check this PC for open ports, malware signs, missing patches and live threats, and test it from inside and outside. Autopilot tells you what to fix first.</div>
+      </div>
+      <div class="tool-actions">
+        <button class="run" id="runSecurity">RUN</button>
+        <div class="more">
+          <button class="more-btn" aria-label="More options for My Security" aria-haspopup="true" aria-expanded="false" title="More options">⋯</button>
+          <div class="more-menu hidden">
+            <button class="more-item" id="removeSecurityLink">Remove the RUN link</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -157,11 +178,11 @@ a:hover{text-decoration:underline}
     <div id="launchSteps">
       <p><b>First time on this PC? Two steps:</b></p>
       <ol>
-        <li><a href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/MyConnections.exe">Download MyConnections.exe</a> and save it somewhere you'll keep, such as Documents.</li>
+        <li><a id="dlLink" href="https://github.com/jaykaluza/iT-Toolset/releases/latest/download/MyConnections.exe">Download <span class="exeName">MyConnections.exe</span></a> and save it somewhere you'll keep, such as Documents.</li>
         <li>Double-click it and click <b>Yes</b>. If Windows warns you, click <b>More info</b>, then <b>Run anyway</b>.</li>
       </ol>
       <p class="muted">This window closes by itself when the app starts, and RUN works from then on. If your browser asks to connect to apps on this device, choose <b>Allow</b>.</p>
-      <p class="muted">Check it's genuine: compare <span class="hint" tabindex="0"><code>Get-FileHash .\MyConnections.exe</code><span class="pop"><b>How to check, step by step:</b><span>1. In File Explorer, open the folder where you saved <b>MyConnections.exe</b>.</span><span>2. Click the address bar at the top of that window, type <code>powershell.exe</code> and press <b>Enter</b>. A PowerShell window opens in that folder.</span><span>3. Type or paste <code>Get-FileHash .\MyConnections.exe</code> and press <b>Enter</b>.</span><span id="fpStep">4. Open the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest" style="color:#6fc3ff">release page</a> and find the fingerprint under <b>Check it's genuine</b>.</span><span>5. Compare it with the long line of letters and numbers next to <b>Hash</b>. They must match exactly. If they don't, don't run the file.</span></span></span> with the fingerprint on the <a href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</p>
+      <p class="muted">Check it's genuine: compare <span class="hint" tabindex="0"><code>Get-FileHash .\<span class="exeName">MyConnections.exe</span></code><span class="pop"><b>How to check, step by step:</b><span>1. In File Explorer, open the folder where you saved <b><span class="exeName">MyConnections.exe</span></b>.</span><span>2. Click the address bar at the top of that window, type <code>powershell.exe</code> and press <b>Enter</b>. A PowerShell window opens in that folder.</span><span>3. Type or paste <code>Get-FileHash .\<span class="exeName">MyConnections.exe</span></code> and press <b>Enter</b>.</span><span id="fpStep">4. Open the <a class="relLink" href="https://github.com/jaykaluza/iT-Toolset/releases/latest" style="color:#6fc3ff">release page</a> and find the fingerprint under <b>Check it's genuine</b>.</span><span>5. Compare it with the long line of letters and numbers next to <b>Hash</b>. They must match exactly. If they don't, don't run the file.</span></span></span> with the fingerprint on the <a class="relLink" href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</p>
     </div>
     <div class="launch-foot">
       <button type="button" class="btn" id="launchSetup">Complete first-time setup</button>
@@ -173,23 +194,40 @@ a:hover{text-decoration:underline}
 
 <script>
 const $ = s => document.querySelector(s);
+const REPO = 'https://github.com/jaykaluza/iT-Toolset';
+// Each tool has its own link, ports and release. My Security's releases don't replace My Connections' "latest", so its links name its release.
+const TOOLS = [
+  {name: 'My Connections', exe: 'MyConnections.exe', scheme: 'myconnections', ports: [8765, 8766, 8767], apps: ['MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor'], key: 'myconnections-setup', run: '#run', remove: '#removeLink',
+   download: `${REPO}/releases/latest/download/MyConnections.exe`, release: `${REPO}/releases/latest`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/latest', events: true},
+  {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink',
+   download: `${REPO}/releases/download/security-v0.1/MySecurity.exe`, release: `${REPO}/releases/tag/security-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/security-v0.1', events: false}
+];
+for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
+let current = TOOLS[0];   // the tool the popup is showing
 
-// The first time the how-to-check popup opens, show the latest release's real fingerprint in it.
+// The first time the how-to-check popup opens for a tool, show its release's real fingerprint in it.
 // If GitHub can't be reached, the step keeps pointing to the release page.
+const fpOriginal = $('#fpStep').innerHTML;
 async function showFingerprint() {
+  const tool = current;
+  if (tool.fingerprint) return putFingerprint(tool.fingerprint);
   try {
-    const res = await fetch('https://api.github.com/repos/jaykaluza/iT-Toolset/releases/latest', {headers: {Accept: 'application/vnd.github+json'}});
+    const res = await fetch(tool.api, {headers: {Accept: 'application/vnd.github+json'}});
     if (!res.ok) return;
     const rel = await res.json();
-    const asset = (rel.assets || []).find(a => a.name === 'MyConnections.exe');
+    const asset = (rel.assets || []).find(a => a.name === tool.exe);
     const found = String(asset && asset.digest || '').match(/^sha256:([a-f0-9]{64})$/i) || String(rel.body || '').match(/\b([a-f0-9]{64})\b/i);
     if (!found) return;
-    const code = document.createElement('code');
-    code.textContent = found[1].toUpperCase();
-    $('#fpStep').replaceChildren('4. The correct fingerprint for the latest version is ', code);
+    tool.fingerprint = found[1].toUpperCase();
+    if (tool === current) putFingerprint(tool.fingerprint);
   } catch (e) { /* the release page link stays */ }
 }
-for (const type of ['mouseenter', 'focusin']) $('.hint').addEventListener(type, showFingerprint, {once: true});
+function putFingerprint(value) {
+  const code = document.createElement('code');
+  code.textContent = value;
+  $('#fpStep').replaceChildren('4. The correct fingerprint for the latest version is ', code);
+}
+for (const type of ['mouseenter', 'focusin']) $('.hint').addEventListener(type, showFingerprint);
 const isWindows = /Windows/i.test(navigator.userAgent);
 const store = {
   get: () => { try { return sessionStorage.getItem('demo-user') || ''; } catch (e) { return ''; } },
@@ -202,21 +240,28 @@ function show(user) {
   $('#who').classList.toggle('hidden', !user);
   $('#signout').classList.toggle('hidden', !user);
   $('#who').textContent = user ? `Signed in as ${user}` : '';
-  if (user && !isWindows) {
-    $('#run').disabled = true;
-    $('#run').title = 'This tool runs on Windows PCs only';
-  }
+  if (user && !isWindows) for (const t of TOOLS) { $(t.run).disabled = true; $(t.run).title = 'This tool runs on Windows PCs only'; }
 }
 
 $('#signinForm').onsubmit = e => { e.preventDefault(); const n = $('#name').value.trim(); if (n) { store.set(n); show(n); } };
 $('#signout').onclick = () => { store.set(''); show(''); };
 // Browsers won't tell a page which apps are installed, so this browser remembers whether
-// the app has been set up on this PC (set by "Done, start it now", cleared by the remove link).
+// each app has been set up on this PC (set when it's seen running, cleared by the remove link).
 const setup = {
-  done: () => { try { return localStorage.getItem('myconnections-setup') === '1'; } catch (e) { return false; } },
-  set: on => { try { on ? localStorage.setItem('myconnections-setup', '1') : localStorage.removeItem('myconnections-setup'); } catch (e) {} }
+  done: t => { try { return localStorage.getItem(t.key) === '1'; } catch (e) { return false; } },
+  set: (t, on) => { try { on ? localStorage.setItem(t.key, '1') : localStorage.removeItem(t.key); } catch (e) {} }
 };
-$('#launchIcon').append($('.tool .icon svg').cloneNode(true));
+// point the shared popup at one tool
+function useTool(t) {
+  current = t;
+  $('#launchTitle').textContent = t.name;
+  $('#launchIcon').replaceChildren(t.row.querySelector('.icon svg').cloneNode(true));
+  document.querySelectorAll('.exeName').forEach(x => { x.textContent = t.exe; });
+  $('#dlLink').href = t.download;
+  $('#fpStep').innerHTML = fpOriginal;
+  document.querySelectorAll('.relLink').forEach(x => { x.href = t.release; });
+}
+useTool(TOOLS[0]);
 const LAUNCH_WAIT_MS = 30000;   // long enough to answer the browser's and Windows' prompts
 let launchTimer = null;
 // the one popup RUN opens: launching, not set up yet, or not detected after launching
@@ -228,10 +273,10 @@ const openLaunch = (html, offerSetup, offerRetry) => {
   $('#launchRetry').classList.toggle('hidden', !offerRetry);
   if (!$('#launch').open) $('#launch').showModal();
 };
-const closeLaunch = () => { if ($('#launch').open) $('#launch').close(); };
+const closeLaunch = t => { if (t === current && $('#launch').open) $('#launch').close(); };
 $('#launch').addEventListener('close', () => clearTimeout(launchTimer));
 // the two setup steps, in the popup; it closes by itself as soon as the app is seen running
-const showSetup = () => { clearTimeout(launchTimer); openLaunch('', false, false); watchApp(); };
+const showSetup = t => { useTool(t); clearTimeout(launchTimer); openLaunch('', false, false); watchApp(t); };
 // follow the app's link in a throwaway tab: once the link is accepted the browser can close the tab that followed it,
 // and that must not be this page. If the tab is blocked, fall back to a hidden frame.
 let linkFrame = null;
@@ -241,80 +286,87 @@ const openLink = link => {
   if (!linkFrame) { linkFrame = document.createElement('iframe'); linkFrame.hidden = true; document.body.appendChild(linkFrame); }
   linkFrame.src = link;
 };
-const startApp = () => {
-  openLaunch('Attempting to launch My Connections. If your browser asks, choose <b>Open</b>.<span class="muted launch-note">If nothing opens, <a href="#" id="launchSetupLink">run the first-time setup</a>.</span>');
-  openLink('myconnections://run');   // starts MyConnections.exe through the link it set up
+const startApp = t => {
+  useTool(t);
+  openLaunch(`Attempting to launch ${t.name}. If your browser asks, choose <b>Open</b>.<span class="muted launch-note">If nothing opens, <a href="#" id="launchSetupLink">run the first-time setup</a>.</span>`);
+  openLink(`${t.scheme}://run`);   // starts the app through the link it set up
   clearTimeout(launchTimer);
-  launchTimer = setTimeout(() => openLaunch('My Connections wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, or the app was moved or deleted, complete the one-time setup.', true, true), LAUNCH_WAIT_MS);
+  launchTimer = setTimeout(() => openLaunch(`${t.name} wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, or the app was moved or deleted, complete the one-time setup.`, true, true), LAUNCH_WAIT_MS);
 };
-$('#launchSetup').onclick = () => { setup.set(false); showSetup(); };
+$('#launchSetup').onclick = () => { setup.set(current, false); showSetup(current); };
 $('#launchMsg').addEventListener('click', e => { if (e.target.id === 'launchSetupLink') { e.preventDefault(); $('#launchSetup').click(); } });
-$('#launchRetry').onclick = () => startApp();
+$('#launchRetry').onclick = () => startApp(current);
 
 
-// ---- Is the app running on this PC? The app answers this page (and only this site) on localhost,
+// ---- Is the app running on this PC? Each app answers this page (and only this site) on localhost,
 // so RUN can turn into STOP. Browsers may ask once to allow the page to reach apps on this device.
-const PORTS = [8765, 8766, 8767];
-let appPort = null, stopRequested = false, watching = false, checking = false, siteEvents = null;
-
-async function findApp() {
-  for (const p of PORTS) {
+async function findApp(t) {
+  for (const p of t.ports) {
     try {
       const r = await fetch(`http://localhost:${p}/status`, {cache: 'no-store', signal: AbortSignal.timeout(1500)});
-      if (r.ok) { const s = await r.json(); if (['MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor'].includes(s.app) && !s.stopping) return p; }
+      if (r.ok) { const s = await r.json(); if (t.apps.includes(s.app) && !s.stopping) return p; }
     } catch (e) { /* not running on this port, or the browser didn't allow the check */ }
   }
   return null;
 }
 
-function updateRunButton() {
+function updateRunButton(t) {
   if (!isWindows) return;
-  const b = $('#run');
-  b.classList.toggle('stop', !!appPort && !stopRequested);
-  b.textContent = stopRequested ? 'STOPPING…' : appPort ? 'STOP' : 'RUN';
-  b.disabled = stopRequested;
+  const b = $(t.run);
+  b.classList.toggle('stop', !!t.appPort && !t.stopRequested);
+  b.textContent = t.stopRequested ? 'STOPPING…' : t.appPort ? 'STOP' : 'RUN';
+  b.disabled = t.stopRequested;
 }
 
-async function checkApp() {
-  if (checking) return;   // one at a time, so an older answer can't overwrite a newer one
-  checking = true;
-  appPort = await findApp();
-  checking = false;
-  if (appPort) { setup.set(true); closeLaunch(); }   // seeing it run proves setup worked
-  else stopRequested = false;
-  // while the app runs, it knows this page is open and can ask it to refresh (the dashboard's title link)
-  if (appPort && !siteEvents) {
-    siteEvents = new EventSource(`http://localhost:${appPort}/site-events`);
-    siteEvents.onmessage = e => { if (e.data === 'refresh') location.reload(); };
-  } else if (!appPort && siteEvents) { siteEvents.close(); siteEvents = null; }
-  updateRunButton();
+async function checkApp(t) {
+  if (t.checking) return;   // one at a time, so an older answer can't overwrite a newer one
+  t.checking = true;
+  t.appPort = await findApp(t);
+  t.checking = false;
+  if (t.appPort) { setup.set(t, true); closeLaunch(t); }   // seeing it run proves setup worked
+  else t.stopRequested = false;
+  // while My Connections runs, it knows this page is open and can ask it to refresh (the dashboard's title link)
+  if (t.events && t.appPort && !t.siteEvents) {
+    t.siteEvents = new EventSource(`http://localhost:${t.appPort}/site-events`);
+    t.siteEvents.onmessage = e => { if (e.data === 'refresh') location.reload(); };
+  } else if (t.events && !t.appPort && t.siteEvents) { t.siteEvents.close(); t.siteEvents = null; }
+  updateRunButton(t);
 }
 
-// only start checking once this PC is known to be set up (or after RUN), so first-time visitors get no prompt
-function watchApp() {
-  if (watching) return;
-  watching = true;
-  checkApp();
-  setInterval(checkApp, 3000);
+// only start checking once a PC is known to be set up (or after RUN), so first-time visitors get no prompt
+function watchApp(t) {
+  if (t.watching) return;
+  t.watching = true;
+  checkApp(t);
+  setInterval(() => checkApp(t), 3000);
   // browsers slow or pause timers in background tabs, so also check the moment this tab is back in view
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkApp(); });
-  window.addEventListener('focus', checkApp);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkApp(t); });
+  window.addEventListener('focus', () => checkApp(t));
 }
 
-async function stopApp() {
-  if (!confirm('Stop the app?\n\nIt will close, along with its dashboard tab.')) return;
-  stopRequested = true;
-  updateRunButton();
-  try { await fetch(`http://localhost:${appPort}/site-stop`, {method: 'POST'}); } catch (e) {}
+async function stopApp(t) {
+  if (!confirm(`Stop ${t.name}?\n\nIt will close, along with its dashboard tab.`)) return;
+  t.stopRequested = true;
+  updateRunButton(t);
+  try { await fetch(`http://localhost:${t.appPort}/site-stop`, {method: 'POST'}); } catch (e) {}
 }
 
 // RUN: start the app if this PC is set up, otherwise show the one-time setup steps; STOP: stop it
-$('#run').onclick = () => {
-  if (appPort) return stopApp();
-  if (!setup.done()) return showSetup();
-  startApp();
-  watchApp();
-};
+for (const t of TOOLS) {
+  $(t.run).onclick = () => {
+    if (t.appPort) return stopApp(t);
+    if (!setup.done(t)) return showSetup(t);
+    startApp(t);
+    watchApp(t);
+  };
+  // Remove the RUN link: asks the app (via its own link) to unregister itself on this PC
+  $(t.remove).onclick = e => {
+    e.preventDefault();
+    if (!confirm(`Remove the RUN link for ${t.name} from this PC?\n\nYour browser will ask to open the app, then Windows asks for administrator rights. The app removes its link and confirms; it does not start.\n\nAfterwards the RUN button shows the setup steps again on this PC.`)) return;
+    setup.set(t, false);
+    openLink(`${t.scheme}://unregister`);
+  };
+}
 
 // each tool's ⋯ menu: opens and closes on its button, closes on any other click or Esc
 const closeMenus = () => document.querySelectorAll('.more-menu').forEach(m => { m.classList.add('hidden'); m.previousElementSibling.setAttribute('aria-expanded', 'false'); });
@@ -326,17 +378,10 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
 
-// Remove the RUN link: asks MyConnections.exe (via its own link) to unregister itself on this PC
-$('#removeLink').onclick = e => {
-  e.preventDefault();
-  if (!confirm('Remove the RUN link from this PC?\n\nYour browser will ask to open the app, then Windows asks for administrator rights. The app removes its link and confirms; it does not start the monitor.\n\nAfterwards the RUN button shows the setup steps again on this PC.')) return;
-  setup.set(false);
-  openLink('myconnections://unregister');
-};
-
+const watchKnown = () => { if (isWindows) for (const t of TOOLS) if (setup.done(t)) watchApp(t); };
 show(store.get());
-if (store.get() && setup.done() && isWindows) watchApp();
-$('#signinForm').addEventListener('submit', () => { if (setup.done() && isWindows) watchApp(); });
+if (store.get()) watchKnown();
+$('#signinForm').addEventListener('submit', watchKnown);
 </script>
 </body>
 </html>
