@@ -12,10 +12,22 @@ can't read directly: digital signatures, service details and the DNS cache.
 Run (Administrator recommended):  py NetMonitor.py
 """
 
+import ctypes
+import sys
+
+# The app runs as Administrator, often from a Downloads folder. Windows looks for a DLL beside the .exe first, so a file
+# dropped there could run with those rights. Load Windows' own DLLs from System32 before anything can ask for them by name.
+LOAD_FROM_SYSTEM32 = 0x800
+for _dll in ('iphlpapi', 'version', 'dnsapi', 'fwpuclnt', 'crypt32', 'bcrypt', 'secur32', 'mswsock', 'wsock32', 'userenv', 'wintrust', 'msasn1', 'winnsi'):
+    if sys.platform == 'win32':
+        try:
+            ctypes.WinDLL(_dll, winmode=LOAD_FROM_SYSTEM32)
+        except OSError:
+            pass
+
 import argparse
 import base64
 import csv
-import ctypes
 import ctypes.wintypes as wt
 import datetime as dt
 import glob
@@ -31,7 +43,6 @@ import socket
 import sqlite3
 import struct
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -47,7 +58,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.12'
+APP_VERSION = '1.13'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -56,10 +67,14 @@ APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'MyConnections')   
 
 # ---------------------------------------------------------------- Windows API
 
-iphlpapi = ctypes.WinDLL('iphlpapi', use_last_error=True)
-kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-user32 = ctypes.WinDLL('user32', use_last_error=True)
-shell32 = ctypes.WinDLL('shell32')
+def system_dll(name, **kw):
+    return ctypes.WinDLL(name, winmode=LOAD_FROM_SYSTEM32, **kw)
+
+
+iphlpapi = system_dll('iphlpapi', use_last_error=True)
+kernel32 = system_dll('kernel32', use_last_error=True)
+user32 = system_dll('user32', use_last_error=True)
+shell32 = system_dll('shell32')
 
 AF_INET, AF_INET6 = 2, 23
 TCP_TABLE_OWNER_PID_ALL = 5
@@ -241,7 +256,7 @@ class SYSTEM_PROCESS_ID_INFORMATION(ctypes.Structure):
     _fields_ = [('ProcessId', ctypes.c_void_p), ('ImageName', UNICODE_STRING)]
 
 
-ntdll = ctypes.WinDLL('ntdll')
+ntdll = system_dll('ntdll')
 ntdll.NtQuerySystemInformation.argtypes = [ctypes.c_ulong, ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
 ntdll.NtQuerySystemInformation.restype = ctypes.c_long
 kernel32.QueryDosDeviceW.argtypes = [wt.LPCWSTR, wt.LPWSTR, wt.DWORD]
@@ -363,7 +378,7 @@ class FWPM_FILTER0_START(ctypes.Structure):   # only the leading fields of FWPM_
 
 
 try:
-    fwpuclnt = ctypes.WinDLL('fwpuclnt')
+    fwpuclnt = system_dll('fwpuclnt')
     fwpuclnt.FwpmEngineOpen0.argtypes = [wt.LPCWSTR, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(wt.HANDLE)]
     fwpuclnt.FwpmEngineOpen0.restype = wt.DWORD
     fwpuclnt.FwpmFilterGetById0.argtypes = [wt.HANDLE, ctypes.c_uint64, ctypes.POINTER(ctypes.POINTER(FWPM_FILTER0_START))]
@@ -772,7 +787,7 @@ def write_hosts(text):
     with open(HOSTS_FILE, 'w', encoding='latin-1', newline='') as f:
         f.write(text)
     try:   # forget names Windows already looked up, so the change works straight away
-        ctypes.WinDLL('dnsapi').DnsFlushResolverCache()
+        system_dll('dnsapi').DnsFlushResolverCache()
     except (OSError, AttributeError):
         pass
 
@@ -1808,13 +1823,18 @@ class Monitor:
 # Served on localhost only. Every request except the page itself must carry a random per-run
 # token that is embedded in the page, so other websites can't read the data or end processes.
 
-CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; frame-ancestors 'none'"
+CSP = "default-src 'none'; script-src 'nonce-{}'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+EXPIRED_PAGE = (b'<!doctype html><meta charset=utf-8><title>my_connections</title><body style="font:16px sans-serif;padding:40px">'
+                b'This dashboard address has expired or is incomplete. Start My Connections again to open it.')
 # The Nesiam.com website may ask "is the app running?" (/status) and stop it (/site-stop), so its RUN
 # button can switch to STOP. Browsers only let these origins read the answer or send the stop.
 SITE_ORIGINS = ('https://nesiam.com', 'https://www.nesiam.com', 'https://jaykaluza.github.io')
 
 
-def make_handler(monitor, page_bytes, token, port):
+def make_handler(monitor, page_bytes, token, port, launch_key, nonce):
+    csp = CSP.format(nonce)
+    page_path = f'/?k={launch_key}'.encode()
+
     class Handler(http.server.BaseHTTPRequestHandler):
         server_version = 'MyConnections'
         sys_version = ''
@@ -1828,7 +1848,8 @@ def make_handler(monitor, page_bytes, token, port):
             self.send_header('Content-Length', str(len(body)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
-            self.send_header('Content-Security-Policy', CSP)
+            self.send_header('Content-Security-Policy', csp)
+            self.send_header('Referrer-Policy', 'no-referrer')
             for k, v in (extra or {}).items():
                 self.send_header(k, v)
             self.end_headers()
@@ -1844,6 +1865,13 @@ def make_handler(monitor, page_bytes, token, port):
 
         def site_headers(self, origin):
             return {'Access-Control-Allow-Origin': origin, 'Vary': 'Origin'}
+
+        def body(self, limit):
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+            except ValueError:
+                length = 0
+            return self.rfile.read(max(0, min(length, limit)))
 
         def do_OPTIONS(self):
             # browsers check first before letting the website talk to an app on this PC
@@ -1861,14 +1889,17 @@ def make_handler(monitor, page_bytes, token, port):
 
         def token_ok(self):
             origin = self.headers.get('Origin')
-            return (secrets.compare_digest(self.headers.get('X-NetMon-Token', ''), token)
+            return (secrets.compare_digest(self.headers.get('X-NetMon-Token', '').encode('utf-8', 'replace'), token.encode())
                     and (not origin or origin in (f'http://localhost:{port}', f'http://127.0.0.1:{port}')))
 
         def do_GET(self):
             if not self.host_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
-            if self.path == '/':
-                return self.send(200, 'text/html; charset=utf-8', page_bytes)
+            if self.path == '/' or self.path.startswith('/?'):
+                # the page holds the token, so only someone given this run's private address gets it
+                if secrets.compare_digest(self.path.encode('utf-8', 'replace'), page_path):
+                    return self.send(200, 'text/html; charset=utf-8', page_bytes)
+                return self.send(403, 'text/html; charset=utf-8', EXPIRED_PAGE)
             if self.path == '/status':
                 # only "it's running" and the version; readable by the Nesiam.com website alone
                 origin = self.site_origin()
@@ -1919,9 +1950,8 @@ def make_handler(monitor, page_bytes, token, port):
         def do_POST(self):
             if self.path == '/tab-closed':
                 # a dashboard tab is closing or reloading (browsers can't add the usual header here, so the key is the body)
-                length = min(int(self.headers.get('Content-Length', 0)), 200)
                 origin = self.headers.get('Origin')
-                if (self.host_ok() and secrets.compare_digest(self.rfile.read(length), token.encode())
+                if (self.host_ok() and secrets.compare_digest(self.body(200), token.encode())
                         and (not origin or origin in (f'http://localhost:{port}', f'http://127.0.0.1:{port}'))):
                     monitor.tab_closed_at = time.time()
                     return self.send(204, 'text/plain', b'')
@@ -1942,8 +1972,7 @@ def make_handler(monitor, page_bytes, token, port):
                 return self.send_json(200, {'ok': True})
             if self.path in ('/block', '/unblock'):
                 try:
-                    length = min(int(self.headers.get('Content-Length', 0)), 10000)
-                    body = json.loads(self.rfile.read(length) or b'{}')
+                    body = json.loads(self.body(10000) or b'{}')
                     if self.path == '/block':
                         result = monitor.block_app(int(body['pid']), str(body['name']))
                     else:
@@ -1955,8 +1984,7 @@ def make_handler(monitor, page_bytes, token, port):
                 return self.send_json(200, monitor.all_blocks())
             if self.path in ('/block-ip', '/unblock-ip', '/block-site', '/unblock-site', '/browser-sites'):
                 try:
-                    length = min(int(self.headers.get('Content-Length', 0)), 10000)
-                    body = json.loads(self.rfile.read(length) or b'{}')
+                    body = json.loads(self.body(10000) or b'{}')
                     if self.path == '/browser-sites':
                         return self.send_json(200, monitor.browser_sites())
                     action = {'/block-ip': monitor.block_ip, '/unblock-ip': monitor.unblock_ip,
@@ -1974,8 +2002,7 @@ def make_handler(monitor, page_bytes, token, port):
                 return self.send_json(200, monitor.open_activity_log())
             if self.path == '/audit':
                 try:
-                    length = min(int(self.headers.get('Content-Length', 0)), 1000)
-                    enable = bool(json.loads(self.rfile.read(length) or b'{}')['enable'])
+                    enable = bool(json.loads(self.body(1000) or b'{}')['enable'])
                 except (ValueError, KeyError, TypeError):
                     return self.send_json(400, {'ok': False, 'message': 'Bad request'})
                 return self.send_json(200, monitor.set_audit(enable))
@@ -1986,8 +2013,7 @@ def make_handler(monitor, page_bytes, token, port):
             if self.path != '/kill':
                 return self.send_json(404, {'ok': False, 'message': 'Not found'})
             try:
-                length = min(int(self.headers.get('Content-Length', 0)), 10000)
-                body = json.loads(self.rfile.read(length) or b'{}')
+                body = json.loads(self.body(10000) or b'{}')
                 pid, name = int(body['pid']), str(body['name'])
             except (ValueError, KeyError, TypeError):
                 return self.send_json(400, {'ok': False, 'message': 'Bad request'})
@@ -2000,15 +2026,16 @@ def start_server(monitor, port):
     with open(os.path.join(RESOURCES, 'dashboard.html'), encoding='utf-8') as f:
         page = f.read()
     token = secrets.token_hex(32)
-    page_bytes = page.replace('__NETMON_TOKEN__', token).encode('utf-8')
+    launch_key, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(18)
+    page_bytes = page.replace('__NETMON_TOKEN__', token).replace('<script>', f'<script nonce="{nonce}">').encode('utf-8')
     for p in range(port, port + 21):
         try:
-            server = http.server.ThreadingHTTPServer(('127.0.0.1', p), make_handler(monitor, page_bytes, token, p))
+            server = http.server.ThreadingHTTPServer(('127.0.0.1', p), make_handler(monitor, page_bytes, token, p, launch_key, nonce))
         except OSError:
             continue
         server.daemon_threads = True
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        return server, p
+        return server, p, launch_key
     sys.exit(f"Couldn't open a local port for the dashboard (tried {port} to {port + 20}).")
 
 
@@ -2018,6 +2045,14 @@ kernel32.CreateMutexW.restype = wt.HANDLE
 kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wt.BOOL, wt.LPCWSTR]
 ERROR_ALREADY_EXISTS = 183
 _instance_mutex = None
+
+
+def is_redirected(path):
+    """True if this folder is a junction or symbolic link, which could send the app's files somewhere else."""
+    try:
+        return os.lstat(path).st_reparse_tag in (0xA0000003, 0xA000000C)
+    except OSError:
+        return False
 
 
 def another_copy_running():
@@ -2068,7 +2103,7 @@ class VS_FIXEDFILEINFO(ctypes.Structure):
                 ('dwFileType', wt.DWORD), ('dwFileSubtype', wt.DWORD), ('dwFileDateMS', wt.DWORD), ('dwFileDateLS', wt.DWORD)]
 
 
-version_dll = ctypes.WinDLL('version')
+version_dll = system_dll('version')
 version_dll.GetFileVersionInfoSizeW.argtypes = [wt.LPCWSTR, ctypes.POINTER(wt.DWORD)]
 version_dll.GetFileVersionInfoW.argtypes = [wt.LPCWSTR, wt.DWORD, wt.DWORD, ctypes.c_void_p]
 version_dll.VerQueryValueW.argtypes = [ctypes.c_void_p, wt.LPCWSTR, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wt.UINT)]
@@ -2136,6 +2171,26 @@ def _key_exists(path):
         return False
 
 
+OPEN_PAGE = os.path.join(APP_DIR, 'open-dashboard.html')
+DASHBOARD_URL = re.compile(r'^http://localhost:\d{1,5}/\?k=[\w-]{20,}$')
+
+
+def open_dashboard(url):
+    """Open the dashboard in the browser, as the signed-in user: a browser started from here would otherwise be an Administrator too."""
+    if not DASHBOARD_URL.match(url):   # running.url lives in a folder anything the user runs can write to
+        return False
+    if not is_admin():
+        return webbrowser.open(url)
+    try:   # Explorer opens a file as the signed-in user, but treats a web address as a folder, so give it a small page that forwards
+        os.makedirs(APP_DIR, exist_ok=True)
+        with open(OPEN_PAGE, 'w', encoding='utf-8') as f:
+            f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open the dashboard</a>')
+        subprocess.Popen([os.path.join(WINDIR, 'explorer.exe'), OPEN_PAGE], creationflags=CREATE_NO_WINDOW)
+        return True
+    except OSError:
+        return False
+
+
 def show_error(message):
     user32.MessageBoxW(None, message, APP_NAME, 0x10)   # MB_ICONERROR
 
@@ -2186,12 +2241,15 @@ def main():
     if not args.outdir:
         args.outdir = os.path.join(APP_DIR if args.app else HERE, 'MyConnectionsOutput')
     url_file = os.path.join(APP_DIR, 'running.url')
+    if is_admin() and any(is_redirected(d) for d in (APP_DIR, os.path.dirname(args.outdir), args.outdir)):
+        sys.exit(f"The app's folder ({APP_DIR}) points somewhere else, so it won't write there with Administrator rights. Delete that folder and start the app again.")
 
     if args.app and not args.once and another_copy_running():
         # already running: just bring its dashboard back
         try:
             with open(url_file, encoding='utf-8') as f:
-                webbrowser.open(f.read().strip())
+                if not open_dashboard(f.read().strip()):
+                    show_error('The dashboard address the app saved is not valid, so it was not opened. Stop the app and start it again.')
         except OSError:
             show_error('The app is already running, but its dashboard address could not be found. '
                        'Wait a minute and try again.')
@@ -2208,10 +2266,11 @@ def main():
             f.write(monitor.latest_json)
         return
 
-    server, port = start_server(monitor, args.port)
-    url = f'http://localhost:{port}/'
+    server, port, launch_key = start_server(monitor, args.port)
+    home = f'http://localhost:{port}/'   # no key in a file old bookmarks use
+    url = f'{home}?k={launch_key}'
     with open(os.path.join(args.outdir, 'dashboard.html'), 'w', encoding='utf-8') as f:   # old bookmarks forward here
-        f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open the dashboard</a>')
+        f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={home}"><a href="{home}">Open the dashboard</a>')
     if args.app:
         os.makedirs(APP_DIR, exist_ok=True)
         with open(url_file, 'w', encoding='utf-8') as f:
@@ -2228,7 +2287,7 @@ def main():
             start = time.time()
             monitor.poll()
             if not opened and not args.no_browser:
-                webbrowser.open(url)
+                open_dashboard(url)
                 opened = True
                 monitor.last_client = time.time()
             # app mode has no window to close, so it stops once the dashboard is closed: within seconds if the tab said so
@@ -2246,10 +2305,11 @@ def main():
         server.shutdown()
         monitor.rdns_pool.shutdown(wait=False, cancel_futures=True)
         if args.app:
-            try:
-                os.remove(url_file)
-            except OSError:
-                pass
+            for leftover in (url_file, OPEN_PAGE):
+                try:
+                    os.remove(leftover)
+                except OSError:
+                    pass
     if args.app:
         os._exit(0)   # don't wait for slow hostname lookups still in flight; nothing is left unsaved
 

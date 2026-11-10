@@ -13,7 +13,7 @@ A small app that shows, live in your browser, every network connection your Wind
 3. Put it in a folder of its own (for example `Documents\MyConnections`), then **double-click it**.
 4. Windows may say **"Windows protected your PC"** (the app isn't digitally signed): click **More info → Run anyway**.
 5. Click **Yes** when Windows asks to allow it to make changes. It needs administrator rights to see every app and to end or block programs.
-6. The dashboard opens in your browser at `http://localhost:8765`. No install, no Python needed.
+6. The dashboard opens in your browser at a private `http://localhost:8765` address that changes each time the app starts. No install, no Python needed.
 
 Double-clicking it again while it's running just reopens the dashboard.
 

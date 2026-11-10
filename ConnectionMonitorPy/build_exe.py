@@ -108,7 +108,7 @@ def main():
     write_version_file(version_file, name, version)
 
     subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile', '--noconsole',
-                    '--uac-admin', '--name', EXE, '--icon', icon, '--version-file', version_file,
+                    '--uac-admin', '--exclude-module', 'multiprocessing', '--name', EXE, '--icon', icon, '--version-file', version_file,
                     '--add-data', f"{os.path.join(HERE, 'dashboard.html')}{os.pathsep}.",
                     '--distpath', DIST, '--workpath', BUILD, '--specpath', BUILD,
                     os.path.join(HERE, 'NetMonitor.py')], check=True)
