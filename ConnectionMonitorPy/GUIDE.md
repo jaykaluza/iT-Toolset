@@ -2,7 +2,7 @@
 
 A small app that shows, live in your browser, every network connection your Windows PC is making, names the app behind each one, flags anything risky, and lets you stop or block apps.
 
-*Screenshots: taken with an earlier version, so the look and some button names differ slightly (it now has a light page with a black header, and Block app also closes the app). The PC name and Windows user name are hidden; the Blocked tab shows example data.*
+*Screenshots: the PC name and Windows user name are hidden; the Blocked tab shows example data.*
 
 ---
 
