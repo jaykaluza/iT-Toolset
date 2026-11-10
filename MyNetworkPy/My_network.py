@@ -41,7 +41,7 @@ import webbrowser
 import winreg
 
 APP_NAME = 'My Network'
-APP_VERSION = '0.2'
+APP_VERSION = '0.3'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)       # running as MyNetwork.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)

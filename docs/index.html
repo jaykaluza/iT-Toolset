@@ -224,7 +224,7 @@ const TOOLS = [
   {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink',
    download: `${REPO}/releases/download/security-v0.1/MySecurity.exe`, release: `${REPO}/releases/tag/security-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/security-v0.1', events: false},
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
-   download: `${REPO}/releases/download/network-v0.2/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.2`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.2', events: false}
+   download: `${REPO}/releases/download/network-v0.3/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.3`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.3', events: false}
 ];
 for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
 let current = TOOLS[0];   // the tool the popup is showing
