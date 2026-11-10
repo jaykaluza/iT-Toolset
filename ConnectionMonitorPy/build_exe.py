@@ -7,72 +7,21 @@ Output: dist\MyConnections.exe, plus its SHA-256 fingerprint.
 """
 
 import hashlib
-import math
 import os
 import re
 import shutil
-import struct
 import subprocess
 import sys
-import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, 'build')
 DIST = os.path.join(HERE, 'dist')
 
 
-# ---------------------------------------------------------------- app icon (drawn in code, no image files)
+# ---------------------------------------------------------------- app icon: the browser tab icon, shared by every Nesiam tool
 
-CARDINAL = (140, 21, 21)
-
-
-def _icon_png(size):
-    """A white network symbol on a Cardinal Red rounded square, as PNG bytes."""
-    s = float(size)
-    centre, outer = (0.5, 0.52), [(0.25, 0.27), (0.75, 0.27), (0.25, 0.77), (0.75, 0.77)]
-
-    def seg_dist(px, py, a, b):
-        ax, ay, bx, by = a[0] * s, a[1] * s, b[0] * s, b[1] * s
-        dx, dy = bx - ax, by - ay
-        t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
-        return math.hypot(px - ax - t * dx, py - ay - t * dy)
-
-    rows = bytearray()
-    radius, line = 0.2 * s, 0.045 * s
-    for y in range(size):
-        rows.append(0)   # PNG filter: none
-        for x in range(size):
-            px, py = x + 0.5, y + 0.5
-            # rounded square background (signed distance, 1px anti-aliasing)
-            qx, qy = abs(px - s / 2) - (s / 2 - radius), abs(py - s / 2) - (s / 2 - radius)
-            sd = math.hypot(max(qx, 0), max(qy, 0)) + min(max(qx, qy), 0) - radius
-            bg = max(0.0, min(1.0, 0.5 - sd))
-            # white symbol: lines from the centre node to four outer nodes
-            d = min(seg_dist(px, py, centre, o) - line / 2 for o in outer)
-            d = min(d, math.hypot(px - centre[0] * s, py - centre[1] * s) - 0.11 * s)
-            for o in outer:
-                d = min(d, math.hypot(px - o[0] * s, py - o[1] * s) - 0.085 * s)
-            fg = max(0.0, min(1.0, 0.5 - d)) * bg
-            r, g, b = (round(c * (1 - fg) + 255 * fg) for c in CARDINAL)
-            rows += bytes((r, g, b, round(255 * bg)))
-
-    def chunk(tag, data):
-        return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xFFFFFFFF)
-
-    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0))
-            + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b''))
-
-
-def write_icon(path, sizes=(256, 64, 48, 32, 16)):
-    images = [_icon_png(n) for n in sizes]
-    header = struct.pack('<HHH', 0, 1, len(images))
-    offset = 6 + 16 * len(images)
-    entries = b''
-    for n, img in zip(sizes, images):
-        entries += struct.pack('<BBBBHHII', n % 256, n % 256, 0, 0, 1, 32, len(img), offset)
-        offset += len(img)
-    with open(path, 'wb') as f:
-        f.write(header + entries + b''.join(images))
+sys.path.insert(0, os.path.dirname(HERE))
+from nesiam_icon import write_icon  # noqa: E402  (nesiam_icon.py in the repo root)
 
 
 # ---------------------------------------------------------------- version details shown in the file's Properties

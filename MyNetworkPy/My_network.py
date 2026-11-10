@@ -1,5 +1,5 @@
 r"""
-My_network: a live 3D picture of the devices around this PC and the packets moving between them.
+My Network: a live 3D picture of the devices around this PC and the packets moving between them.
 
 Standard library only, no capture driver to install. Windows 10/11.
     py My_network.py                 asks for Administrator rights (packet capture needs them), opens the view
@@ -40,10 +40,10 @@ import urllib.request
 import webbrowser
 import winreg
 
-APP_NAME = 'My_network'
-APP_VERSION = '0.1'
+APP_NAME = 'My Network'
+APP_VERSION = '0.2'
 HERE = os.path.dirname(os.path.abspath(__file__))
-FROZEN = getattr(sys, 'frozen', False)       # running as My_network.exe
+FROZEN = getattr(sys, 'frozen', False)       # running as MyNetwork.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
 WINDIR = os.environ.get('SystemRoot', r'C:\Windows')
 APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'My_network')
@@ -1253,7 +1253,7 @@ def run_capture(net):
             if net.engine or net.mode == 'capture':
                 net.mode, net.engine = 'connections', ''
             if not net.note:
-                net.note = net.npcap_error or 'No packet capture: start My_network as Administrator, or use the Npcap upgrade.'
+                net.note = net.npcap_error or 'No packet capture: start My Network as Administrator, or use the Npcap upgrade.'
             net.stop.wait(3)
 
 
@@ -1464,7 +1464,7 @@ def make_handler(net, page, token, port, launch_key, nonce):
     origins = (f'http://localhost:{port}', f'http://127.0.0.1:{port}')
 
     class Handler(http.server.BaseHTTPRequestHandler):
-        server_version = 'My_network'
+        server_version = 'My Network'
         sys_version = ''
 
         def log_message(self, *args):
@@ -1512,12 +1512,12 @@ def make_handler(net, page, token, port, launch_key, nonce):
             if url.path == '/':
                 if secrets.compare_digest(self.path.encode('utf-8', 'replace'), page_path):
                     return self.send(200, 'text/html; charset=utf-8', page)
-                return self.send(403, 'text/plain; charset=utf-8', b'This address has expired. Start My_network again.')
+                return self.send(403, 'text/plain; charset=utf-8', b'This address has expired. Start My Network again.')
             if url.path == '/status':   # only "it's running" and the version, and only for the website
                 headers = self.site_headers()
                 if not headers:
                     return self.send_json(403, {'ok': False})
-                return self.send_json(200, {'app': 'My_network', 'version': APP_VERSION, 'stopping': net.stop.is_set()}, headers)
+                return self.send_json(200, {'app': 'My Network', 'version': APP_VERSION, 'stopping': net.stop.is_set()}, headers)
             if not self.token_ok():
                 return self.send_json(403, {'ok': False})
             net.last_client = time.time()
@@ -1581,7 +1581,7 @@ def start_server(net, first_port):
             continue
         threading.Thread(target=server.serve_forever, daemon=True).start()
         return server, f'http://localhost:{port}/?k={launch_key}'
-    sys.exit(f"Couldn't open a local port for My_network (tried {first_port} to {first_port + 2}). Close another program using them and try again.")
+    sys.exit(f"Couldn't open a local port for My Network (tried {first_port} to {first_port + 2}). Close another program using them and try again.")
 
 
 def open_view(url):
@@ -1591,7 +1591,7 @@ def open_view(url):
     try:
         handle, path = tempfile.mkstemp(prefix='my_network_', suffix='.html')
         with os.fdopen(handle, 'w', encoding='utf-8') as f:
-            f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open My_network</a>')
+            f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open My Network</a>')
         subprocess.Popen([os.path.join(WINDIR, 'explorer.exe'), path])
     except OSError:
         return False
@@ -1681,7 +1681,7 @@ def main():
     if args.link and (LINK_PATTERN.match(args.link).group(2) or '').lower() == 'unregister':
         unregister_link()
         if FROZEN:
-            ctypes.windll.user32.MessageBoxW(None, 'The RUN button link was removed. Running My_network.exe again sets it up again.', APP_NAME, 0x40)
+            ctypes.windll.user32.MessageBoxW(None, 'The RUN button link was removed. Running MyNetwork.exe again sets it up again.', APP_NAME, 0x40)
         return
     if FROZEN and args.app and (not link_target() or not os.path.isfile(link_target())):
         try:
@@ -1698,9 +1698,9 @@ def main():
                 with open(url_file, encoding='utf-8') as f:
                     saved = f.read().strip()
                 if not DASHBOARD_URL.match(saved) or not open_view(saved):
-                    show_error('The saved address is not valid. Stop My_network and start it again.')
+                    show_error('The saved address is not valid. Stop My Network and start it again.')
             except OSError:
-                show_error('My_network is already running, but its address could not be found. Wait a minute and try again.')
+                show_error('My Network is already running, but its address could not be found. Wait a minute and try again.')
             return
 
     upgraded = npcap_installed() and scapy_installed()   # Npcap normally works without Administrator rights
@@ -1761,4 +1761,4 @@ if __name__ == '__main__':
         os.makedirs(APP_DIR, exist_ok=True)
         with open(os.path.join(APP_DIR, 'error.log'), 'a', encoding='utf-8') as f:
             f.write(f'{time.ctime()}\n{traceback.format_exc()}\n')
-        show_error(f'My_network stopped because of an unexpected problem. Details are in {APP_DIR}\\error.log')
+        show_error(f'My Network stopped because of an unexpected problem. Details are in {APP_DIR}\\error.log')

@@ -1,4 +1,4 @@
-"""Tests for My_network that need no Administrator rights.  Run:  py -m unittest test_my_network  (from this folder)"""
+"""Tests for My Network that need no Administrator rights.  Run:  py -m unittest test_my_network  (from this folder)"""
 
 import http.client
 import os

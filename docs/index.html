@@ -172,13 +172,13 @@ a:hover{text-decoration:underline}
           <path d="M8.4 8.9l4.8 4.8M23.6 8.9l-4.8 4.8M8.4 23.6l4.8-4.3M23.6 23.6l-4.8-4.3"/></svg>
       </div>
       <div class="info">
-        <h3>My_network</h3>
+        <h3>My Network</h3>
         <div class="muted">See every device around you in 3D and watch the traffic move between them. Hover a connection to learn what it is and whether it looks risky.</div>
       </div>
       <div class="tool-actions">
         <button class="run" id="runNetwork">RUN</button>
         <div class="more">
-          <button class="more-btn" aria-label="More options for My_network" aria-haspopup="true" aria-expanded="false" title="More options">⋯</button>
+          <button class="more-btn" aria-label="More options for My Network" aria-haspopup="true" aria-expanded="false" title="More options">⋯</button>
           <div class="more-menu hidden">
             <button class="more-item" id="removeNetworkLink">Remove the RUN link</button>
           </div>
@@ -223,8 +223,8 @@ const TOOLS = [
    download: `${REPO}/releases/latest/download/MyConnections.exe`, release: `${REPO}/releases/latest`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/latest', events: true},
   {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink',
    download: `${REPO}/releases/download/security-v0.1/MySecurity.exe`, release: `${REPO}/releases/tag/security-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/security-v0.1', events: false},
-  {name: 'My_network', exe: 'My_network.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
-   download: `${REPO}/releases/download/network-v0.1/My_network.exe`, release: `${REPO}/releases/tag/network-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.1', events: false}
+  {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
+   download: `${REPO}/releases/download/network-v0.2/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.2`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.2', events: false}
 ];
 for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
 let current = TOOLS[0];   // the tool the popup is showing
