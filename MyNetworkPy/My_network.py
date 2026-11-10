@@ -690,21 +690,259 @@ def reverse_dns(ip):
     return clean(name, 96) if name != ip else ''
 
 
-def ssdp_friendly_name(ip, location):
-    """The name a smart device publishes about itself. Only asks the device that answered, and doesn't follow redirects."""
+UPNP_TYPES = {'MediaRenderer': 'Media player', 'MediaServer': 'Media server', 'InternetGatewayDevice': 'Router', 'WFADevice': 'Wi-Fi access point',
+              'Printer': 'Printer', 'Scanner': 'Scanner', 'ZonePlayer': 'Sonos speaker', 'dial': 'TV or streaming stick', 'tvdevice': 'TV',
+              'DigitalSecurityCamera': 'Security camera', 'HVAC_System': 'Heating or air conditioning', 'Basic': ''}
+
+
+def ssdp_description(ip, location):
+    """What a smart device publishes about itself: name, maker, model and type. Only asks the device that answered, and doesn't follow redirects."""
     try:
         url = urllib.parse.urlsplit(location)
         if url.scheme != 'http' or url.hostname != ip:
-            return ''
+            return {}
         conn = http.client.HTTPConnection(ip, url.port or 80, timeout=2)
         conn.request('GET', url.path or '/')
         response = conn.getresponse()
         body = response.read(65536) if response.status == 200 else b''
         conn.close()
     except (OSError, ValueError, http.client.HTTPException):
+        return {}
+
+    def tag(name):
+        found = re.search(rb'<' + name + rb'>([^<]{1,120})</' + name + rb'>', body)
+        return clean(found.group(1).decode('utf-8', 'replace')) if found else ''
+    model = ' '.join(dict.fromkeys(part for part in (tag(b'modelName'), tag(b'modelNumber')) if part))
+    kind = tag(b'deviceType').split(':')
+    kind = UPNP_TYPES.get(kind[-2], kind[-2]) if len(kind) >= 2 else ''
+    return {'name': tag(b'friendlyName'), 'made_by': tag(b'manufacturer'), 'model': model, 'type': kind}
+
+
+# the services devices announce on the network (mDNS / DNS-SD), in plain words
+MDNS_SERVICES = {
+    '_googlecast._tcp': 'Google Cast (Chromecast)', '_airplay._tcp': 'AirPlay', '_raop._tcp': 'AirPlay speaker', '_companion-link._tcp': 'Apple device link',
+    '_apple-mobdev2._tcp': 'Apple mobile device', '_sleep-proxy._udp': 'Apple sleep proxy', '_airport._tcp': 'AirPort base station', '_adisk._tcp': 'Time Machine disk',
+    '_ipp._tcp': 'Printer', '_ipps._tcp': 'Printer', '_printer._tcp': 'Printer', '_pdl-datastream._tcp': 'Printer', '_uscan._tcp': 'Scanner', '_scanner._tcp': 'Scanner',
+    '_hap._tcp': 'HomeKit accessory', '_hap._udp': 'HomeKit accessory', '_matter._tcp': 'Matter smart home', '_matterc._udp': 'Matter smart home',
+    '_meshcop._udp': 'Thread border router', '_spotify-connect._tcp': 'Spotify Connect', '_sonos._tcp': 'Sonos speaker', '_amzn-wplay._tcp': 'Amazon Fire TV or Echo',
+    '_androidtvremote2._tcp': 'Android TV', '_nvstream._tcp': 'NVIDIA GameStream', '_smb._tcp': 'File sharing (SMB)', '_afpovertcp._tcp': 'File sharing (Apple)',
+    '_nfs._tcp': 'File sharing (NFS)', '_ssh._tcp': 'Remote login (SSH)', '_sftp-ssh._tcp': 'File transfer (SFTP)', '_rfb._tcp': 'Screen sharing (VNC)',
+    '_http._tcp': 'Web page', '_https._tcp': 'Web page', '_workstation._tcp': 'Computer', '_device-info._tcp': '', '_hue._tcp': 'Philips Hue',
+    '_home-assistant._tcp': 'Home Assistant', '_esphomelib._tcp': 'ESPHome device', '_shelly._tcp': 'Shelly smart device', '_mqtt._tcp': 'MQTT messaging',
+    '_daap._tcp': 'iTunes sharing', '_touch-able._tcp': 'Apple remote', '_ewelink._tcp': 'eWeLink smart device', '_miio._udp': 'Xiaomi smart device',
+    '_amzn-alexa._tcp': 'Alexa', '_tidalconnect._tcp': 'TIDAL Connect', '_alexa._tcp': 'Alexa', '_ring._tcp': 'Ring',
+    '_elg._tcp': 'Elgato light', '_octoprint._tcp': '3D printer', '_dosvc._tcp': 'Windows update sharing', '_rdlink._tcp': 'Apple device link',
+}
+_ID_LIKE = re.compile(r'^[0-9a-f-]{12,}$|^[0-9a-f]{12}@', re.I)
+
+
+def _mdns_query(names):
+    """A legacy unicast mDNS query (answers come back to us, not to the whole network) asking PTR for each name."""
+    out = secrets.token_bytes(2) + b'\0\0' + struct.pack('!H', len(names)) + b'\0\0\0\0\0\0'
+    for name in names:
+        out += b''.join(bytes([len(part)]) + part.encode() for part in name.split('.')) + b'\0\0\x0c\0\1'
+    return out
+
+
+def _mdns_records(d):
+    """(name, type, rdata offset, rdata length) for every record in an mDNS answer."""
+    qd, an, ns, ar = struct.unpack_from('!4H', d, 4)
+    o, records = 12, []
+    for _ in range(min(qd, 32)):
+        o = dns_name(d, o)[1] + 4
+    for _ in range(min(an + ns + ar, 96)):
+        name, o = dns_name(d, o)
+        rtype, _rclass, _ttl, rdlen = struct.unpack_from('!HHIH', d, o)
+        o += 10
+        if o + rdlen > len(d):
+            break
+        records.append((name.rstrip('.'), rtype, o, rdlen))
+        o += rdlen
+    return records
+
+
+_KIND = re.compile(r'(_[^.]+\._(?:tcp|udp))\.local$')
+# where each kind of service keeps the device's model in its details
+MODEL_KEYS = (('_googlecast._tcp', 'md'), ('_hap._tcp', 'md'), ('_hap._udp', 'md'), ('_device-info._tcp', 'model'), ('_airplay._tcp', 'model'),
+              ('_raop._tcp', 'am'), ('_ipp._tcp', 'ty'), ('_ipps._tcp', 'ty'), ('_printer._tcp', 'ty'), ('_pdl-datastream._tcp', 'ty'), ('_uscan._tcp', 'ty'),
+              ('_ipp._tcp', 'usb_mdl'), ('_ipp._tcp', 'product'))
+NAME_FROM = ('_airplay._tcp', '_raop._tcp', '_googlecast._tcp', '_companion-link._tcp', '_hap._tcp', '_hap._udp', '_ipp._tcp', '_printer._tcp', '_spotify-connect._tcp',
+             '_sonos._tcp', '_amzn-wplay._tcp', '_androidtvremote2._tcp', '_smb._tcp', '_workstation._tcp', '_device-info._tcp', '_http._tcp')
+
+
+def mdns_parse(d, found):
+    """Adds what one mDNS answer says to found {'services', 'instances', 'txt', 'hostname'}. Returns service types it mentions but didn't describe."""
+    more = []
+    for name, rtype, o, size in _mdns_records(d):
+        if rtype == 12:                                              # PTR: a service type, or one of its instances
+            value = dns_name(d, o)[0].rstrip('.')
+            if name == '_services._dns-sd._udp.local':
+                more.append(value.removesuffix('.local'))
+            elif name.startswith('_') and name.endswith(('._tcp.local', '._udp.local')) and '._sub.' not in name:
+                kind = name.removesuffix('.local')
+                found['services'].add(kind)
+                found['instances'].setdefault(kind, value.removesuffix('.' + name))
+        elif rtype == 33 and size > 6:                               # SRV: which host runs an instance
+            found['hostname'] = found['hostname'] or dns_name(d, o + 6)[0].rstrip('.').removesuffix('.local')
+        elif rtype == 16:                                            # TXT: key=value details of one instance
+            kind = _KIND.search(name)
+            if not kind:
+                continue
+            details, i = found['txt'].setdefault(kind.group(1), {}), o
+            while i < o + size:
+                part = d[i + 1:i + 1 + d[i]].decode('utf-8', 'replace')
+                i += 1 + d[i]
+                key, _, value = part.partition('=')
+                if value and len(details) < 64:
+                    details.setdefault(key.lower(), value)
+    return more
+
+
+def mdns_summary(found):
+    """{'services', 'name', 'hostname', 'model', 'made_by'} from what a device announced, or {} if it said nothing useful."""
+    if not found['services'] and not found['hostname'] and not found['txt']:
+        return {}
+    txt, instances = found['txt'], found['instances']
+    name = txt.get('_googlecast._tcp', {}).get('fn', '')                     # Google Cast's friendly name
+    for kind in NAME_FROM:
+        candidate = instances.get(kind, '').split('@', 1)[-1].strip()
+        if not name and candidate and not _ID_LIKE.match(candidate) and not candidate.lower().startswith(('chromecast-', 'google-')):
+            name = candidate
+    model = next((txt[kind][key] for kind, key in MODEL_KEYS if txt.get(kind, {}).get(key)), '').strip('()')
+    made_by = next((d.get(key) for d in txt.values() for key in ('manufacturer', 'usb_mfg') if d.get(key)), '')
+    services = sorted({MDNS_SERVICES.get(k, k.split('.')[0].lstrip('_')) for k in found['services']} - {''})
+    return {'services': [clean(s, 60) for s in services[:20]], 'name': clean(name), 'hostname': clean(found['hostname']),
+            'model': clean(model), 'made_by': clean(made_by)}
+
+
+def _mdns_found():
+    return {'services': set(), 'instances': {}, 'txt': {}, 'hostname': ''}
+
+
+def mdns_ask(local_ip, target=None, wait=1.6):
+    """Asks one device (target) or the whole network (None) which services they announce. Answers come back to us only.
+    Returns {device ip: summary}."""
+    found, asked = collections.defaultdict(_mdns_found), set()
+
+    def ask(sock, types):
+        types = [t for t in types if t not in asked]
+        asked.update(types)
+        for i in range(0, len(types), 30):
+            sock.sendto(_mdns_query([t + '.local' for t in types[i:i + 30]]), (target or '224.0.0.251', 5353))
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.settimeout(0.3)
+        try:
+            if not target:
+                s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(local_ip))
+                s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+            ask(s, ['_services._dns-sd._udp'] + list(MDNS_SERVICES))
+        except OSError:
+            return {}
+        deadline = time.time() + wait
+        while time.time() < deadline:
+            try:
+                d, addr = s.recvfrom(9000)
+            except OSError:
+                continue
+            if (target and addr[0] != target) or addr[0] == local_ip:
+                continue
+            try:
+                more = mdns_parse(d, found[addr[0]])
+            except (IndexError, ValueError, struct.error):
+                continue
+            try:
+                if target:
+                    ask(s, more)
+            except OSError:
+                pass
+    return {ip: summary for ip, summary in ((ip, mdns_summary(f)) for ip, f in found.items()) if summary}
+
+
+def mdns_services(ip):
+    """What one device says about itself when asked directly, or {}."""
+    return mdns_ask('', ip).get(ip, {})
+
+
+class Vendors:
+    """Who made a network card, from the first half of its MAC address. Uses Wireshark's copy of the public IEEE register,
+    downloaded once a month and kept in the app's folder. Only the list is downloaded; nothing about this network is sent."""
+    URL = 'https://www.wireshark.org/download/automated/data/manuf'
+    FILE = os.path.join(APP_DIR, 'manufacturers.txt')
+    LINE = re.compile(r'^([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){2,5})(?:/(\d{2}))?\s+(\S[^\t]*?)\s*(?:\t\s*(\S.*?))?\s*$')
+
+    def __init__(self):
+        self.table = {}      # prefix length in bits -> {prefix value: maker}
+        self.loaded = 0.0
+
+    def load(self, text):
+        table = {}
+        for line in text.splitlines():
+            found = self.LINE.match(line)
+            if not found:
+                continue
+            octets = found.group(1).split(':')
+            bits = int(found.group(2) or len(octets) * 8)
+            if bits not in (24, 28, 36) or len(octets) * 8 < bits:
+                continue
+            value = int(''.join(octets), 16) >> (len(octets) * 8 - bits)
+            table.setdefault(bits, {})[value] = clean(found.group(4) or found.group(3), 80)
+        if sum(map(len, table.values())) > 10000:          # a damaged or partial file is ignored
+            self.table, self.loaded = table, time.time()
+            return True
+        return False
+
+    def refresh(self):
+        """Loads the saved copy, and downloads a new one when it's missing or a month old."""
+        try:
+            age = time.time() - os.path.getmtime(self.FILE)
+            if not self.table:
+                with open(self.FILE, encoding='utf-8') as f:
+                    self.load(f.read())
+        except OSError:
+            age = None
+        if self.table and age is not None and age < 30 * 86400:
+            return True
+        try:
+            with urllib.request.urlopen(urllib.request.Request(self.URL, headers={'User-Agent': 'network-tool'}), timeout=60) as response:
+                text = response.read(16 * 1024 * 1024).decode('utf-8', 'replace')
+        except (OSError, ValueError, http.client.HTTPException):
+            return bool(self.table)
+        if self.load(text):
+            try:
+                os.makedirs(APP_DIR, exist_ok=True)
+                with open(self.FILE, 'w', encoding='utf-8') as f:
+                    f.write(text)
+            except OSError:
+                pass
+        return bool(self.table)
+
+    def lookup(self, mac):
+        """The maker's name, 'private' for a randomised address, or ''."""
+        try:
+            value = int(mac.replace(':', '').replace('-', ''), 16)
+        except ValueError:
+            return ''
+        if len(mac.replace(':', '').replace('-', '')) != 12:
+            return ''
+        if value >> 40 & 2:
+            return 'private'
+        for bits in (36, 28, 24):
+            maker = self.table.get(bits, {}).get(value >> (48 - bits))
+            if maker:
+                return maker
         return ''
-    found = re.search(rb'<friendlyName>([^<]{1,120})</friendlyName>', body)
-    return clean(found.group(1).decode('utf-8', 'replace')) if found else ''
+
+
+def os_guess(ttl):
+    """What a device's starting TTL suggests about its system. Devices on the same network are seen with the TTL they started with."""
+    if not ttl:
+        return ''
+    if ttl > 128:
+        return 'Network equipment, a printer or a smart device'
+    if ttl > 64:
+        return 'Windows'
+    return 'Linux, Android, an iPhone or Mac, or a smart device'
 
 
 def ssdp_devices(local_ip, wait=3.0):
@@ -769,6 +1007,7 @@ class Network:
         self.stop = threading.Event()
         self.rdns = cf.ThreadPoolExecutor(8, thread_name_prefix='rdns')
         self.blocklists = Blocklists()
+        self.vendors = Vendors()
         if ip:
             self.node(ip, time.time())
 
@@ -788,7 +1027,7 @@ class Network:
             kind = self.kind(ip)
             name = 'This PC' if kind == 'me' else GROUPS.get(ip, 'Subnet broadcast' if ip == self.broadcast else '')
             n = self.nodes[ip] = {'ip': ip, 'kind': kind, 'name': name, 'names': {}, 'mac': '', 'first': now, 'last': 0.0, 'seen': 0.0,
-                                  'tx': 0, 'rx': 0, 'txb': 0, 'rxb': 0}
+                                  'tx': 0, 'rx': 0, 'txb': 0, 'rxb': 0, 'info': {}, 'ttl': 0}
             if kind == 'external':
                 self.rdns.submit(self._name_external, ip)
         return n
@@ -875,6 +1114,36 @@ class Network:
                 except (IndexError, ValueError, struct.error, OSError):
                     pass
             self._record(f, src, sport, dst, dport, bytes(raw[:SNAP]), size, now, eth)
+            sender = self.nodes[src]
+            if sender['kind'] in ('lan', 'gateway') and 5353 not in (sport, dport):   # mDNS always uses 255, whatever the system
+                sender['ttl'] = max(sender['ttl'], raw[8])      # the highest seen is the closest to where it started
+            if proto == 17 and sport == 68 and dport == 67:
+                self._dhcp_hostname(payload, src)
+            elif proto == 17 and sport == 5353 and sender['kind'] in ('lan', 'gateway'):
+                self._overheard_mdns(sender, bytes(payload))
+
+    def _dhcp_hostname(self, p, src):
+        """A device joining the network often gives its name in its DHCP request. Call with the lock held."""
+        if len(p) < 240 or p[236:240] != b'\x63\x82\x53\x63' or p[0] != 1:
+            return
+        mac, ip, name, o = format_mac(p[28:34]), src if src != '0.0.0.0' else '', '', 240
+        while o + 2 <= len(p) and p[o] != 255:
+            if p[o] == 0:
+                o += 1
+                continue
+            code, size = p[o], p[o + 1]
+            body = p[o + 2:o + 2 + size]
+            if code == 12:
+                name = clean(body.decode('utf-8', 'replace'))
+            elif code == 50 and size == 4 and not ip:
+                ip = socket.inet_ntoa(body)
+            o += 2 + size
+        target = self.nodes.get(ip) if ip else None
+        if target is None:
+            target = next((n for n in self.nodes.values() if n['mac'] == mac and n['kind'] in ('lan', 'gateway')), None)
+        if name and target is not None and target['kind'] in ('lan', 'gateway'):
+            target['names']['DHCP'] = name
+            self._pick_name(target)
 
     def _record(self, f, src, sport, dst, dport, kept, size, now, eth):
         """Counts one packet on its connection and devices, and queues its animation. Call with the lock held."""
@@ -929,10 +1198,44 @@ class Network:
             if n is None or n['kind'] == 'me':
                 return
             n['names'][source] = name
-            for best in ('Device description', 'mDNS', 'NetBIOS', 'Reverse DNS'):
-                if best in n['names']:
-                    n['name'] = n['names'][best]
-                    break
+            self._pick_name(n)
+
+    NAME_ORDER = ('Device description', 'Announced services', 'mDNS', 'DHCP', 'NetBIOS', 'Reverse DNS')
+
+    def _pick_name(self, n):
+        for best in self.NAME_ORDER:
+            if best in n['names']:
+                n['name'] = n['names'][best]
+                break
+
+    def set_info(self, ip, **details):
+        """Adds what a device says about itself (made_by, model, type, services, hostname). Empty values don't replace known ones."""
+        with self.lock:
+            n = self.nodes.get(ip)
+            if n is not None and n['kind'] != 'me':
+                n['info'].update((key, value) for key, value in details.items() if value)
+
+    def set_announced(self, ip, said):
+        """What a device said about its services over mDNS."""
+        if said:
+            self.set_name(ip, 'Announced services', said['name'])
+            self.set_info(ip, services=said['services'], hostname=said['hostname'], model=said['model'], made_by=said['made_by'])
+
+    def _overheard_mdns(self, n, payload):
+        """Learns from a device's own mDNS announcement, as captured. Call with the lock held."""
+        if len(payload) < 12 or not payload[2] & 0x80:      # answers only
+            return
+        found = n.setdefault('mdns', _mdns_found())
+        try:
+            mdns_parse(payload, found)
+        except (IndexError, ValueError, struct.error):
+            return
+        said = mdns_summary(found)
+        if said:
+            if said['name']:
+                n['names']['Announced services'] = said['name']
+                self._pick_name(n)
+            n['info'].update((key, said[key]) for key in ('services', 'hostname', 'model', 'made_by') if said[key])
 
     def tick(self):
         """Once a second: rates and forgetting old things."""
@@ -988,10 +1291,18 @@ class Network:
                     'version': APP_VERSION, 'total': self.total, 'rate': self.rate, 'nodes': nodes, 'flows': flow_views,
                     'devices': sum(1 for n in nodes if n['kind'] in ('me', 'gateway', 'lan'))}
 
-    @staticmethod
-    def _node_view(n, now):
+    def _node_view(self, n, now):
+        info = dict(n['info'])
+        if n['mac'] and n['kind'] != 'external':
+            maker = self.vendors.lookup(n['mac'])
+            info['private'] = maker == 'private'
+            if maker and maker != 'private':
+                info['maker'] = maker
+        if n['kind'] in ('lan', 'gateway'):
+            info['os'] = os_guess(n['ttl'])
         return {'ip': n['ip'], 'kind': n['kind'], 'name': n['name'], 'names': n['names'], 'mac': n['mac'], 'online': now - max(n['seen'], n['last']) < 180,
-                'age': round(now - n['first']), 'idle': round(now - n['last'], 1) if n['last'] else None, 'tx': n['tx'], 'rx': n['rx'], 'txb': n['txb'], 'rxb': n['rxb']}
+                'age': round(now - n['first']), 'idle': round(now - n['last'], 1) if n['last'] else None, 'tx': n['tx'], 'rx': n['rx'], 'txb': n['txb'], 'rxb': n['rxb'],
+                'info': info}
 
     def _flow_view(self, f, now):
         return {'id': f.id, 'proto': f.proto, 'a': f.a, 'ap': f.ap, 'b': f.b, 'bp': f.bp, 'service': service_for(f.ap, f.bp), 'state': f.state, 'info': f.info,
@@ -1304,10 +1615,14 @@ def run_discovery(net):
     def name_device(ip):
         for source, finder in (('Reverse DNS', reverse_dns), ('NetBIOS', netbios_name), ('mDNS', mdns_name)):
             net.set_name(ip, source, finder(ip))
+        net.set_announced(ip, mdns_services(ip))
 
     def describe(ip, location):
         net.add_device(ip)
-        net.set_name(ip, 'Device description', ssdp_friendly_name(ip, location) if location else '')
+        said = ssdp_description(ip, location) if location else {}
+        if said:
+            net.set_name(ip, 'Device description', said['name'])
+            net.set_info(ip, made_by=said['made_by'], model=said['model'], type=said['type'])
 
     while not net.stop.is_set():
         net.scanning = True
@@ -1325,6 +1640,11 @@ def run_discovery(net):
             if ip != net.ip and now - named_at.get(ip, 0) > 300:
                 named_at[ip] = now
                 names.submit(name_device, ip)
+        if now - named_at.get('network', 0) > 300:                    # ask the whole network too: some devices only answer that
+            named_at['network'] = now
+            for ip, said in mdns_ask(net.ip).items():
+                if ip in found:
+                    net.set_announced(ip, said)
         for ip, location in ssdp_devices(net.ip).items():
             if net.net and ipaddress.ip_address(ip) in net.net:
                 names.submit(describe, ip, location)
@@ -1335,6 +1655,11 @@ def run_discovery(net):
 def run_blocklists(net):
     while not net.stop.is_set():
         net.stop.wait(6 * 3600 if net.blocklists.refresh() else 900)
+
+
+def run_vendors(net):
+    while not net.stop.is_set():
+        net.stop.wait(86400 if net.vendors.refresh() else 1800)
 
 
 def run_connections(net):
@@ -1380,6 +1705,12 @@ DEMO_ME, DEMO_ROUTER = '10.20.30.5', '10.20.30.1'
 DEMO_DEVICES = [('10.20.30.11', 'Living Room TV', 'a4:83:e7:10:22:01'), ('10.20.30.12', 'Office Printer', '00:1b:a9:44:51:02'), ('10.20.30.17', 'Kitchen Speaker', 'f4:f5:d8:90:13:03'),
                 ('10.20.30.23', 'Sam-Laptop', 'dc:a6:32:01:77:04'), ('10.20.30.31', 'NAS', '00:11:32:aa:bc:05'), ('10.20.30.40', 'Doorbell Camera', '2c:aa:8e:31:6e:06'),
                 ('10.20.30.52', 'Phone', '7a:12:9c:55:ee:07'), ('10.20.30.77', '', 'b8:27:eb:6c:09:08')]
+DEMO_DETAILS = {'10.20.30.11': {'model': 'Chromecast with Google TV', 'services': ['Google Cast (Chromecast)'], 'type': 'TV or streaming stick'},
+                '10.20.30.12': {'made_by': 'Brother', 'model': 'HL-L2350DW', 'services': ['Printer', 'Scanner', 'Web page'], 'type': 'Printer'},
+                '10.20.30.17': {'made_by': 'Google', 'model': 'Google Nest Mini', 'services': ['Google Cast (Chromecast)']},
+                '10.20.30.31': {'model': 'DS220+', 'services': ['File sharing (SMB)', 'Time Machine disk', 'Web page'], 'hostname': 'nas'},
+                '10.20.30.52': {'hostname': 'Sams-iPhone', 'services': ['Apple device link']}}
+DEMO_TTL = {'10.20.30.23': 128, '10.20.30.12': 255, '10.20.30.40': 255}
 DEMO_SITES = [('203.0.113.10', 'www.example.com'), ('203.0.113.45', 'cdn.example.net'), ('198.51.100.7', 'mail.example.org'), ('198.51.100.92', 'video.example.tv'), ('192.0.2.33', 'updates.example.com')]
 
 
@@ -1390,6 +1721,9 @@ def run_demo(net):
     for ip, name, mac in DEMO_DEVICES:
         net.add_device(ip, mac)
         net.set_name(ip, 'mDNS', name)
+        net.set_info(ip, **DEMO_DETAILS.get(ip, {}))
+        with net.lock:
+            net.nodes[ip]['ttl'] = DEMO_TTL.get(ip, 64)
     for ip, name in DEMO_SITES:
         with net.lock:
             net.node(ip, time.time())['name'] = name
@@ -1709,14 +2043,14 @@ def main():
 
     if args.demo:
         net = Network(DEMO_ME, '255.255.255.0', DEMO_ROUTER, 0, 'demo', 'Demo: these devices and packets are made up.')
-        workers = [run_demo]
+        workers = [run_demo, run_vendors]
     else:
         local = local_network()
         if not local:
             sys.exit('This PC does not seem to be on a network right now.')
         mode, note = ('capture', '') if is_admin() or upgraded else ('connections', 'Not running as Administrator: devices and connections only, no packets.')
         net = Network(*local, mode, note)
-        workers = [run_discovery, run_connections, run_capture, run_blocklists]
+        workers = [run_discovery, run_connections, run_capture, run_blocklists, run_vendors]
     for worker in workers:
         threading.Thread(target=worker, args=(net,), daemon=True, name=worker.__name__).start()
 

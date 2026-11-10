@@ -219,6 +219,91 @@ class Tracking(unittest.TestCase):
         self.assertNotIn(SITE, net.nodes)
 
 
+def dns_labels(name):
+    return b''.join(bytes([len(p)]) + p.encode() for p in name.split('.')) + b'\0'
+
+
+def mdns_answer(records):
+    """An mDNS response holding (name, type, rdata) records."""
+    out = struct.pack('!6H', 0, 0x8400, 0, len(records), 0, 0)
+    for name, rtype, rdata in records:
+        out += dns_labels(name) + struct.pack('!HHIH', rtype, 1, 120, len(rdata)) + rdata
+    return out
+
+
+def txt(*pairs):
+    return b''.join(bytes([len(p)]) + p.encode() for p in pairs)
+
+
+SOUNDBAR = mdns_answer([
+    ('_raop._tcp.local', 12, dns_labels('5444A360EC0C@[AV] Soundbar._raop._tcp.local')),
+    ('5444A360EC0C@[AV] Soundbar._raop._tcp.local', 16, txt('md=0,1,2', 'am=HW-S800B')),       # md means something else here
+    ('_airplay._tcp.local', 12, dns_labels('Soundbar._airplay._tcp.local')),
+    ('Soundbar._airplay._tcp.local', 16, txt('manufacturer=Samsung', 'model=HW-S800B')),
+    ('Soundbar._airplay._tcp.local', 33, struct.pack('!3H', 0, 0, 7000) + dns_labels('Samsung.local')),
+])
+
+
+class DeviceDetails(unittest.TestCase):
+    def test_makers_by_mac_prefix(self):
+        v = m.Vendors()
+        listing = '\n'.join([f'{i >> 16 & 255:02X}:{i >> 8 & 255:02X}:{i & 255:02X}\tShort\tMaker {i}' for i in range(0x100000, 0x100000 + 12000)]
+                            + ['50:FD:D5\tSJIIndustry\tSJI Industry Company', '00:1B:C5:00:10/36\tOpenRB\tOpenRB.com, Direct SIA',
+                               '70:B3:D5:00:00/28\tTwentyEight\tTwenty Eight Ltd', '# a comment'])
+        self.assertTrue(v.load(listing))
+        self.assertEqual(v.lookup('50:fd:d5:82:bf:ee'), 'SJI Industry Company')
+        self.assertEqual(v.lookup('00:1b:c5:00:10:99'), 'OpenRB.com, Direct SIA')
+        self.assertEqual(v.lookup('70:b3:d5:00:0f:01'), 'Twenty Eight Ltd')
+        self.assertEqual(v.lookup('7a:12:9c:55:ee:07'), 'private')          # randomised addresses hide the maker
+        self.assertEqual(v.lookup('not a mac'), '')
+        self.assertFalse(m.Vendors().load('50:FD:D5\tX\tY'))                 # a cut-short download is ignored
+
+    def test_announced_services_give_name_model_and_maker(self):
+        found = m._mdns_found()
+        m.mdns_parse(SOUNDBAR, found)
+        said = m.mdns_summary(found)
+        self.assertEqual((said['name'], said['model'], said['made_by'], said['hostname']), ('Soundbar', 'HW-S800B', 'Samsung', 'Samsung'))
+        self.assertEqual(said['services'], ['AirPlay', 'AirPlay speaker'])
+
+    def test_cast_friendly_name_and_id_like_names(self):
+        found = m._mdns_found()
+        m.mdns_parse(mdns_answer([('_googlecast._tcp.local', 12, dns_labels('Chromecast-0a1b2c3d4e5f._googlecast._tcp.local')),
+                                  ('Chromecast-0a1b2c3d4e5f._googlecast._tcp.local', 16, txt('fn=Bedroom TV', 'md=Chromecast'))]), found)
+        self.assertEqual((m.mdns_summary(found)['name'], m.mdns_summary(found)['model']), ('Bedroom TV', 'Chromecast'))
+
+    def test_overheard_announcement_names_the_device(self):
+        net = network()
+        net.add_device(TV, '54:44:a3:60:ec:0c')
+        net.ingest(m.build_packet(TV, '224.0.0.251', 17, 5353, 5353, SOUNDBAR, ttl=255))
+        n = net.nodes[TV]
+        self.assertEqual((n['name'], n['info']['model']), ('Soundbar', 'HW-S800B'))
+        self.assertEqual(n['ttl'], 0)                                        # mDNS's fixed TTL says nothing about the system
+
+    def test_system_guess_from_ttl(self):
+        net = network()
+        net.add_device(TV)
+        net.ingest(m.build_packet(TV, ME, 6, 443, 50000, b'x', ttl=128))
+        self.assertEqual(net._node_view(net.nodes[TV], 0)['info']['os'], 'Windows')
+        self.assertIn('Android', m.os_guess(64))
+        self.assertIn('Network equipment', m.os_guess(255))
+
+    def test_dhcp_request_gives_the_host_name(self):
+        net = network()
+        net.add_device(TV, 'aa:bb:cc:00:00:40')
+        mac = bytes.fromhex('aabbcc000040')
+        request = (b'\1\1\6\0' + b'\0' * 24 + mac + b'\0' * 202 + b'\x63\x82\x53\x63' + b'\x35\1\3' + b'\x0c\7Pixel-8' + b'\x32\4' + socket.inet_aton(TV) + b'\xff')
+        net.ingest(m.build_packet('0.0.0.0', '255.255.255.255', 17, 68, 67, request))
+        self.assertEqual((net.nodes[TV]['name'], net.nodes[TV]['names']['DHCP']), ('Pixel-8', 'Pixel-8'))
+
+    def test_details_reach_the_page(self):
+        net = network()
+        net.add_device(TV, '50:fd:d5:82:bf:ee')
+        net.vendors.load('\n'.join(f'{i >> 16 & 255:02X}:{i >> 8 & 255:02X}:{i & 255:02X}\tS\tMaker' for i in range(0x100000, 0x100000 + 11000)) + '\n50:FD:D5\tS\tSJI Industry Company')
+        net.set_info(TV, model='UN55', type='', services=['AirPlay'])
+        info = next(n for n in net.state()['nodes'] if n['ip'] == TV)['info']
+        self.assertEqual((info['maker'], info['model'], info['services'], info.get('type')), ('SJI Industry Company', 'UN55', ['AirPlay'], None))
+
+
 @unittest.skipUnless(os.name == 'nt', 'Windows only')
 class WindowsFacts(unittest.TestCase):
     def test_local_network_and_tables_can_be_read(self):

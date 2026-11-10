@@ -335,8 +335,8 @@ function frame() {
     const focus = (sel && sel.ip === ip) || (selFlow && (selFlow.a === ip || selFlow.b === ip)), hot = hover && hover.n === n;
     const active = n.idle !== null && n.idle < 30, kind = n.kind;
     if (kind !== 'external' || active || hot || focus) {
-      const named = n.name && n.name !== n.ip;
-      texts.push({ x: p.x, y: p.y + r + 4, line1: named ? (n.name.length > 26 ? n.name.slice(0, 25) + '…' : n.name) : n.ip, line2: named && kind !== 'group' ? n.ip : (named ? n.ip : ''), pri: (focus || hot ? 100 : 0) + { me: 50, gateway: 40, lan: 30, group: 15, external: 10 }[kind] + (active ? 5 : 0), big: focus, color: kind === 'me' ? '#8affb4' : undefined });
+      const named = n.name && n.name !== n.ip, made = named ? '' : makerOf(n);
+      texts.push({ x: p.x, y: p.y + r + 4, line1: named ? short(n.name) : n.ip, line2: named ? n.ip : short(made), pri: (focus || hot ? 100 : 0) + { me: 50, gateway: 40, lan: 30, group: 15, external: 10 }[kind] + (active ? 5 : 0), big: focus, color: kind === 'me' ? '#8affb4' : undefined });
     }
   }
   picks = picksNow;
@@ -465,6 +465,9 @@ $('quit').onclick = async () => { await post('/quit').catch(() => {}); stopped()
 
 // ---- details panel
 let packetPin = null, flowTimer = 0, lastDetail = null;
+function short(text) { return text && text.length > 26 ? text.slice(0, 25) + '…' : text || ''; }
+// who made a device: what it says about itself first, then the maker of its network card
+function makerOf(n) { const i = n.info || {}; return i.made_by || i.maker || ''; }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
 function fields(rows) { const t = el('table', 'fields'); for (const [k, v] of rows) { if (v === '' || v === null || v === undefined) continue; const r = t.insertRow(); r.insertCell().textContent = k; r.insertCell().textContent = v; } return t; }
 function closeButton() { const b = el('button', '', '×'); b.id = 'close'; b.title = 'Close and zoom out (Esc)'; b.setAttribute('aria-label', 'Close and zoom out'); b.onclick = clearSelection; return b; }
@@ -515,9 +518,13 @@ function selectNode(ip) { sel = { ip }; clearTimeout(flowTimer); const n = nodes
 function renderNode(ip) {
   const n = nodes.get(ip); if (!n) return;
   const p = openPanel(), frag = document.createDocumentFragment(), KIND = { me: 'This PC', gateway: 'Router', lan: 'Device on your network', external: 'Internet host', group: 'Broadcast or multicast group' };
-  frag.append(closeButton(), el('h2', '', n.name || n.ip), el('div', 'sub', KIND[n.kind]));
-  const macText = n.mac ? n.mac + (parseInt(n.mac.slice(0, 2), 16) & 2 ? ' (randomised, private)' : '') : '';
-  frag.append(el('h3', '', 'Device'), fields([['IP address', n.ip], ['MAC address', macText], ['Status', n.online === false ? 'Not answering' : 'Online'], ...Object.entries(n.names || {}).map(([k, v]) => ['Name from ' + k, v]),
+  const i = n.info || {}, made = makerOf(n);
+  frag.append(closeButton(), el('h2', '', n.name || (made ? `${made} device` : n.ip)), el('div', 'sub', KIND[n.kind]));
+  const macText = n.mac ? n.mac + (i.private || parseInt(n.mac.slice(0, 2), 16) & 2 ? ' (private address: phones and laptops use these to hide their maker)' : '') : '';
+  frag.append(el('h3', '', 'Device'), fields([['Made by', i.made_by], ['Model', i.model], ['Type', i.type], ['Services it offers', (i.services || []).join(', ')],
+    ['Probably runs', i.os ? i.os + ' (a guess from its packets)' : ''], ['IP address', n.ip], ['MAC address', macText],
+    ['Network card made by', i.maker && i.maker !== i.made_by ? i.maker : ''], ['Host name', i.hostname && i.hostname !== n.name ? i.hostname : ''],
+    ['Status', n.online === false ? 'Not answering' : 'Online'], ...Object.entries(n.names || {}).map(([k, v]) => ['Name from ' + k, v]),
     ['Sent', `${n.tx} packets, ${fmtBytes(n.txb)}`], ['Received', `${n.rx} packets, ${fmtBytes(n.rxb)}`], ['Last packet', n.idle === null ? 'None captured' : fmtAge(n.idle) + ' ago']]));
   const list = [...flows.values()].filter(f => f.a === ip || f.b === ip).sort((a, b) => (a.idle ?? 1e9) - (b.idle ?? 1e9));
   frag.append(el('h3', '', `Connections (${list.length})`));
