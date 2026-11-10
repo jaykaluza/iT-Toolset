@@ -60,6 +60,9 @@ h3{font-size:14px;font-weight:600;margin:16px 0 4px}h3:first-child{margin-top:0}
 .card .mono{margin-top:4px;max-height:92px;overflow:auto}
 a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text-decoration:underline}
 [data-tip]{cursor:help}
+.v-safe{color:var(--good);background:var(--good-bg)}.v-weak{color:var(--med);background:var(--med-bg);border:1px solid var(--med)}.v-block{color:#fff;background:var(--crit)}
+.ver{font-size:12px;line-height:1.35}.ver .pill{font-size:11px;margin-right:4px}
+#tip .vi{margin-top:4px}#tip .vi .pill{font-size:11px;margin-right:5px}#tip .vi i{font-style:normal;color:var(--muted)}
 #tip{position:fixed;z-index:10;width:400px;max-width:calc(100vw - 16px);background:var(--panel);color:var(--text);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;pointer-events:none;display:none}
 #tip h4{margin:0 0 6px;font-size:14px}#tip b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:7px}#tip .path{font:11.5px Consolas,monospace;word-break:break-all;color:var(--muted)}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:12;max-width:min(560px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:none}#toast.bad{border-left-color:var(--crit)}
@@ -116,6 +119,9 @@ function genericTab(tab) {
 }
 
 // ---- Ports
+const VERDICT = {safe: 'Safe', weak: 'Weak', block: 'Block'};
+const vPill = v => v ? `<span class="pill v-${v}">${VERDICT[v]}</span>` : '';
+const verCell = f => f.Version ? `<div class="ver">${vPill(f.Verdict)}${esc(f.Version)}</div>` : '<span class="small">—</span>';
 const allowText = f => !f.Exposed ? '<span class="pill p-ok">This PC only</span>' : f.Allowed === true ? '<span class="pill p-medium">Open to network</span>' : f.Allowed === false ? '<span class="pill p-low">Firewall closes it</span>' : '<span class="pill p-low">Listening</span>';
 let PTIPS = {};
 function portsTab() {
@@ -123,16 +129,16 @@ function portsTab() {
   PTIPS = {};
   const rows = findings('ports').filter(f => f.Port && hit(f) && (!S.problems || (RANK[f.Sev] >= 2))).sort((a, b) => RANK[b.Sev] - RANK[a.Sev] || a.Port - b.Port).map(f => {
     PTIPS[f.Id] = f; const isB = blocked.has(f.Proto + ':' + f.Port);
-    return `<tr class="${RANK[f.Sev] >= 2 ? 's-' + f.Sev : ''}" data-tip="${esc(f.Id)}"><td>${pill(f.Sev)}</td><td><b>${f.Port}</b> <span class="small">${esc(f.Proto)}</span></td><td class="title">${esc(f.Title.split(' · ')[1])}</td><td>${esc(f.App)}<div class="small">PID ${f.PID}</div></td><td>${allowText(f)}</td><td>${isB ? `<button class="btn" data-unblock="port" data-key="${esc(f.Proto + ':' + f.Port)}">Unblock</button>` : actButton(f)}</td></tr>`;
+    return `<tr class="${RANK[f.Sev] >= 2 ? 's-' + f.Sev : ''}"><td>${pill(f.Sev)}</td><td><b>${f.Port}</b> <span class="small">${esc(f.Proto)}</span></td><td class="title"><span data-tip="${esc(f.Id)}">${esc(f.Title.split(' · ')[1])}</span></td><td>${verCell(f)}</td><td>${esc(f.App)}<div class="small">PID ${f.PID}</div></td><td>${allowText(f)}</td><td>${isB ? `<button class="btn" data-unblock="port" data-key="${esc(f.Proto + ':' + f.Port)}">Unblock</button>` : actButton(f)}</td></tr>`;
   });
-  return `<div class="note">Everything listening for connections on this PC. <b>Hover over a row</b> to see how that port works, what can go wrong and what blocking it breaks. Blocks stop other devices reaching the port, and are listed in the Blocked tab.</div>` + note +
-    (rows.length ? `<table><colgroup><col style="width:82px"><col style="width:90px"><col><col style="width:24%"><col style="width:130px"><col style="width:100px"></colgroup><thead><tr><th>Risk</th><th>Port</th><th>Service</th><th>Program</th><th>Reach</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>` : note ? '' : '<div class="empty">Nothing matches.</div>');
+  return `<div class="note">Everything listening for connections on this PC. <b>Hover over a service name</b> to see how that port works, what can go wrong, which versions are safe and which to block, and what blocking it breaks. Blocks stop other devices reaching the port, and are listed in the Blocked tab.</div>` + note +
+    (rows.length ? `<table><colgroup><col style="width:82px"><col style="width:90px"><col><col style="width:22%"><col style="width:19%"><col style="width:130px"><col style="width:100px"></colgroup><thead><tr><th>Risk</th><th>Port</th><th>Service</th><th>Version</th><th>Program</th><th>Reach</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>` : note ? '' : '<div class="empty">Nothing matches.</div>');
 }
 const tip = $('#tip');
 document.addEventListener('mousemove', e => {
-  const r = e.target.closest && e.target.closest('tr[data-tip]'), f = r && PTIPS[r.dataset.tip];
+  const r = e.target.closest && e.target.closest('[data-tip]'), f = r && PTIPS[r.dataset.tip];
   if (!f) { tip.style.display = 'none'; return; }
-  tip.innerHTML = `<h4>Port ${f.Port} ${esc(f.Proto)} · ${esc(f.Title.split(' · ')[1])}</h4><b>How it works</b>${esc(f.What)}<b>Possible risk</b>${esc(f.Risk)}${f.Evidence ? `<b>On this PC</b>${esc(f.Evidence)}` : ''}<b>If you block it</b>${esc(f.Breaks)}<b>Used by</b>${esc(f.App)}${f.Publisher ? ' · signed by ' + esc(f.Publisher) : ''}<div class="path">${esc(f.Path)}</div><b>Listening on</b>${esc(f.Addr)}`;
+  tip.innerHTML = `<h4>Port ${f.Port} ${esc(f.Proto)} · ${esc(f.Title.split(' · ')[1])}</h4><b>How it works</b>${esc(f.What)}<b>Possible risk</b>${esc(f.Risk)}${(f.Versions || []).length ? '<b>Version: what is safe and what to block</b>' + f.Versions.map(v => `<div class="vi">${vPill(v.Verdict)}<strong>${esc(v.Name)}</strong> <i>${esc(v.State)}</i><br>${esc(v.Why)}</div>`).join('') : f.Version ? `<b>Version</b>${esc(f.Version)}` : ''}${f.ProgVersion ? `<b>Program version</b>${esc(f.ProgVersion)}` : ''}${f.Evidence ?`<b>On this PC</b>${esc(f.Evidence)}` : ''}<b>If you block it</b>${esc(f.Breaks)}<b>Used by</b>${esc(f.App)}${f.Publisher ? ' · signed by ' + esc(f.Publisher) : ''}<div class="path">${esc(f.Path)}</div><b>Listening on</b>${esc(f.Addr)}`;
   tip.style.display = 'block';
   const w = tip.offsetWidth, h = tip.offsetHeight;
   tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px';

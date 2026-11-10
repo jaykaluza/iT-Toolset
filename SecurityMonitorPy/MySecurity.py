@@ -44,7 +44,7 @@ import scans_deep as D   # adds its scans to S.SCANS
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1'
+APP_VERSION = '0.1.1'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -185,9 +185,10 @@ class App:
                     if pid <= 4 or self.seen_pids.get(pid) == name:
                         continue
                     self.seen_pids[pid] = name
-                    if ppid == me or pid == me:   # this app's own helpers
+                    path = S.process_path(pid)
+                    if ppid == me or S.is_this_app(pid, path):   # this app, its launcher, and its own helpers
                         continue
-                    new.append((pid, name, ppid, S.process_path(pid), S.process_cmdline(pid)))
+                    new.append((pid, name, ppid, path, S.process_cmdline(pid)))
                 for pid in [p for p in self.seen_pids if p not in snap]:
                     del self.seen_pids[pid]
                 if new:

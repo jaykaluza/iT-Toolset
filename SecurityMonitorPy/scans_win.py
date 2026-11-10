@@ -19,6 +19,7 @@ import shutil
 import ssl
 import struct
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.parse
@@ -199,6 +200,16 @@ def process_cmdline(pid):
         kernel32.CloseHandle(h)
 
 
+FROZEN = getattr(sys, 'frozen', False)
+
+
+def is_this_app(pid, path=''):
+    """True only for this running app: its own process, or the small launcher MySecurity.exe starts it from."""
+    if pid == os.getpid():
+        return True
+    return FROZEN and pid == os.getppid() and (path or process_path(pid)).lower() == sys.executable.lower()
+
+
 def is_running(pid):
     h = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
     if not h:
@@ -322,7 +333,7 @@ $out = foreach ($p in $paths) {
   $v = $null; try { $v = [Diagnostics.FileVersionInfo]::GetVersionInfo($p) } catch {}
   [pscustomobject]@{ Path = [string]$p; Status = $(if ($s) { [string]$s.Status } else { 'Unknown' })
     Publisher = $(if ($s -and $s.SignerCertificate) { $s.SignerCertificate.Subject -replace '^CN="?([^",]+).*', '$1' } else { '' })
-    Company = $(if ($v) { [string]$v.CompanyName } else { '' }); Description = $(if ($v) { [string]$v.FileDescription } else { '' }) }
+    Company = $(if ($v) { [string]$v.CompanyName } else { '' }); Description = $(if ($v) { [string]$v.FileDescription } else { '' }); Version = $(if ($v) { [string]$v.ProductVersion } else { '' }) }
 }
 ConvertTo-Json -InputObject @($out) -Compress
 '''
@@ -339,7 +350,7 @@ def sign_info(paths):
                 for row in rows:
                     if isinstance(row, dict) and isinstance(row.get('Path'), str):
                         _sign_cache[row['Path']] = row
-    blank = {'Status': 'Unknown', 'Publisher': '', 'Company': '', 'Description': ''}
+    blank = {'Status': 'Unknown', 'Publisher': '', 'Company': '', 'Description': '', 'Version': ''}
     return {p: _sign_cache.get(p, blank) for p in paths}
 
 
@@ -452,6 +463,9 @@ def scan_ports(ctx):
     disabled = [p['Name'] for p in as_list(fw.get('profiles')) if isinstance(p, dict) and p.get('Enabled') != 'True']
     fw_known = bool(rules)
     out = []
+    import versions   # imported here because versions.py itself uses this module
+    vers = versions.port_versions([{'Proto': proto, 'Port': port, 'Addrs': v['addrs'], 'PID': next(iter(sorted(v['pids']))), 'Path': paths.get(next(iter(sorted(v['pids']))), ''),
+                                    'Exposed': any(not (a.startswith('127.') or a == '::1') for a in v['addrs'])} for (proto, port), v in sorted(listening.items(), key=lambda kv: kv[0][1])], ctx.get('self_pid', 0))
     for (proto, port), v in sorted(listening.items(), key=lambda kv: (kv[0][1], kv[0][0])):
         exposed = any(not (a.startswith('127.') or a == '::1') for a in v['addrs'])
         pid = next(iter(sorted(v['pids'])))
@@ -492,11 +506,15 @@ def scan_ports(ctx):
                 sev, why = ('high', 'You are on a Public network and this service is open to everyone on it.') if public else ('medium', 'Open to devices on your network. Close it if you do not share files or manage this PC remotely.')
             elif allowed is False:
                 sev, why = 'low', 'Something is listening, but Windows Firewall has no rule letting the network reach it.'
+        ver = vers.get((proto, port), {})
+        bad_ver = [i for i in ver.get('Versions', []) if i['Verdict'] == 'block' and versions.measured(i)]   # general protocol advice is reported by the Protocols tab
+        if exposed and bad_ver and SEV_RANK[sev] < SEV_RANK['high'] and allowed is not False:
+            sev, why = 'high', f"{bad_ver[0]['Name']}: {bad_ver[0]['Why']}"
         blockable = exposed and (proto, port) not in NEVER_BLOCK_PORTS and pid != ctx.get('self_pid')
         action = A('block_port', 'Block', f'Block incoming {proto} port {port} ({name})?\n\nWindows Firewall will refuse connections to it from other devices.\n\nThis may break: {breaks}\n\nYou can unblock it anytime in the Blocked tab.', port=port, proto=proto) if blockable else None
         out.append(F('ports', f'{proto}:{port}', sev, f'{proto} {port} · {name}', how, risk, why, f'Blocking will break: {breaks}', action,
                      Port=port, Proto=proto, Addr=', '.join(sorted(v['addrs'])), App=app, PID=pid, Path=path, Exposed=exposed, Allowed=allowed,
-                     Publisher=info.get('Publisher', ''), Breaks=breaks))
+                     Publisher=info.get('Publisher', ''), Breaks=breaks, Version=ver.get('Version', ''), Verdict=ver.get('Verdict', ''), Versions=ver.get('Versions', []), ProgVersion=ver.get('Program', '')))
     if not rules:
         out.append(F('ports', 'fw-unknown', 'info', 'Firewall rules could not be read', 'My Security could not read Windows Firewall rules, so it can\'t say which ports the firewall lets through.', fix='Run My Security as Administrator.'))
     return out
@@ -1042,7 +1060,7 @@ def scan_malware(ctx):
     for pid, (n, _pp) in names.items():
         if pid > 4:
             pth = process_path(pid)
-            if pth and not in_windows(pth):
+            if pth and not in_windows(pth) and not is_this_app(pid, pth):   # it may run from a download folder, but it shouldn't report itself
                 procs.setdefault(pth, (pid, n))
     signs = sign_info(list(procs))
     checked = 0
