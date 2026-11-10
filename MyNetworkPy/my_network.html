@@ -24,13 +24,14 @@ main{flex:1;display:flex;min-height:0;position:relative}
 #stage{flex:1;position:relative;min-width:0}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #notice{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#3a2c0d;border:1px solid #79591a;color:#ffdc9c;padding:6px 14px;border-radius:9px;font-size:13px;max-width:min(90%,720px);text-align:center}
-#tip{position:absolute;left:0;top:0;width:min(350px,calc(100% - 16px));background:rgba(17,20,28,.97);border:1px solid var(--line);border-radius:10px;padding:10px 13px;pointer-events:none;z-index:4;box-shadow:0 8px 28px rgba(0,0,0,.5)}
-#tip[hidden]{display:none}
-#tip .who{font-size:13.5px;font-weight:600;margin-bottom:7px;overflow-wrap:anywhere}
-#tip dl,.check{margin:0}
-#tip dt,.check dt{color:var(--muted);font-size:11.5px;margin-top:6px}
-#tip dd,.check dd{margin:0;font-size:13px;overflow-wrap:anywhere}
-#tip .foot-note,.foot-note{color:var(--muted);font-size:11.5px;margin-top:8px}
+.tip{position:absolute;left:0;top:0;width:min(350px,calc(100% - 16px));background:rgba(17,20,28,.97);border:1px solid var(--line);border-radius:10px;padding:10px 13px;pointer-events:none;z-index:4;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+.tip[hidden]{display:none}
+#ptip{position:fixed;z-index:20}
+.tip .who{font-size:13.5px;font-weight:600;margin-bottom:7px;overflow-wrap:anywhere}
+.tip dl,.check{margin:0}
+.tip dt,.check dt{color:var(--muted);font-size:11.5px;margin-top:6px}
+.tip dd,.check dd{margin:0;font-size:13px;overflow-wrap:anywhere}
+.tip .foot-note,.foot-note{color:var(--muted);font-size:11.5px;margin-top:8px}
 .level-ok{color:var(--good);font-weight:600}.level-watch{color:#ffcf70;font-weight:600}.level-bad{color:var(--bad);font-weight:600}
 .reasons{margin:3px 0 0;padding-left:17px}
 #legend{position:absolute;left:14px;right:14px;bottom:12px;font-size:12px;color:var(--muted);pointer-events:none}
@@ -76,7 +77,7 @@ pre{font:11.5px/1.5 Consolas,monospace;background:#090b11;border:1px solid var(-
 <div id="stage">
   <canvas id="c"></canvas>
   <div id="notice" hidden></div>
-  <div id="tip" hidden></div>
+  <div id="tip" class="tip" hidden></div>
   <div id="legend"><div class="keys"><span><i style="background:var(--send)"></i>Sending machine</span><span><i style="background:var(--port)"></i>Receiving port</span><span><i style="background:var(--tcp)"></i>TCP</span><span><i style="background:var(--udp)"></i>UDP</span><span><i style="background:var(--icmp)"></i>ICMP</span><span><i style="background:var(--other)"></i>Other</span></div><div>Shows this PC's own traffic plus broadcasts. Traffic between two other devices doesn't reach this PC.</div><div>Hover a line to see what it is · Click a line, port or device for details · Drag to turn · Scroll to zoom · Right-drag to move</div></div>
 </div>
 <aside id="panel" hidden></aside>
@@ -97,6 +98,7 @@ pre{font:11.5px/1.5 Consolas,monospace;background:#090b11;border:1px solid var(-
   <div class="foot"><button id="mclose">Close</button></div>
 </div></div>
 </main>
+<div id="ptip" class="tip" hidden></div>
 <script>
 'use strict';
 const TOKEN = '__NET_TOKEN__';
@@ -156,7 +158,7 @@ function fitDistance() {
   return r * FOCAL / (Math.max(240, Math.min(W, H)) * .47) + r * .45;
 }
 function overview() { autoFit = true; Object.assign(goal, { pitch: .34, x: 0, y: 0, z: 0, dist: fitDistance() }); }
-function clearSelection() { sel = null; $('panel').hidden = true; packetPin = null; resized(); overview(); }
+function clearSelection() { sel = null; $('panel').hidden = true; hidePanelTip(); packetPin = null; resized(); overview(); }
 function focusFlow(f) {
   const a = nodes.get(f.a), b = nodes.get(f.b); if (!a || !b) return;
   autoFit = false;
@@ -406,10 +408,69 @@ function safetyCheck(p) {
   return d;
 }
 const CAVEAT = "Simple checks only. Finding no warning signs doesn't prove a connection is safe.";
+// what each protocol or service is for, in plain words
+const PROTOCOL_HELP = {
+  ARP: "Address Resolution Protocol. Devices on the same network use it to ask \"who has this IP address?\" and learn each other's hardware (MAC) address. Normal and constant.",
+  ICMP: "Internet Control Message Protocol. Used for ping and for error messages such as \"can't reach that address\". Normal in small amounts.",
+  IGMP: "Internet Group Management Protocol. A device tells the router which shared broadcasts (like mDNS) it wants to hear. Normal.",
+  TCP: "Transmission Control Protocol. A reliable two-way connection, used by most apps and websites.",
+  UDP: "User Datagram Protocol. Quick messages without a connection, used for DNS, video calls, games and finding devices.",
+  GRE: "Generic Routing Encapsulation. Wraps traffic inside a tunnel, usually for a VPN.", ESP: "IPsec encrypted VPN traffic.", AH: "IPsec authenticated VPN traffic.",
+  SCTP: "Stream Control Transmission Protocol. Rare outside phone networks.", OSPF: "A protocol routers use to share routes with each other.",
+  DNS: "Domain Name System. Turns names like example.com into IP addresses. Every device does this all the time.",
+  "DNS over TLS": "Encrypted DNS: name lookups that others on the network can't read.",
+  mDNS: "Multicast DNS (Bonjour). Devices announce their names and services, like AirPlay, printers and Chromecast, to everyone on the local network. Normal.",
+  LLMNR: "Link-Local Multicast Name Resolution. Windows asks the local network for a computer's name when DNS doesn't know it. Normal, though attackers can abuse it.",
+  "NetBIOS name": "NetBIOS name service. An old Windows way to find computer names on the local network. My Network uses it to look up device names.",
+  "NetBIOS datagram": "Old Windows network announcements, used for browsing shared computers.", "NetBIOS session": "Old Windows file and printer sharing (before SMB on port 445).",
+  SSDP: "Simple Service Discovery Protocol (UPnP). Smart TVs, speakers and routers announce themselves and look for each other. Normal at home.",
+  "DHCP server": "Dynamic Host Configuration Protocol. The router gives devices their IP address when they join the network.",
+  "DHCP client": "Dynamic Host Configuration Protocol. A device asks the router for an IP address.",
+  "DHCPv6 client": "A device asking the router for an IPv6 address.", "DHCPv6 server": "The router handing out IPv6 addresses.",
+  NTP: "Network Time Protocol. Keeps the device's clock correct.",
+  HTTP: "Web traffic without encryption. Anyone on the path could read it.", "HTTP alt": "Web traffic on another port, often a device's settings page.",
+  HTTPS: "Encrypted web traffic (TLS): websites, apps and updates. The content is private.", "HTTPS alt": "Encrypted web traffic on another port.",
+  QUIC: "Fast encrypted web traffic over UDP, used by Google, YouTube and many apps.",
+  SSH: "Secure Shell. Encrypted remote control of a computer.", Telnet: "Old unencrypted remote control. Passwords travel in plain text, so it shouldn't be used.",
+  FTP: "File Transfer Protocol. Unencrypted file transfer.", "FTP data": "The data part of an FTP file transfer.",
+  TFTP: "Trivial File Transfer Protocol. Simple unencrypted file transfer, used by network equipment.",
+  SMTP: "Sending email between servers.", "SMTP submission": "An email app sending mail.", SMTPS: "Sending email, encrypted.",
+  POP3: "Downloading email, unencrypted.", POP3S: "Downloading email, encrypted.", IMAP: "Reading email on a server, unencrypted.", IMAPS: "Reading email on a server, encrypted.",
+  Kerberos: "Windows sign-in to a company domain.", RPC: "Windows remote procedure calls, used by many Windows services.",
+  LDAP: "Directory lookups (users and computers), usually in a company network.", LDAPS: "Encrypted directory lookups.",
+  SNMP: "Simple Network Management Protocol. Monitors printers and network equipment.", "SNMP trap": "An alert sent by network equipment.",
+  SMB: "Server Message Block. Windows file and printer sharing.", "IPP printing": "Internet Printing Protocol. Sending a document to a printer.",
+  "LPD printing": "An older way of sending documents to a printer.", "Raw printing": "Sending a document straight to a printer.",
+  IKE: "Setting up an IPsec VPN.", "IPsec NAT": "IPsec VPN traffic through a home router.", PPTP: "An old VPN type that is no longer secure.",
+  Syslog: "Devices sending their log messages.", "SQL Server": "Microsoft SQL Server database.", MySQL: "MySQL database.", PostgreSQL: "PostgreSQL database.",
+  MQTT: "Messaging for smart home and IoT devices.", "MQTT TLS": "Encrypted messaging for smart home and IoT devices.",
+  "Remote Desktop": "Windows Remote Desktop: someone controlling this PC, or this PC controlling another.", VNC: "Screen sharing and remote control.",
+  "Windows CDP": "Windows Connected Devices Platform: Phone Link and sharing between your devices.", XMPP: "Chat messaging.", Plex: "Plex media server streaming.",
+};
+function protocolHelp(f) {
+  const name = f.service || f.proto, own = PROTOCOL_HELP[name];
+  if (!own) return [name, PROTOCOL_HELP[f.proto] || 'No description for this one yet.'];
+  return [name, own + (f.service && f.proto !== name && PROTOCOL_HELP[f.proto] ? ` Sent over ${f.proto}.` : '')];
+}
+function flowTip(f) {
+  const [name, help] = protocolHelp(f), d = el('dl', 'check');
+  d.append(el('dt', '', 'Protocol: ' + name), el('dd', '', help));
+  return [el('div', 'who', f.plain.who), d, safetyCheck(f.plain), el('div', 'foot-note', CAVEAT)];
+}
+function showPanelTip(f, e) {
+  const tip = $('ptip');
+  if (!f || !f.plain) { tip.hidden = true; return; }
+  if (tip.dataset.flow !== String(f.id)) { tip.replaceChildren(...flowTip(f)); tip.dataset.flow = f.id; }
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  const x = Math.max(8, Math.min(innerWidth - w - 8, e.clientX - w - 18)), y = Math.max(8, Math.min(innerHeight - h - 8, e.clientY + 14));
+  tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
+}
+function hidePanelTip() { const tip = $('ptip'); tip.hidden = true; tip.dataset.flow = ''; }
 function placeTip() {
   const tip = $('tip'), f = !dragging && hover && (hover.flow || (hover.port && flows.get(hover.port.flow)));
   if (!f || !f.plain || !mouse) { tip.hidden = true; tipFlow = null; return; }
-  if (tipFlow !== f) { tip.replaceChildren(el('div', 'who', f.plain.who), safetyCheck(f.plain), el('div', 'foot-note', CAVEAT)); tipFlow = f; }
+  if (tipFlow !== f) { tip.replaceChildren(...flowTip(f)); tipFlow = f; }
   tip.hidden = false;
   const w = tip.offsetWidth, h = tip.offsetHeight;
   const x = Math.max(8, Math.min(W - w - 8, mouse.x + 16)), y = mouse.y + 18 + h > H - 8 ? Math.max(8, mouse.y - h - 14) : mouse.y + 18;
@@ -531,7 +592,9 @@ function renderNode(ip) {
   if (!list.length) frag.append(el('div', 'empty', 'No traffic with this device seen yet.'));
   for (const f of list.slice(0, 60)) {
     const other = f.a === ip ? f.b : f.a, o = nodes.get(other);
-    frag.append(button(`${f.service || f.proto} · ${(o && o.name) || other}${f.info ? ' · ' + f.info : ''}`, () => selectFlow(f.id), 'conn'));
+    const b = button(`${f.service || f.proto} · ${(o && o.name) || other}${f.info ? ' · ' + f.info : ''}`, () => { hidePanelTip(); selectFlow(f.id); }, 'conn');
+    b.onmousemove = e => showPanelTip(flows.get(f.id), e); b.onmouseleave = hidePanelTip;
+    frag.append(b);
   }
   p.replaceChildren(frag);
 }
