@@ -16,3 +16,6 @@ SecurityMonitorPy/dist/
 activity-log.txt
 kev-cache.json
 unblocked.json
+
+MyNetworkPy/build/
+MyNetworkPy/dist/

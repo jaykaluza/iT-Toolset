@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only dark">
+<title>My_network</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cdefs%3E%3CradialGradient id=%22r%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%23ff8a80%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%23ff1400%22/%3E%3Cstop offset=%221%22 stop-color=%22%23f00000%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22b%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%236fc3ff%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%230090ff%22/%3E%3Cstop offset=%221%22 stop-color=%22%230060ff%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22g%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%237dffa8%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%2300ff55%22/%3E%3Cstop offset=%221%22 stop-color=%22%2300d13f%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23161617%22/%3E%3Ccircle cx=%2219.5%22 cy=%2224%22 r=%224%22 fill=%22url%28%23r%29%22/%3E%3Cpath d=%22M7.5 27V12.5M7.5 18c0-4 2.6-6.2 6-6.2s6 2.2 6 6.2V27%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%224%22/%3E%3Ccircle cx=%2219%22 cy=%226.5%22 r=%224%22 fill=%22url%28%23b%29%22/%3E%3Ccircle cx=%2227%22 cy=%2224%22 r=%223.6%22 fill=%22url%28%23g%29%22/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:only dark;--bg:#07090f;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--panel:#11141c;--panel-2:#1a1f2b;--line:#2a3140;--text:#e8eaf0;--muted:#98a1b3;
+  --send:#2f9bff;--port:#ffb020;--tcp:#58c4ff;--udp:#4be08a;--icmp:#ffe066;--other:#d58cff;--good:#4be08a;--bad:#ff7a70}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 Inter,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--head);color:var(--head-text);display:flex;align-items:center;gap:14px;padding:9px 16px;flex:none;min-width:0}
+h1{font-size:19px;font-weight:600;margin:0;white-space:nowrap}
+#stats{color:var(--head-muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+button{font:inherit;font-size:12.5px;background:#2a2d35;color:var(--head-text);border:1px solid #434854;border-radius:7px;padding:4px 11px;cursor:pointer;white-space:nowrap}
+button:hover:not(:disabled){background:#383c47}
+button:disabled{opacity:.55;cursor:default}
+button.primary{background:#0071e3;border-color:#0071e3;color:#fff}
+button.primary:hover:not(:disabled){background:#0077ed}
+main{flex:1;display:flex;min-height:0;position:relative}
+#stage{flex:1;position:relative;min-width:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#notice{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#3a2c0d;border:1px solid #79591a;color:#ffdc9c;padding:6px 14px;border-radius:9px;font-size:13px;max-width:min(90%,720px);text-align:center}
+#tip{position:absolute;left:0;top:0;width:min(350px,calc(100% - 16px));background:rgba(17,20,28,.97);border:1px solid var(--line);border-radius:10px;padding:10px 13px;pointer-events:none;z-index:4;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+#tip[hidden]{display:none}
+#tip .who{font-size:13.5px;font-weight:600;margin-bottom:7px;overflow-wrap:anywhere}
+#tip dl,.check{margin:0}
+#tip dt,.check dt{color:var(--muted);font-size:11.5px;margin-top:6px}
+#tip dd,.check dd{margin:0;font-size:13px;overflow-wrap:anywhere}
+#tip .foot-note,.foot-note{color:var(--muted);font-size:11.5px;margin-top:8px}
+.level-ok{color:var(--good);font-weight:600}.level-watch{color:#ffcf70;font-weight:600}.level-bad{color:var(--bad);font-weight:600}
+.reasons{margin:3px 0 0;padding-left:17px}
+#legend{position:absolute;left:14px;right:14px;bottom:12px;font-size:12px;color:var(--muted);pointer-events:none}
+#legend .keys{display:flex;gap:13px;flex-wrap:wrap;margin-bottom:5px}
+#legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
+#panel{width:440px;flex:none;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:14px 16px 28px}
+#panel h2{font-size:16px;margin:0 28px 2px 0;overflow-wrap:anywhere}
+#panel .sub{color:var(--muted);font-size:12.5px;margin-bottom:10px;overflow-wrap:anywhere}
+#close{position:sticky;top:0;float:right;background:none;border:0;font-size:18px;padding:0 4px;color:var(--muted)}
+h3{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:16px 0 5px;font-weight:600}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+.fields td{padding:2.5px 0;vertical-align:top;font-size:13px;overflow-wrap:anywhere}
+.fields td:first-child{color:var(--muted);width:42%;padding-right:10px}
+.mono{font-family:Consolas,monospace}
+#rows{max-height:216px;overflow-y:auto;border:1px solid var(--line);border-radius:7px}
+.pkt{display:grid;grid-template-columns:19px 84px 50px 1fr;gap:4px;padding:3px 8px;font-size:12px;cursor:pointer;border-bottom:1px solid #1d2230;width:100%;background:none;border-width:0 0 1px;border-radius:0;text-align:left;color:var(--text)}
+.pkt:hover{background:var(--panel-2)}
+.pkt.on{background:#123a63}
+.pkt span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conn{display:block;width:100%;text-align:left;margin-bottom:4px;background:var(--panel-2);border-color:var(--line);overflow:hidden;text-overflow:ellipsis}
+pre{font:11.5px/1.5 Consolas,monospace;background:#090b11;border:1px solid var(--line);border-radius:7px;padding:8px;overflow-x:auto;margin:0;color:#c9d2e4}
+.empty{color:var(--muted);font-size:13px}
+.row-head{display:flex;justify-content:space-between;align-items:center}
+#modal{position:absolute;inset:0;background:rgba(3,5,10,.66);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+#modal[hidden],#panel[hidden],#notice[hidden],.step[hidden]{display:none}
+#card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;width:min(640px,100%);max-height:100%;overflow-y:auto}
+#card h2{margin:0 0 4px;font-size:18px}
+#card p{margin:6px 0;color:var(--muted);font-size:13.5px}
+.compare th{font-size:12px;text-align:left;color:var(--muted);font-weight:600;padding:9px 8px 5px 0}
+.compare td{font-size:13px;padding:5px 8px 5px 0;border-top:1px solid var(--line);vertical-align:top}
+.compare td:last-child{color:var(--good)}
+.step{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)}
+.step b{display:block;font-size:13.5px}
+.step small{color:var(--muted);font-size:12.5px;display:block;overflow-wrap:anywhere}
+.ok{color:var(--good);font-size:13px;white-space:nowrap}
+.foot{display:flex;justify-content:flex-end;margin-top:10px}
+@media(max-width:900px){#panel{position:absolute;right:0;top:0;bottom:0;width:min(440px,100%);z-index:3}}
+</style>
+</head>
+<body>
+<header><h1>My_network</h1><span id="stats">Starting up…</span><button id="upgrade">Upgrade capture</button><button id="zoomout" title="See the whole network (Esc)">Zoom out</button><button id="quit" title="Stop My_network">Stop</button></header>
+<main>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="notice" hidden></div>
+  <div id="tip" hidden></div>
+  <div id="legend"><div class="keys"><span><i style="background:var(--send)"></i>Sending machine</span><span><i style="background:var(--port)"></i>Receiving port</span><span><i style="background:var(--tcp)"></i>TCP</span><span><i style="background:var(--udp)"></i>UDP</span><span><i style="background:var(--icmp)"></i>ICMP</span><span><i style="background:var(--other)"></i>Other</span></div><div>Shows this PC's own traffic plus broadcasts. Traffic between two other devices doesn't reach this PC.</div><div>Hover a line to see what it is · Click a line, port or device for details · Drag to turn · Scroll to zoom · Right-drag to move</div></div>
+</div>
+<aside id="panel" hidden></aside>
+<div id="modal" hidden><div id="card" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+  <h2 id="mtitle">Upgrade capture with Npcap and scapy</h2>
+  <p id="mintro">My_network already works without these. Adding them lets it read complete network frames instead of starting at the IP layer.</p>
+  <table class="compare"><thead><tr><th style="width:28%"></th><th>Now (built into Windows)</th><th id="mhead">With Npcap and scapy</th></tr></thead><tbody>
+    <tr><td>Ethernet header</td><td>Not captured. MACs are looked up from the ARP table</td><td>The real source and destination MAC of every frame</td></tr>
+    <tr><td>ARP traffic</td><td>Invisible</td><td>Shown, and devices are found as soon as they speak</td></tr>
+    <tr><td>Incoming packets</td><td>Windows Firewall can hide them</td><td>Read underneath the firewall</td></tr>
+    <tr id="adminRow"><td>Administrator</td><td>Needed at every start</td><td>Not needed with Npcap's default options</td></tr>
+  </tbody></table>
+  <p><b style="color:var(--text)">What it won't change:</b> traffic between two other devices still can't be seen on a normal switch or Wi-Fi, and IPv6 isn't drawn yet.</p>
+  <p><b style="color:var(--text)">What you're adding:</b> Npcap is a network driver from the Nmap project that stays on this PC until you uninstall it. It's free for personal use; check its licence for business use.<span id="scapyNote"> scapy is a Python library.</span></p>
+  <div class="step" id="scapyStep"><div><b>1. scapy</b><small id="scapyinfo">Installed with pip for your account.</small></div><span id="scapyact"></span></div>
+  <div class="step"><div><b>Npcap</b><small>Opens the official download page. Run the installer and keep its default options.</small></div><span id="npcapact"></span></div>
+  <p id="afterinfo"></p>
+  <div class="foot"><button id="mclose">Close</button></div>
+</div></div>
+</main>
+<script>
+'use strict';
+const TOKEN = '__NET_TOKEN__';
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+const hdr = { 'X-Net-Token': TOKEN };
+const get = p => fetch(p, { headers: hdr, cache: 'no-store' }).then(r => r.json());
+const post = p => fetch(p, { method: 'POST', headers: hdr });
+
+let W = 0, H = 0, DPR = 1, backdrop = null;
+const FOCAL = 900, COLORS = { TCP: '#58c4ff', UDP: '#4be08a', ICMP: '#ffe066', IGMP: '#d58cff', ARP: '#d58cff' };
+const SIZE = { me: 22, gateway: 16, lan: 12, external: 8, group: 9 };
+const nodes = new Map(), flows = new Map(), pending = [];
+let particles = [], state = null, since = 0, failures = 0, sel = null, hover = null, mouse = null, lastRefresh = 0;
+let picks = { nodes: [], ports: [] }, slots = { lan: 0, external: 0, group: 0 }, autoFit = true, lastInput = 0;
+const cam = { yaw: .6, pitch: .34, dist: 1500, x: 0, y: 0, z: 0 }, goal = { ...cam };
+
+// ---- small vector helpers
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+const len = a => Math.hypot(a[0], a[1], a[2]);
+const norm = a => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const bez = (a, c, b, t) => { const u = 1 - t; return [u * u * a[0] + 2 * u * t * c[0] + t * t * b[0], u * u * a[1] + 2 * u * t * c[1] + t * t * b[1], u * u * a[2] + 2 * u * t * c[2] + t * t * b[2]]; };
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function vdc(i) { let r = 0, f = .5; i += 1; while (i) { r += f * (i & 1); i >>= 1; f /= 2; } return r; }
+
+// ---- sprites: shaded balls and soft glows, drawn once
+function ball(c1, c2, c3) {
+  const s = 128, k = document.createElement('canvas'); k.width = k.height = s; const g = k.getContext('2d');
+  const r = g.createRadialGradient(s * .36, s * .31, s * .02, s * .5, s * .5, s * .5);
+  r.addColorStop(0, '#fff'); r.addColorStop(.16, c1); r.addColorStop(.62, c2); r.addColorStop(1, c3);
+  g.fillStyle = r; g.beginPath(); g.arc(s / 2, s / 2, s / 2 - 1, 0, 7); g.fill(); return k;
+}
+function glow(rgb) {
+  const s = 128, k = document.createElement('canvas'); k.width = k.height = s; const g = k.getContext('2d');
+  const r = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  r.addColorStop(0, `rgba(${rgb},.95)`); r.addColorStop(.3, `rgba(${rgb},.42)`); r.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = r; g.fillRect(0, 0, s, s); return k;
+}
+const BALLS = { me: ball('#7dffa8', '#00c94a', '#00541f'), gateway: ball('#d3b6ff', '#8a5cf0', '#32186f'), lan: ball('#dfe6f2', '#8f9db4', '#343d4e'), external: ball('#9fb0c8', '#56677f', '#1e2733'), group: ball('#b9f0ee', '#4aa3a0', '#163f3e'), send: ball('#a8dcff', '#1b86ff', '#06306e'), port: ball('#ffe6b0', '#ffb020', '#7a4700') };
+const GLOWS = { send: glow('47,155,255'), port: glow('255,176,32'), TCP: glow('88,196,255'), UDP: glow('75,224,138'), ICMP: glow('255,224,102'), other: glow('213,140,255'), white: glow('255,255,255') };
+
+// ---- camera
+function project(p) {
+  const x = p[0] - cam.x, y = p[1] - cam.y, z = p[2] - cam.z, c = Math.cos(cam.yaw), s = Math.sin(cam.yaw);
+  const x1 = x * c - z * s, z1 = x * s + z * c, cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp + cam.dist;
+  if (z2 < 30) return null;
+  const k = FOCAL / z2;
+  return { x: W / 2 + x1 * k, y: H / 2 + 10 - y2 * k, z: z2, s: k };
+}
+function nearestAngle(from, to) { while (to - from > Math.PI) to -= 2 * Math.PI; while (to - from < -Math.PI) to += 2 * Math.PI; return to; }
+function fitDistance() {
+  let r = 240; for (const n of nodes.values()) r = Math.max(r, len(n.pos) + 40);
+  return r * FOCAL / (Math.max(240, Math.min(W, H)) * .47) + r * .45;
+}
+function overview() { autoFit = true; Object.assign(goal, { pitch: .34, x: 0, y: 0, z: 0, dist: fitDistance() }); }
+function clearSelection() { sel = null; $('panel').hidden = true; packetPin = null; resized(); overview(); }
+function focusFlow(f) {
+  const a = nodes.get(f.a), b = nodes.get(f.b); if (!a || !b) return;
+  autoFit = false;
+  const v = sub(b.pos, a.pos), mid = bez(a.pos, ctrlFor(f), b.pos, .5), L = len(v);
+  Object.assign(goal, { x: mid[0], y: mid[1], z: mid[2], pitch: .12, yaw: nearestAngle(cam.yaw, Math.atan2(-v[2], v[0])), dist: Math.max(230, L * FOCAL / (Math.max(280, W) * .78)) });
+}
+function focusNode(n) { autoFit = false; Object.assign(goal, { x: n.pos[0], y: n.pos[1], z: n.pos[2], pitch: .3, dist: Math.max(230, SIZE[n.kind] * 22) }); }
+
+// ---- layout: every device keeps its place once it has one
+function placeFor(kind) {
+  if (kind === 'me') return [0, 0, 0];
+  if (kind === 'gateway') return [175, -34, 96];
+  const i = slots[kind]++, a = i * 2.39996 + (kind === 'external' ? 1.1 : 0), h = vdc(i) * 2 - 1;
+  if (kind === 'lan') { const r = 275 + 13 * Math.sqrt(i); return [r * Math.cos(a), h * 125, r * Math.sin(a)]; }
+  if (kind === 'group') { const r = 95 + 20 * i; return [r * Math.cos(a), 245 + h * 30, r * Math.sin(a)]; }
+  const r = 660 + 18 * Math.sqrt(i); return [r * Math.cos(a), h * 300, r * Math.sin(a)];
+}
+function ctrlFor(f) {
+  if (f.ctrl) return f.ctrl;
+  const a = nodes.get(f.a).pos, b = nodes.get(f.b).pos, v = sub(b, a), L = len(v), side = norm(cross(v, [0, 1, 0]));
+  f.ctrl = add(add(mul(add(a, b), .5), mul(side, ((f.id * 7) % 9 - 4) / 4 * L * .15)), [0, L * .09, 0]);
+  f.world = []; for (let i = 0; i <= 18; i++) f.world.push(bez(a, f.ctrl, b, i / 18));
+  return f.ctrl;
+}
+
+// ---- data from the app
+function applyState(s) {
+  state = s; failures = 0;
+  const seen = new Set();
+  for (const d of s.nodes) {
+    seen.add(d.ip);
+    let n = nodes.get(d.ip);
+    if (!n) { n = { pos: placeFor(d.kind), born: performance.now(), send: 0, heat: 0, sentAt: -1e9, phase: hash(d.ip) % 628 / 100, ports: new Map() }; nodes.set(d.ip, n); }
+    Object.assign(n, d);
+  }
+  for (const [ip, n] of nodes) if (!seen.has(ip) && !(sel && sel.ip === ip)) nodes.delete(ip);
+  const live = new Set();
+  for (const d of s.flows) {
+    live.add(d.id);
+    const f = flows.get(d.id);
+    if (f) Object.assign(f, d); else flows.set(d.id, { ...d, pulse: 0 });
+  }
+  for (const id of flows.keys()) if (!live.has(id) && !(sel && sel.flow === id)) flows.delete(id);
+  for (const f of flows.values()) if (!nodes.has(f.a) || !nodes.has(f.b)) flows.delete(f.id);
+  if (autoFit) goal.dist = fitDistance();
+  renderStatus();
+  tipFlow = null;   // redraw the popup with the new numbers
+}
+function fmtBytes(n) { for (const [k, u] of [[1e9, 'GB'], [1e6, 'MB'], [1e3, 'KB']]) if (n >= k) return (n / k).toFixed(1) + ' ' + u; return n + ' B'; }
+function fmtBits(n) { for (const [k, u] of [[1e9, 'Gbit/s'], [1e6, 'Mbit/s'], [1e3, 'Kbit/s']]) if (n >= k) return (n / k).toFixed(1) + ' ' + u; return Math.round(n) + ' bit/s'; }
+function fmtAge(sec) { if (sec < 90) return Math.round(sec) + ' s'; if (sec < 5400) return Math.round(sec / 60) + ' min'; return (sec / 3600).toFixed(1) + ' h'; }
+function renderStatus() {
+  const s = state, how = s.mode === 'demo' ? 'Demo' : s.engine === 'npcap' ? 'Capture: Npcap' : s.engine === 'raw' ? 'Capture: Windows raw socket' : 'No packet capture';
+  $('stats').textContent = `${s.devices} devices · ${s.flows.length} connections · ${fmtBits(s.rate.bps)} · ${Math.round(s.rate.pps)} packets/s · ${how}${s.scanning ? ' · scanning…' : ''}`;
+  $('notice').hidden = !s.note; $('notice').textContent = s.note || '';
+  const up = $('upgrade'); up.textContent = s.engine === 'npcap' ? 'Npcap active' : 'Upgrade capture'; up.disabled = s.engine === 'npcap';
+  renderSetup();
+}
+function button(text, fn, cls, off) { const b = document.createElement('button'); b.textContent = text; b.onclick = fn; if (cls) b.className = cls; b.disabled = !!off; return b; }
+function done(text) { const s = document.createElement('span'); s.className = 'ok'; s.textContent = text; return s; }
+function renderSetup() {
+  if (!state || $('modal').hidden) return;
+  const t = state.setup, demo = state.mode === 'demo', sa = $('scapyact'), na = $('npcapact'), running = t.install.state === 'running';
+  if (t.frozen) {   // the exe reads Npcap itself and always asks for Administrator
+    $('scapyStep').hidden = true; $('adminRow').hidden = true; $('scapyNote').hidden = true;
+    $('mtitle').textContent = 'Upgrade capture with Npcap'; $('mhead').textContent = 'With Npcap'; $('mintro').textContent = 'My_network already works without it. Adding it lets My_network read complete network frames instead of starting at the IP layer.';
+  }
+  $('scapyinfo').textContent = t.install.message || 'Installed with pip for your account.';
+  sa.replaceChildren(t.scapy ? done('✓ Installed') : button(running ? 'Installing…' : 'Install scapy', () => post('/install-scapy').then(refresh), 'primary', running || demo));
+  na.replaceChildren(t.npcap ? done('✓ Installed') : button('Open download page', () => post('/open-npcap-page'), 'primary', demo));
+  $('afterinfo').textContent = demo ? 'Installing is switched off in the demo.' : t.error ? t.error : t.scapy && t.npcap ? 'Everything is installed. Capture moves over by itself within a few seconds.' : 'Capture moves over by itself after installing. No restart needed.';
+}
+function refresh() { lastRefresh = performance.now(); return get('/state').then(applyState).catch(() => { failures++; }); }
+async function pollState() { await refresh(); if (failures > 4) return stopped(); setTimeout(pollState, 2000); }
+async function pollEvents() {
+  try {
+    const r = await get('/events?since=' + since);
+    since = r.seq;
+    if (r.events.length && !document.hidden) {
+      const now = performance.now(), t0 = r.events[0][1];
+      for (const e of r.events) pending.push({ at: now + Math.min(400, e[1] - t0), e });
+      pending.splice(0, Math.max(0, pending.length - 500));
+    }
+  } catch { failures++; }
+  setTimeout(pollEvents, 200);
+}
+function stopped() { $('notice').hidden = false; $('notice').textContent = 'My_network has stopped. You can close this tab.'; $('stats').textContent = 'Stopped'; }
+
+// ---- animating packets
+function portFor(n, label) {
+  const eph = /^\d+$/.test(label) && +label >= 49152, key = eph ? 'high' : label;
+  let p = n.ports.get(key);
+  if (!p) {
+    if (n.ports.size >= 18) { let oldest = null; for (const [k, v] of n.ports) if (!oldest || v.last < n.ports.get(oldest).last) oldest = k; n.ports.delete(oldest); }
+    const h = hash(key + n.ip), z = (h % 1000) / 500 - 1, a = ((h >>> 10) % 6283) / 1000, r = Math.sqrt(1 - z * z);
+    p = { key, label, dir: [r * Math.cos(a), z, r * Math.sin(a)], flash: 0, heat: 0, hitAt: -1e9, phase: h % 628 / 100, last: 0, flow: 0 };
+    n.ports.set(key, p);
+  }
+  p.label = label; return p;
+}
+const portPos = (n, p) => add(n.pos, mul(p.dir, SIZE[n.kind] * 1.5));
+function launch(e, now) {
+  const [, , src, , dst, , proto, size, fid, label] = e, f = flows.get(fid), A = nodes.get(src), B = nodes.get(dst);
+  if (!f || !A || !B) { if (now - lastRefresh > 500) refresh(); return; }
+  if (particles.length > 500) return;
+  const p = portFor(B, label), selected = sel && sel.flow === fid;
+  p.flow = fid; p.last = now; f.pulse = now; A.sentAt = now;
+  ctrlFor(f);
+  particles.push({ a: A.pos, c: f.ctrl, b: portPos(B, p), t0: now, dur: (480 + Math.min(420, len(sub(A.pos, B.pos)) * .6)) * (selected ? 1.7 : 1), proto, r: Math.max(2.2, Math.min(5.5, Math.log2(size + 1) * .5)), B, port: p, fid });
+}
+
+// ---- drawing
+function resized() {
+  const box = $('stage').getBoundingClientRect(); DPR = Math.min(2, devicePixelRatio || 1);
+  W = box.width; H = box.height; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  backdrop = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, Math.max(W, H) * .72);
+  backdrop.addColorStop(0, '#111a2c'); backdrop.addColorStop(.55, '#0a0f1a'); backdrop.addColorStop(1, '#05070c');
+  if (autoFit) goal.dist = fitDistance();
+}
+function sprite(img, x, y, r, a) { ctx.globalAlpha = a; ctx.drawImage(img, x - r, y - r, r * 2, r * 2); }
+function ring(radius, y, alpha) {
+  ctx.beginPath(); let go = false;
+  for (let i = 0; i <= 72; i++) { const a = i / 72 * 2 * Math.PI, p = project([radius * Math.cos(a), y, radius * Math.sin(a)]); if (!p) { go = false; continue; } if (go) ctx.lineTo(p.x, p.y); else { ctx.moveTo(p.x, p.y); go = true; } }
+  ctx.globalAlpha = alpha; ctx.strokeStyle = '#5678a8'; ctx.lineWidth = 1; ctx.stroke();
+}
+function label(items) {
+  const taken = [];
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+  items.sort((a, b) => b.pri - a.pri);
+  for (const it of items) {
+    const big = it.big ? 15 : 12; ctx.font = `600 ${big}px Inter,"Segoe UI",sans-serif`;
+    const w = Math.max(ctx.measureText(it.line1).width, it.line2 ? ctx.measureText(it.line2).width * .9 : 0) + 8, h = it.line2 ? big * 2.3 : big * 1.3;
+    const box = [it.x - w / 2, it.y, it.x + w / 2, it.y + h];
+    if (box[2] < 0 || box[0] > W || box[3] < 0 || box[1] > H) continue;
+    if (taken.some(t => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1])) continue;
+    taken.push(box);
+    ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(4,6,12,.9)'; ctx.fillStyle = it.color || '#eef2f9';
+    ctx.strokeText(it.line1, it.x, it.y + big); ctx.fillText(it.line1, it.x, it.y + big);
+    if (it.line2) { ctx.font = `${big - 1.5}px Inter,"Segoe UI",sans-serif`; ctx.fillStyle = '#a3aec2'; ctx.strokeText(it.line2, it.x, it.y + big * 2.15); ctx.fillText(it.line2, it.x, it.y + big * 2.15); }
+  }
+}
+// activity swells in gently, lingers, and fades; while it lasts the glow breathes
+function pulse(item, lastAt, now, dt) {
+  const active = now - lastAt < 800, rate = active ? 4 : 1.3;
+  item.heat += ((active ? 1 : 0) - item.heat) * (1 - Math.exp(-dt * rate));
+  return item.heat * (.62 + .38 * Math.sin(now / 280 + item.phase));
+}
+function frame() {
+  const now = performance.now(), dt = Math.min(.1, (now - (frame.last || now)) / 1000); frame.last = now;
+  const ease = 1 - Math.exp(-dt * 5);
+  if (autoFit && !sel && !hover && now - lastInput > 8000) goal.yaw += dt * .05;
+  for (const k of Object.keys(cam)) cam[k] += (goal[k] - cam[k]) * ease;
+  while (pending.length && pending[0].at <= now) launch(pending.shift().e, now);
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.fillStyle = backdrop; ctx.fillRect(0, 0, W, H);
+  ring(150, -70, .07); ring(290, -70, .09); ring(460, -70, .05);
+
+  const picksNow = { nodes: [], ports: [] }, items = [], texts = [];
+  const selFlow = sel && sel.flow ? flows.get(sel.flow) : null;
+  for (const [ip, n] of nodes) {
+    n.send = pulse(n, n.sentAt, now, dt);
+    const p = project(n.pos); if (!p) continue;
+    const grow = Math.min(1, (now - n.born) / 500), r = SIZE[n.kind] * p.s * grow;
+    items.push({ z: p.z, k: 0, n, p, r });
+    picksNow.nodes.push({ x: p.x, y: p.y, r: Math.max(r, 7), z: p.z, n });
+    for (const [key, port] of n.ports) {
+      port.flash = pulse(port, port.hitAt, now, dt);
+      if (now - port.last > 30000 && !(sel && sel.flow === port.flow)) { n.ports.delete(key); continue; }
+      const q = project(portPos(n, port)); if (!q) continue;
+      const pr = Math.max(2.6, SIZE[n.kind] * .3 * q.s);
+      items.push({ z: q.z - .5, k: 1, port, p: q, r: pr, n });
+      picksNow.ports.push({ x: q.x, y: q.y, r: Math.max(pr, 6), z: q.z, port });
+    }
+    const focus = (sel && sel.ip === ip) || (selFlow && (selFlow.a === ip || selFlow.b === ip)), hot = hover && hover.n === n;
+    const active = n.idle !== null && n.idle < 30, kind = n.kind;
+    if (kind !== 'external' || active || hot || focus) {
+      const named = n.name && n.name !== n.ip;
+      texts.push({ x: p.x, y: p.y + r + 4, line1: named ? (n.name.length > 26 ? n.name.slice(0, 25) + '…' : n.name) : n.ip, line2: named && kind !== 'group' ? n.ip : (named ? n.ip : ''), pri: (focus || hot ? 100 : 0) + { me: 50, gateway: 40, lan: 30, group: 15, external: 10 }[kind] + (active ? 5 : 0), big: focus, color: kind === 'me' ? '#8affb4' : undefined });
+    }
+  }
+  picks = picksNow;
+
+  // connections
+  ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  for (const f of flows.values()) {
+    if (!nodes.has(f.a) || !nodes.has(f.b)) continue;
+    ctrlFor(f);
+    let go = false; const screen = [];
+    ctx.beginPath();
+    for (const w of f.world) { const p = project(w); screen.push(p); if (!p) { go = false; continue; } if (go) ctx.lineTo(p.x, p.y); else { ctx.moveTo(p.x, p.y); go = true; } }
+    f.screen = screen;
+    const pulse = Math.max(0, 1 - (now - f.pulse) / 1400), recent = f.idle !== null && f.idle < 30 ? .14 : .055;
+    const on = selFlow === f, over = hover && hover.flow === f;
+    ctx.globalAlpha = on ? .95 : over ? .85 : Math.min(.75, recent + pulse * .5) * (selFlow ? .22 : 1);
+    ctx.strokeStyle = on || over ? '#ffffff' : (COLORS[f.proto] || '#d58cff');
+    ctx.lineWidth = on ? 2.2 : over ? 1.8 : 1 + pulse * .7;
+    ctx.stroke();
+  }
+
+  // packets in flight
+  const keep = [];
+  for (const q of particles) {
+    const t = (now - q.t0) / q.dur;
+    if (t >= 1) { q.port.hitAt = now; continue; }
+    keep.push(q);
+    const p = project(bez(q.a, q.c, q.b, t)); if (p) items.push({ z: p.z - 1, k: 2, q, p, t });
+  }
+  particles = keep;
+
+  // everything solid, far to near
+  items.sort((a, b) => b.z - a.z);
+  for (const it of items) {
+    const p = it.p;
+    if (it.k === 0) {
+      const n = it.n, a = n.online === false ? .42 : 1, r = it.r;
+      if (n.send > .02) { ctx.globalCompositeOperation = 'lighter'; sprite(GLOWS.send, p.x, p.y, r * (2.6 + n.send * 1.3), n.send * .8); }
+      ctx.globalCompositeOperation = 'source-over';
+      sprite(BALLS[n.kind], p.x, p.y, r, a);
+      if (n.send > .02) sprite(BALLS.send, p.x, p.y, r, n.send * .85);
+      if ((hover && hover.n === n) || (sel && sel.ip === n.ip)) { ctx.globalAlpha = .9; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, r + 4, 0, 7); ctx.stroke(); }
+    } else if (it.k === 1) {
+      const f = it.port.flash, heat = it.port.heat, r = it.r * (1 + f * .28), on = sel && sel.flow === it.port.flow, over = hover && hover.port === it.port;
+      if (f > .02) { ctx.globalCompositeOperation = 'lighter'; sprite(GLOWS.port, p.x, p.y, Math.max(6 + f * 7, r * (2.2 + f * 1.4)), f * .42); }
+      ctx.globalCompositeOperation = 'source-over';
+      sprite(BALLS.port, p.x, p.y, r, .32 + .55 * Math.min(1, f + (on || over ? .6 : 0)));
+      if (heat > .25 || on || over || p.s > 1.9) texts.push({ x: p.x, y: p.y - 20, line1: it.port.label, pri: 60 + heat * 30 + (on ? 40 : 0), color: '#e8c078', big: on });
+    } else {
+      const q = it.q, r = q.r * Math.max(.6, Math.min(2.4, p.s));
+      ctx.globalCompositeOperation = 'lighter';
+      sprite(GLOWS[q.proto] || GLOWS.other, p.x, p.y, r * 3, .75);
+      sprite(GLOWS.white, p.x, p.y, r * .9, .9);
+    }
+  }
+  label(texts);
+  ctx.globalAlpha = 1;
+  if (mouse && !dragging) { const found = pick(mouse.x, mouse.y); if ((found && found.key) !== (hover && hover.key)) hover = found; cv.style.cursor = hover ? 'pointer' : 'grab'; }
+  placeTip();
+  requestAnimationFrame(frame);
+}
+function safetyCheck(p) {
+  const d = el('dl', 'check');
+  const verdict = el('dd'); verdict.append(el('span', 'level-' + p.level, p.verdict));
+  if (p.reasons.length) { const list = el('ul', 'reasons'); for (const r of p.reasons) list.append(el('li', '', r)); verdict.append(list); }
+  d.append(el('dt', '', 'Type of data'), el('dd', '', p.data), el('dt', '', 'Is it malicious?'), verdict, el('dt', '', 'Is the target a known risk?'), el('dd', '', p.listed));
+  return d;
+}
+const CAVEAT = "Simple checks only. Finding no warning signs doesn't prove a connection is safe.";
+function placeTip() {
+  const tip = $('tip'), f = !dragging && hover && (hover.flow || (hover.port && flows.get(hover.port.flow)));
+  if (!f || !f.plain || !mouse) { tip.hidden = true; tipFlow = null; return; }
+  if (tipFlow !== f) { tip.replaceChildren(el('div', 'who', f.plain.who), safetyCheck(f.plain), el('div', 'foot-note', CAVEAT)); tipFlow = f; }
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  const x = Math.max(8, Math.min(W - w - 8, mouse.x + 16)), y = mouse.y + 18 + h > H - 8 ? Math.max(8, mouse.y - h - 14) : mouse.y + 18;
+  tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
+}
+function pick(x, y) {
+  const near = list => { let best = null; for (const it of list) if (Math.hypot(it.x - x, it.y - y) <= it.r + 2 && (!best || it.z < best.z)) best = it; return best; };
+  const p = near(picks.ports); if (p && p.port.flow) return { port: p.port, key: 'p' + p.port.key + p.port.flow };
+  const n = near(picks.nodes); if (n) return { n: n.n, key: 'n' + n.n.ip };
+  let best = null, dist = 7;
+  for (const f of flows.values()) {
+    if (!f.screen) continue;
+    for (let i = 1; i < f.screen.length; i++) {
+      const a = f.screen[i - 1], b = f.screen[i]; if (!a || !b) continue;
+      const dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy || 1))), d = Math.hypot(a.x + t * dx - x, a.y + t * dy - y);
+      if (d < dist) { dist = d; best = f; }
+    }
+  }
+  return best ? { flow: best, key: 'f' + best.id } : null;
+}
+
+// ---- mouse
+let dragging = null, tipFlow = null;
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => { dragging = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pan: e.button === 2 || e.shiftKey, moved: false }; cv.setPointerCapture(e.pointerId); lastInput = performance.now(); });
+cv.addEventListener('pointermove', e => {
+  const box = cv.getBoundingClientRect(); mouse = { x: e.clientX - box.left, y: e.clientY - box.top };
+  if (!dragging) return;
+  const dx = e.clientX - dragging.x, dy = e.clientY - dragging.y; dragging.x = e.clientX; dragging.y = e.clientY;
+  if (Math.hypot(e.clientX - dragging.sx, e.clientY - dragging.sy) > 4) dragging.moved = true;
+  if (!dragging.moved) return;
+  lastInput = performance.now();
+  if (dragging.pan) {
+    autoFit = false;
+    const k = cam.dist / FOCAL, c = Math.cos(cam.yaw), s = Math.sin(cam.yaw);
+    goal.x -= dx * k * c; goal.z += dx * k * s; goal.y += dy * k;
+  } else { goal.yaw += dx * .006; goal.pitch = Math.max(-1.3, Math.min(1.3, goal.pitch + dy * .005)); }
+});
+cv.addEventListener('pointerup', e => {
+  const d = dragging; dragging = null; if (!d || d.moved) return;
+  const box = cv.getBoundingClientRect(), found = pick(e.clientX - box.left, e.clientY - box.top);
+  if (!found) return;
+  if (found.flow) selectFlow(found.flow.id); else if (found.port) selectFlow(found.port.flow); else selectNode(found.n.ip);
+});
+cv.addEventListener('pointerleave', () => { mouse = null; hover = null; });
+cv.addEventListener('wheel', e => { e.preventDefault(); autoFit = false; lastInput = performance.now(); goal.dist = Math.max(90, Math.min(9000, goal.dist * Math.exp(e.deltaY * .001))); }, { passive: false });
+addEventListener('resize', resized);
+addEventListener('keydown', e => { if (e.key === 'Escape') { if (!$('modal').hidden) $('modal').hidden = true; else clearSelection(); } });
+$('zoomout').onclick = clearSelection;
+$('upgrade').onclick = () => { $('modal').hidden = false; renderSetup(); };
+$('mclose').onclick = () => { $('modal').hidden = true; };
+$('quit').onclick = async () => { await post('/quit').catch(() => {}); stopped(); window.close(); };
+
+// ---- details panel
+let packetPin = null, flowTimer = 0, lastDetail = null;
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function fields(rows) { const t = el('table', 'fields'); for (const [k, v] of rows) { if (v === '' || v === null || v === undefined) continue; const r = t.insertRow(); r.insertCell().textContent = k; r.insertCell().textContent = v; } return t; }
+function closeButton() { const b = el('button', '', '×'); b.id = 'close'; b.title = 'Close and zoom out (Esc)'; b.setAttribute('aria-label', 'Close and zoom out'); b.onclick = clearSelection; return b; }
+function openPanel() { const p = $('panel'), was = p.hidden; p.hidden = false; if (was) resized(); return p; }
+function endpoint(name, ip, port, service, mac) { return [(name && name !== ip ? `${name} · ` : '') + ip + (port ? `:${port}` : ''), [service, mac].filter(Boolean).join(' · ')].join('\n'); }
+function selectFlow(id) {
+  sel = { flow: id }; packetPin = null; lastDetail = null; openPanel();
+  const f = flows.get(id); if (f) focusFlow(f);
+  clearTimeout(flowTimer); loadFlow(id);
+}
+async function loadFlow(id) {
+  if (!sel || sel.flow !== id) return;
+  let d = null; try { d = await get('/flow?id=' + id); } catch { }
+  if (!sel || sel.flow !== id) return;
+  if (d && !d.gone) { renderFlow(d); lastDetail = d; }
+  else if (!lastDetail) { const p = openPanel(); p.replaceChildren(closeButton(), el('h2', '', 'Connection ended'), el('div', 'empty', 'This connection has gone quiet and been forgotten.')); }
+  flowTimer = setTimeout(() => loadFlow(id), 1000);
+}
+function renderFlow(d) {
+  const p = openPanel(), scroll = p.scrollTop, rowsEl = $('rows'), rowScroll = rowsEl ? rowsEl.scrollTop : 0, frag = document.createDocumentFragment();
+  frag.append(closeButton(), el('h2', '', `${d.service || d.proto}${d.info ? ' · ' + d.info : ''}`), el('div', 'sub', `${d.proto} connection · ${d.state || 'no state'}`));
+  frag.append(el('h3', '', 'Connection'), fields([
+    ['Source', endpoint(d.a_name, d.a, d.ap, d.a_service, d.a_mac)], ['Destination', endpoint(d.b_name, d.b, d.bp, d.b_service, d.b_mac)],
+    ['Protocol', d.proto], ['Service', d.service], ['State', d.state], ['Named', d.info], ['Program', d.process],
+    ['Source → destination', `${d.pkts_ab} packets, ${fmtBytes(d.bytes_ab)}`], ['Destination → source', `${d.pkts_ba} packets, ${fmtBytes(d.bytes_ba)}`],
+    ['First seen', fmtAge(d.age) + ' ago'], ['Last packet', d.idle === null ? 'None captured' : fmtAge(d.idle) + ' ago']]));
+  frag.append(el('h3', '', 'In plain words'), el('div', '', d.plain.who), safetyCheck(d.plain), el('div', 'foot-note', CAVEAT));
+  const head = el('div', 'row-head'); head.append(el('h3', '', `Latest packets (${d.packets.length})`));
+  if (packetPin !== null) head.append(button('Follow latest', () => { packetPin = null; renderFlow(d); }));
+  frag.append(head);
+  if (!d.packets.length) frag.append(el('div', 'empty', state && state.engine ? 'No packets on this connection yet.' : 'Packets need capture. Run as Administrator or use Upgrade capture.'));
+  else {
+    const rows = el('div'); rows.id = 'rows';
+    const shown = packetPin !== null && d.packets.find(x => x.no === packetPin.no) || packetPin || d.packets[d.packets.length - 1];
+    for (const x of [...d.packets].reverse()) {
+      const b = el('button', 'pkt' + (x.no === shown.no ? ' on' : ''));
+      b.append(el('span', '', x.forward ? '→' : '←'), el('span', 'mono', x.clock.slice(0, 12)), el('span', 'mono', x.len + ' B'), el('span', '', x.summary));
+      b.title = x.summary; b.onclick = () => { packetPin = x; renderFlow(d); };
+      rows.append(b);
+    }
+    frag.append(rows, el('h3', '', `Packet ${shown.no}: ${shown.forward ? 'source → destination' : 'destination → source'}`), el('div', 'sub', shown.summary));
+    for (const l of shown.layers) frag.append(el('h3', '', l.title), fields(l.fields));
+    frag.append(el('h3', '', 'Bytes'), el('pre', '', shown.hex));
+  }
+  p.replaceChildren(frag); p.scrollTop = scroll; if ($('rows')) $('rows').scrollTop = rowScroll;
+}
+function selectNode(ip) { sel = { ip }; clearTimeout(flowTimer); const n = nodes.get(ip); if (n) focusNode(n); renderNode(ip); }
+function renderNode(ip) {
+  const n = nodes.get(ip); if (!n) return;
+  const p = openPanel(), frag = document.createDocumentFragment(), KIND = { me: 'This PC', gateway: 'Router', lan: 'Device on your network', external: 'Internet host', group: 'Broadcast or multicast group' };
+  frag.append(closeButton(), el('h2', '', n.name || n.ip), el('div', 'sub', KIND[n.kind]));
+  const macText = n.mac ? n.mac + (parseInt(n.mac.slice(0, 2), 16) & 2 ? ' (randomised, private)' : '') : '';
+  frag.append(el('h3', '', 'Device'), fields([['IP address', n.ip], ['MAC address', macText], ['Status', n.online === false ? 'Not answering' : 'Online'], ...Object.entries(n.names || {}).map(([k, v]) => ['Name from ' + k, v]),
+    ['Sent', `${n.tx} packets, ${fmtBytes(n.txb)}`], ['Received', `${n.rx} packets, ${fmtBytes(n.rxb)}`], ['Last packet', n.idle === null ? 'None captured' : fmtAge(n.idle) + ' ago']]));
+  const list = [...flows.values()].filter(f => f.a === ip || f.b === ip).sort((a, b) => (a.idle ?? 1e9) - (b.idle ?? 1e9));
+  frag.append(el('h3', '', `Connections (${list.length})`));
+  if (!list.length) frag.append(el('div', 'empty', 'No traffic with this device seen yet.'));
+  for (const f of list.slice(0, 60)) {
+    const other = f.a === ip ? f.b : f.a, o = nodes.get(other);
+    frag.append(button(`${f.service || f.proto} · ${(o && o.name) || other}${f.info ? ' · ' + f.info : ''}`, () => selectFlow(f.id), 'conn'));
+  }
+  p.replaceChildren(frag);
+}
+setInterval(() => { if (sel && sel.ip) renderNode(sel.ip); }, 2000);
+
+new ResizeObserver(resized).observe($('stage'));
+resized();
+pollState(); pollEvents();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
