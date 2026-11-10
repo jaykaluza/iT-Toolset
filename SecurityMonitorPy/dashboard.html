@@ -43,6 +43,7 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertic
 th{font-size:13px;color:var(--muted);font-weight:600;background:var(--panel)}tr:last-child td{border-bottom:0}
 tr.s-critical td{background:var(--crit-bg)}tr.s-high td{background:var(--high-bg)}tr.s-medium td{background:var(--med-bg)}
 .pill{display:inline-block;padding:0 7px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.kind{background:var(--panel-2);color:var(--muted)}
 .p-critical{color:#fff;background:var(--crit)}.p-high{color:#fff;background:var(--high)}.p-medium{color:var(--med);background:var(--med-bg);border:1px solid var(--med)}.p-low{color:var(--low);background:var(--low-bg)}.p-info{color:var(--accent);background:rgba(0,113,227,.1)}.p-ok{color:var(--good);background:var(--good-bg)}.p-done{color:#fff;background:var(--good)}
 .title{font-weight:600}.small{color:var(--muted);font-size:12px}.mono{font:11.5px Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-all}
 .note{background:var(--panel-2);color:var(--muted);border-radius:12px;padding:9px 14px;margin:0 0 10px;line-height:1.5;font-size:12px}.note b{color:var(--text);font-weight:600}
@@ -192,10 +193,31 @@ function genericTabList(tab) {
 }
 
 // ---- Blocked
+const KIND = {port: 'Port', address: 'Address', program: 'Program'};
+function attemptsSection(tbl) {
+  const a = D.attempts || {}, b = D.blocks, any = b.ports.length + b.ips.length + b.programs.length;
+  const head = `<h3>Blocked attempts <span class="small">connections Windows Firewall refused because of your blocks</span></h3>`;
+  if (!D.admin) return head + '<div class="small">Needs Administrator rights: only Administrators can read the firewall\'s record. MySecurity.exe asks for them by itself.</div>';
+  if (a.on == null) return head + '<div class="small">Checking…</div>';
+  if (!a.on) return head + `<div class="note">Windows Firewall is not writing down the connections it refuses, so there is nothing to show yet. <b>Start recording</b> turns that on (it is a Windows setting, "log dropped packets"). It uses up to 16 MB of disk and doesn't slow the PC. Stop recording puts it back as it was.<div style="margin-top:8px"><button class="btn solid" data-rec="1">Start recording</button></div></div>` +
+    (a.rows.length ? attemptsTable(tbl, a.rows) : '');
+  const since = a.since ? `Recorded since ${esc(a.since.slice(0, 16))}` : 'Recording, nothing refused yet';
+  const bar = `<div class="small" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">${since}. Updated ${time(a.at)}, every minute. <button class="btn" data-rec="0">Stop recording</button></div>`;
+  return head + bar + (any ? attemptsTable(tbl, a.rows) : '<div class="small">You have not blocked anything yet. Once you block a port, address or program, attempts to get through show here.</div>');
+}
+function attemptsTable(tbl, rows) {
+  return tbl(['Last try', 'What you blocked', 'What happened', 'Ports', 'Times'], rows.map(r => {
+    const where = r.Local ? 'your network' : 'the internet';
+    const what = r.Direction === 'in' ? `<b>${esc(r.Remote)}</b> tried to connect to this PC <span class="small">(from ${where})</span>` : `This PC tried to reach <b>${esc(r.Remote)}</b> <span class="small">(${where})</span>`;
+    const first = r.Count > 1 && r.First !== r.Last ? `<div class="small">first ${esc(r.First.slice(0, 16))}</div>` : '';
+    return `<tr><td>${esc(r.Last.slice(0, 16))}${first}</td><td><span class="pill kind">${KIND[r.Kind] || ''}</span> ${esc(r.Blocked)}</td><td>${what}</td><td>${esc(r.Ports.join(', '))}</td><td><b>${r.Count}</b></td></tr>`;
+  }), 'No attempts yet. Every refused connection to or from something you blocked shows here.');
+}
 function blockedTab() {
   const b = D.blocks, tbl = (cols, rows, none) => rows.length ? `<table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : `<div class="small">${none}</div>`;
   const ub = (kind, key, label = 'Unblock', cls = '') => `<button class="btn ${cls}" data-unblock="${kind}" data-key="${esc(key)}">${label}</button>`;
   return `<div class="form"><b>Block a port</b><input type="number" id="bport" min="1" max="65535" placeholder="Port" style="width:100px"><select id="bproto"><option>TCP</option><option>UDP</option></select><button class="btn danger" id="bbtn" ${D.admin ? '' : 'disabled title="Needs Administrator rights"'}>Block incoming</button></div>` +
+    attemptsSection(tbl) +
     `<h3>Ports</h3>` + tbl(['Port', 'Service', ''], b.ports.map(p => `<tr><td><b>${p.Port}</b> ${esc(p.Proto)}</td><td>${esc(p.Name)}</td><td>${ub('port', p.Key)}</td></tr>`), 'No ports blocked yet. Use Block in the Ports tab.') +
     `<h3>Programs</h3>` + tbl(['Program', 'File', ''], b.programs.map(p => `<tr><td class="title">${esc(p.Name)}</td><td class="small">${esc(p.Path)}</td><td>${ub('program', p.Path)}</td></tr>`), 'No programs blocked yet.') +
     `<h3>Addresses</h3>` + tbl(['Address', ''], b.ips.map(p => `<tr><td>${esc(p.Address)}</td><td>${ub('ip', p.Address)}</td></tr>`), 'No addresses blocked yet.') +
@@ -239,7 +261,7 @@ function render() {
   if (!D) return;
   $('#meta').innerHTML = `[${esc(D.host)} · v${esc(D.version)}]` + (D.admin ? '' : ' · <span class="warn">not elevated: some checks and fixes are unavailable</span>');
   const c = D.counts, sc = D.score;
-  $('#stats').innerHTML = [[sc == null ? '—' : sc, 'Security score', sc == null ? '' : sc >= 85 ? 'c-good' : ''], [c.critical, 'Critical', c.critical ? 'c-critical' : ''], [c.high, 'High', c.high ? 'c-high' : ''], [c.medium, 'Medium', c.medium ? 'c-medium' : ''], [D.events.filter(e => e.Running).length, 'Risky programs running', ''], [D.tabs.filter(t => t.Sev === 'critical' || t.Sev === 'high').length, 'Risky browser tabs', ''], [(D.blocks.ports || []).length + (D.blocks.programs || []).length + (D.blocks.sites || []).length, 'Blocked by you', '']].map(s => `<div class="stat ${s[2]}"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
+  $('#stats').innerHTML = [[sc == null ? '—' : sc, 'Security score', sc == null ? '' : sc >= 85 ? 'c-good' : ''], [c.critical, 'Critical', c.critical ? 'c-critical' : ''], [c.high, 'High', c.high ? 'c-high' : ''], [c.medium, 'Medium', c.medium ? 'c-medium' : ''], [D.events.filter(e => e.Running).length, 'Risky programs running', ''], [D.tabs.filter(t => t.Sev === 'critical' || t.Sev === 'high').length, 'Risky browser tabs', ''], [(D.blocks.ports || []).length + (D.blocks.programs || []).length + (D.blocks.ips || []).length + (D.blocks.sites || []).length, 'Blocked by you', '']].map(s => `<div class="stat ${s[2]}"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
   $('#tabs').innerHTML = TABS.map(([id, label, cats]) => {
     let n = cats.flatMap(k => D.scans[k].findings).filter(f => RANK[f.Sev] >= 2 && !f.Done);
     if (id === 'processes') n = D.events.filter(e => e.Running && RANK[e.Sev] >= 3);
@@ -283,6 +305,7 @@ $('#view').onclick = async e => {
   if (t.dataset.kill) { const ev = D.events.find(x => x.Id === +t.dataset.kill); if (!confirm(`End ${ev.Name} (PID ${ev.PID})?\n\nUnsaved work in it will be lost.`)) return; toast(await post('/kill', {id: ev.Id})); return poll(true); }
   if (t.dataset.blockp) { const ev = D.events.find(x => x.Id === +t.dataset.blockp); if (!confirm(`End and block ${ev.Name}?\n\n${ev.Path}\n\nIt will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id})); return poll(true); }
   if (t.dataset.unblock) { const k = t.dataset.unblock; if (!confirm(k === 'delete' ? 'Permanently delete this file?\n\nThis cannot be undone.' : k === 'restore' ? 'Put this file back where it was?' : 'Remove this block?')) return; toast(await post('/unblock', {kind: k, key: t.dataset.key})); return poll(true); }
+  if (t.dataset.rec) { const on = t.dataset.rec === '1'; if (!confirm(on ? 'Start recording blocked attempts?\n\nWindows Firewall will write down every connection it refuses (up to 16 MB). You can stop it here anytime.' : 'Stop recording blocked attempts?\n\nWindows Firewall goes back to how it was before.')) return; t.disabled = true; toast(await post('/recording', {on})); return poll(true); }
   if (t.dataset.undo) { if (!confirm('Undo this change?')) return; toast(await post('/undo', {id: t.dataset.undo})); return poll(true); }
 };
 let stopped = false;

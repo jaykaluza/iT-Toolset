@@ -41,10 +41,11 @@ if sys.platform != 'win32':
 import fixes_win as X
 import scans_win as S
 import scans_deep as D   # adds its scans to S.SCANS
+import attempts as T
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.2'
+APP_VERSION = '0.1.3'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -68,6 +69,11 @@ class App:
         self.rev = 1
         self.undo = []                   # changes made this session that can be reversed
         self.blocks = {'ports': [], 'programs': [], 'ips': [], 'sites': [], 'quarantine': []}
+        # blocked attempts: refused connections from the firewall log that hit one of those blocks
+        self.att_reader = T.Reader()
+        self.attempts = {'on': None, 'rows': [], 'at': '', 'since': ''}
+        self.rec_prev = None             # firewall logging settings from before this app turned recording on
+        self.att_wake = threading.Event()
         self.activity_log = os.path.join(APP_DIR, 'activity-log.txt')
         os.makedirs(APP_DIR, exist_ok=True)
         self.prune_log()
@@ -171,6 +177,45 @@ class App:
         with self.lock:
             self.blocks = {**fw, 'sites': X.blocked_sites(), 'quarantine': X.quarantine_list()}
             self.rev += 1
+        self.att_wake.set()
+
+    # ---- blocked attempts
+
+    def attempts_loop(self):
+        while not self.stop.is_set():
+            try:
+                if self.admin:
+                    rows = T.profiles()
+                    on = T.is_on(rows)
+                    files = sorted({p['File'] for p in rows if p.get('LogBlocked') == 'True' and p.get('File')})
+                    self.att_reader.update(files)
+                    with self.lock:
+                        blocks = dict(self.blocks)
+                    matched = self.att_reader.match(blocks)
+                    with self.lock:
+                        self.attempts = {'on': on, 'rows': matched, 'at': dt.datetime.now().astimezone().isoformat(), 'since': self.att_reader.since or ''}
+                        self.rev += 1
+            except Exception:
+                self._write_error(traceback.format_exc())
+            self.att_wake.wait(60)
+            self.att_wake.clear()
+
+    def set_recording(self, on):
+        if not self.admin:
+            return {'ok': False, 'message': 'Recording needs Administrator rights. Start My Security as Administrator.'}
+        with self.action_lock:
+            if on:
+                prev = T.profiles()
+                r = T.start(prev)
+                if r['ok'] and not T.is_on(prev):
+                    self.rec_prev = [{'Name': p['Name'], 'LogBlocked': p['LogBlocked'], 'Size': p['Size']} for p in prev]
+            else:
+                r = T.stop(self.rec_prev)
+                if r['ok']:
+                    self.rec_prev = None
+        self.log('RECORDING' if r['ok'] else 'FAILED', r['message'])
+        self.att_wake.set()
+        return r
 
     # ---- live watch: looks at each new process once, as it appears
 
@@ -496,7 +541,7 @@ class App:
                     'job': {k: self.job[k] for k in ('kind', 'current', 'done', 'total', 'started')} if self.job else None,
                     'autopilotAt': self.autopilot_at, 'plan': plan, 'counts': {**counts, 'low': low}, 'score': score, 'ran': ran,
                     'events': self.events, 'watching': self.watch_started, 'guard': self.guard_on, 'tabs': self.tabs, 'tabAt': self.tab_at, 'alerts': self.alerts[:20],
-                    'tabFindings': {k: self._public(v) for k, v in self.tab_findings.items()}, 'blocks': self.blocks,
+                    'tabFindings': {k: self._public(v) for k, v in self.tab_findings.items()}, 'blocks': self.blocks, 'attempts': self.attempts,
                     'undo': [{k: u[k] for k in ('Id', 'Label', 'What')} for u in self.undo]}
 
 
@@ -612,6 +657,8 @@ def make_handler(app, page_bytes, token, port, launch_key, nonce):
                     r = app.block_port_manual(int(b['port']), str(b['proto']))
                 elif self.path == '/unblock':
                     r = app.do_unblock(str(b['kind']), str(b['key']))
+                elif self.path == '/recording':
+                    r = app.set_recording(bool(b['on']))
                 elif self.path == '/guard':
                     app.guard_on = bool(b['on'])
                     app.bump()
@@ -778,6 +825,7 @@ def main():
     threading.Thread(target=D.memory_sampler, args=(app.stop,), daemon=True).start()
     threading.Thread(target=app.guard_loop, daemon=True).start()
     threading.Thread(target=app.refresh_blocks, daemon=True).start()
+    threading.Thread(target=app.attempts_loop, daemon=True).start()
     server, port, launch_key = start_server(app, args.port)
     url = f'http://localhost:{port}/?k={launch_key}'
     if args.app:
