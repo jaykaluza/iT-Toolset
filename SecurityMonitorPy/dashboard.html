@@ -112,7 +112,7 @@ function card(f, extra) {
   const links = [];
   if (f.Link && safeLink(f.Link)) links.push(`<a class="link" href="${safeLink(f.Link)}" target="_blank" rel="noopener">More about this</a>`);
   return `<div class="card ${f.Sev}"><div class="top">${pill(f.Sev)}<span class="title">${esc(f.Title)}</span><span class="acts">${f.EventId ? eventButtons(f.EventId) : actButton(f)}</span></div>
-    <p class="why">${esc(f.What)}${f.Risk ? ' <b>Why it matters:</b> ' + esc(f.Risk) : ''}</p>${f.Evidence ? `<div class="mono">${esc(f.Evidence)}</div>` : ''}${f.Fix ? `<p class="hint"><b>What to do:</b> ${esc(f.Fix)}</p>` : ''}${links.length || extra ? `<p class="hint">${extra || ''}${links.join(' · ')}</p>` : ''}</div>`;
+    <p class="why">${esc(f.What)}</p>${f.Risk ? `<p class="why"><b>How it's abused:</b> ${esc(f.Risk)}</p>` : ''}${f.Evidence ? `<div class="mono">${esc(f.Evidence)}</div>` : ''}${f.Fix ? `<p class="hint"><b>How to fix it:</b> ${esc(f.Fix)}</p>` : ''}${links.length || extra ? `<p class="hint">${extra || ''}${links.join(' · ')}</p>` : ''}</div>`;
 }
 function scanNote(keys) {
   const s = keys.map(k => D.scans[k]);
