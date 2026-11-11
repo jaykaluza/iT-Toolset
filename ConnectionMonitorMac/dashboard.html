@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<title>My Connections</title>
+<style>
+:root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--footnote:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
+  --brand:#0071e3;--brand-dark:#0077ed;--brand-text:#fff;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--head-accent:#2997ff;
+  --in:#b64400;--in-bg:rgba(255,149,0,.14);--out:#0066cc;--out-bg:rgba(0,113,227,.10);--ext:#8944ab;--ext-bg:rgba(175,82,222,.12);--lan:#6e6e73;--lan-bg:rgba(110,110,115,.12);
+  --risk:#d70015;--risk-bg:rgba(255,59,48,.10);--caution:#a05a00;--caution-bg:rgba(255,204,0,.16)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+header{background:var(--head);color:var(--head-text);border-bottom:0;padding:7px 16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:6px}
+h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;font-kerning:normal;-webkit-font-smoothing:antialiased;margin:0}
+.sub{color:var(--muted);font-size:13px}
+.warn{color:var(--in)}
+header .sub{color:var(--head-muted)}
+header h1{color:#fff;background-color:#fff;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}   /* bright white, with Stanford red specks added by speckle() */header .warn{color:#ffd60a}
+.note{background:var(--panel-2);color:var(--footnote);border:0;border-radius:12px;padding:9px 14px;margin:0 0 10px;white-space:normal;line-height:1.5;font-size:12px;letter-spacing:.005em}
+.note b,.note strong{color:var(--text);font-weight:600}
+.note code{display:block;margin:6px 0 8px;padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;font:13px Consolas,monospace;user-select:all;word-break:break-all}
+#blockapp{font:inherit;font-size:11px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:1px 9px;cursor:pointer}
+#blockapp:disabled,#kill:disabled{opacity:.4;cursor:not-allowed}
+#blockapp:not(:disabled):hover,#kill:not(:disabled):hover,.unblock.danger:hover,.mini:hover,.blockform button:not(:disabled):hover{background:#820000;border-color:#820000}
+.pill.blk{color:#fff;background:#8c1515;border:1px solid #8c1515;margin-left:6px;font-size:11px;font-weight:500;padding:1px 9px;vertical-align:1px}
+.small.checks{max-width:none;white-space:normal;line-height:1.5;font-size:10.5px}
+td.ipcell{position:relative;padding-bottom:19px}
+.small.rowchecks{position:absolute;left:8px;bottom:4px;font-size:10.5px;line-height:1.3;white-space:nowrap;visibility:hidden;z-index:2;padding-right:8px}   /* Connections: shown on the row under the mouse */
+tbody tr:hover .rowchecks,tbody tr.sel .rowchecks{visibility:visible}
+tbody tr:not(:hover) button[data-blocksite]{visibility:hidden}   /* Open tabs: shown on the row under the mouse */
+.mini{font:inherit;font-size:11px;font-weight:600;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:0 8px;margin-left:6px;cursor:pointer;visibility:hidden}
+tbody tr:hover .mini,tbody tr.sel .mini{visibility:visible}   /* hidden (not removed) so columns don't shift */
+.small[style*="max-width:none"]{white-space:normal}   /* full-width notes wrap instead of being cut off */
+.auditbtn{font:inherit;font-weight:500;color:#fff;background:var(--brand);border:0;border-radius:980px;padding:7px 18px;margin:8px 0;cursor:pointer}
+.auditbtn.secondary{color:var(--brand);background:transparent;border:1px solid var(--brand);padding:3px 10px;margin:0 0 0 8px;font-size:13px}
+.note details{margin-top:6px}.note summary{cursor:pointer;color:var(--accent)}
+#quit{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:3px 14px;cursor:pointer}
+#quit:hover{background:#820000;border-color:#820000}#quit:disabled{opacity:.5;cursor:default}
+.stats{display:flex;flex-wrap:nowrap;gap:5px;padding:2px 16px}   /* always one line: labels shorten with … on narrow windows */
+.stat{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--accent);border-radius:8px;padding:2px 8px}
+.stat b{font-size:13px;line-height:1.3;font-weight:700}
+.stat span{color:var(--muted);font-size:11px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:6px 16px}
+@media (min-width:1100px){.bar{flex-wrap:nowrap}.bar label,.bar button,.tabs,#dir{white-space:nowrap;flex-shrink:0}.killbar{min-width:0}#selinfo{flex:0 1 auto;min-width:0}}   /* one line: the search box and the hint shrink first */
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:980px;padding:3px}
+.tabs button{border:0;background:none;color:var(--muted);padding:4px 12px;border-radius:980px;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--brand);color:#fff}
+input[type=search],select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:980px;padding:4px 8px}
+input[type=search]{flex:0 1 190px;min-width:110px;width:190px}
+label{color:var(--muted);display:flex;gap:7px;align-items:center;cursor:pointer}
+/* filter checkboxes drawn as slide toggles: red = on */
+.bar label input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:34px;height:18px;margin:0;border-radius:9px;background:#d1d1d6;position:relative;cursor:pointer;transition:background .15s}
+.bar label input[type=checkbox]::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+.bar label input[type=checkbox]:checked{background:var(--brand)}
+.bar label input[type=checkbox]:checked::after{left:18px}
+.bar label input[type=checkbox]:disabled{opacity:.4;cursor:not-allowed}
+.bar label input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar label:has(input:checked){color:var(--text)}   /* colour only: bold would widen the label and shift the layout */
+html{overflow-y:scroll;scrollbar-gutter:stable}   /* always keep the scrollbar so the page doesn't jump when the list gets short */
+.clearf{font:inherit;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:4px 12px;margin-left:8px;cursor:pointer}
+.wrap{padding:0 16px 30px;overflow-x:auto}
+.wrap table{font-size:13px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+td{white-space:normal}td.num,td .pill,td .origin{white-space:nowrap}
+th{font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
+th.sorted::after{content:" ▾"}th.sorted.asc::after{content:" ▴"}
+tr:last-child td{border-bottom:0}
+tr.closed td{opacity:.45}
+td.host{position:relative;width:220px;min-width:220px}   /* fixed width, so the table doesn't shift when long names come and go */
+td.host .hn{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* one line, cut to fit */
+td.host[data-full]:hover::after{content:attr(data-full);position:absolute;left:0;top:0;padding:5px 8px;background:var(--panel);color:var(--text);border:0;white-space:nowrap;z-index:3;pointer-events:none}   /* full name while the mouse is over it */
+.app{font-weight:600}
+.small.hosts{color:var(--text);white-space:normal;overflow-wrap:anywhere;max-width:none;min-width:150px}
+.small{color:var(--muted);font-size:13px;white-space:nowrap;max-width:min(420px,28vw);overflow:hidden;text-overflow:ellipsis;display:block}
+.pill{display:inline-block;padding:0 7px;border-radius:99px;font-size:13px;font-weight:600}
+.in{color:var(--in);background:var(--in-bg)}.out{color:var(--out);background:var(--out-bg)}
+.ext{color:var(--ext);background:var(--ext-bg)}.lan{color:var(--lan);background:var(--lan-bg)}
+a.link{color:var(--accent);cursor:pointer;text-decoration:none}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+tr.risk-high td{background:var(--risk-bg)}
+tr.risk-high .app,tr.risk-high td:first-child{color:var(--risk)}
+tr.risk-medium td{background:var(--caution-bg)}
+tr[data-tip]{cursor:help}
+.risk{color:#fff;background:var(--risk)}.caution{color:var(--caution);background:var(--caution-bg);border:1px solid var(--caution)}
+.ok{color:var(--muted)}
+.stat.alert{border-color:var(--risk);background:var(--risk-bg)}.stat.alert b{color:var(--risk)}
+#tip{position:fixed;z-index:10;max-width:440px;background:var(--panel);color:var(--text);border:1px solid var(--line);
+  border-left:4px solid var(--risk);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);
+  font-size:13px;pointer-events:none;display:none;white-space:normal}
+#tip.medium{border-left-color:var(--caution)}
+#tip h4{margin:0 0 6px;font-size:13px}
+#tip p{margin:0 0 8px}#tip p:last-child{margin:0}
+#tip .lvl{font-weight:700;color:var(--risk)}#tip .lvl.medium{color:var(--caution)}
+[data-ai]{cursor:help}
+#ainfo{position:fixed;z-index:11;width:440px;max-width:calc(100vw - 16px);background:var(--panel);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:13px;display:none;white-space:normal}
+#ainfo h4{margin:0 0 6px;font-size:15px}
+#ainfo .sec{margin-top:9px}
+#ainfo .sec b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px}
+#ainfo .path{font-family:Consolas,monospace;font-size:12px;word-break:break-all;color:var(--muted)}
+#ainfo ul{margin:2px 0 0;padding-left:18px}
+#ainfo .links a{color:var(--accent);margin-right:14px;text-decoration:none}
+#ainfo .links a:hover{text-decoration:underline}
+.origin{display:inline-block;padding:2px 9px;border-radius:99px;font-size:13px;font-weight:600}
+.o-macos{color:var(--out);background:var(--out-bg)}.o-microsoft{color:var(--ext);background:var(--ext-bg)}
+.o-thirdparty{color:var(--lan);background:var(--lan-bg)}.o-unsigned{color:#fff;background:var(--risk)}.o-unknown{color:var(--caution);background:var(--caution-bg)}
+tbody tr{cursor:pointer}
+tbody tr.sel td{background:var(--out-bg)!important;box-shadow:inset 0 1px 0 var(--accent),inset 0 -1px 0 var(--accent)}
+tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent),inset 0 1px 0 var(--accent),inset 0 -1px 0 var(--accent)}
+.killbar{margin-left:0;display:flex;align-items:center;gap:8px;position:relative}
+.rec{position:relative;margin-left:8px;padding-left:14px;border-left:1px solid var(--line);display:inline-flex}
+.rec[hidden]{display:none}
+#recbtn{font:inherit;font-size:11px;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:1px 9px;cursor:pointer}
+#recbtn:hover,#allbtn:hover{background:var(--out-bg)}
+#allbtn{font:inherit;font-size:11px;font-weight:500;color:var(--accent);background:transparent;border:1px solid var(--accent);border-radius:980px;padding:1px 9px;cursor:pointer;margin-left:8px}
+.tipwrap{position:relative;display:inline-flex}
+#closedwrap{position:relative}#closedwrap[data-tip]:hover::after{right:auto;left:0}
+.killbar[data-tip]:hover::after,.rec[data-tip]:hover::after,.tipwrap[data-tip]:hover::after{content:attr(data-tip);max-width:320px;white-space:normal;text-align:left;line-height:1.4;position:absolute;top:100%;right:0;margin-top:6px;background:#1d1d1f;color:#fff;font-size:12px;font-weight:500;padding:5px 10px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:9;pointer-events:none;width:max-content}
+#selinfo{display:none;color:var(--muted);font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kill{font:inherit;font-size:11px;font-weight:500;color:#fff;background:#8c1515;border:1px solid #8c1515;border-radius:980px;padding:1px 9px;cursor:pointer}
+
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:12;max-width:min(560px,calc(100vw - 32px));
+  background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.3);display:none}
+#toast.bad{border-left-color:var(--risk)}
+#toast p{margin:0 0 4px}#toast p:last-child{margin:0}
+#quit{margin-left:auto}
+</style>
+</head>
+<body>
+<header><h1>my_connections</h1><span class="sub" id="meta">Starting up…</span><button id="quit" title="Stop the monitor and close the app">Stop monitor</button></header>
+<div class="stats" id="stats"></div>
+<div class="bar">
+  <div class="tabs" id="tabs">
+    <button data-t="conn">Connections</button><button data-t="apps">By app</button><button data-t="listen">Listening</button>
+  </div>
+  <input type="search" id="q" placeholder="Filter app, host, IP, port…">
+  <select id="dir"><option value="all">In + out</option><option value="Inbound">Inbound only</option><option value="Outbound">Outbound only</option></select>
+  <label><input type="checkbox" id="ext"> External only</label>
+  <label class="tipwrap" id="closedwrap" data-tip="Also show connections that ended in the last 10 minutes (dimmed, State: Closed). Many apps connect for only a second or two, for example to check for updates or send usage data, and would otherwise disappear before you see them."><input type="checkbox" id="closed"> Recently closed</label>
+  <label><input type="checkbox" id="risky"> Risky only</label>
+</div>
+<div class="wrap" id="view"></div>
+<div id="tip"></div>
+<div id="ainfo"></div>
+<div id="toast"></div>
+<script>
+const TOKEN = '__NETMON_TOKEN__';
+// Plain-English guide to common programs: [kind, what it does, risks, official page]
+// kind: w = built into macOS, t = third-party
+const KB = {
+  'kernel_task': ['w','The macOS kernel. Handles drivers, disk and network at the lowest level.','Normal. Can\'t be removed.'],
+  'launchd': ['w','Starts and looks after every other program and background service on the Mac.','Normal. Must be /sbin/launchd; any copy elsewhere is suspicious.'],
+  'mdnsresponder': ['w','Finds names on the internet (DNS) and devices on your network (Bonjour), such as printers and AirPlay speakers.','Normal.'],
+  'controlcenter': ['w','The Control Center menu. Also runs AirPlay Receiver, which is why it often listens on ports 5000 and 7000.','Normal. If you don\'t use AirPlay to this Mac, turn it off in System Settings > General > AirDrop & Handoff > AirPlay Receiver.'],
+  'rapportd': ['w','Lets your Apple devices find each other for Handoff and Universal Clipboard.','Normal.'],
+  'sharingd': ['w','AirDrop, Handoff and sharing between your Apple devices.','Normal.'],
+  'identityservicesd': ['w','Apple account messaging services behind iMessage and FaceTime.','Normal.'],
+  'apsd': ['w','Apple Push Service. Delivers notifications from Apple\'s servers.','Normal. Connections to Apple (17.x.x.x addresses) are expected.'],
+  'cloudd': ['w','iCloud sync for apps.','Normal if you use iCloud.'],
+  'bird': ['w','iCloud Drive sync.','Normal if you use iCloud. It uploads your synced files.'],
+  'nsurlsessiond': ['w','Downloads and uploads in the background on behalf of apps and macOS.','Normal. Busy while apps or macOS update.'],
+  'trustd': ['w','Checks security certificates for apps and websites.','Protective. Normal.'],
+  'syspolicyd': ['w','Gatekeeper. Checks apps you open against Apple\'s rules.','Protective. Keep it on.'],
+  'softwareupdated': ['w','Checks for and downloads macOS updates.','Normal. Keep updates on.'],
+  'commerce': ['w','App Store purchases and updates.','Normal.'],
+  'remoted': ['w','Talks to nearby Apple devices.','Normal.'],
+  'netbiosd': ['w','Finds Windows PCs on your network for file sharing.','Normal.'],
+  'smbd': ['w','File Sharing server.','Lets other computers on the network reach shared folders. Turn off in System Settings > General > Sharing > File Sharing if you don\'t use it.'],
+  'sshd': ['w','Remote Login (SSH) server.','Lets others try to log in to this Mac. Turn off in System Settings > General > Sharing > Remote Login if you don\'t use it.'],
+  'screensharingd': ['w','Screen Sharing server.','Lets others try to view and control this Mac. Turn off in System Settings > General > Sharing > Screen Sharing if you don\'t use it.'],
+  'ardagent': ['w','Apple Remote Desktop agent.','Lets others manage this Mac remotely. Turn off in System Settings > General > Sharing > Remote Management if you didn\'t set it up.'],
+  'safari': ['w','Safari, the web browser that comes with macOS.','Normal. Keep macOS updated and review extensions in Safari > Settings > Extensions.','https://www.apple.com/safari/'],
+  'curl': ['w','A command-line tool that downloads from the internet.','Fine when you or a trusted tool runs it; also used by malware to fetch more malware.'],
+  'osascript': ['w','Runs AppleScript.','Fine when you or a trusted tool runs it; often abused by Mac malware.'],
+  'firefox': ['t','Mozilla Firefox web browser.','Normal. Keep it updated.','https://www.mozilla.org/firefox/'],
+  'opera': ['t','Opera web browser.','Normal. Its built-in VPN/ads features make extra connections.','https://www.opera.com'],
+  'slack': ['t','Slack team chat.','Normal.','https://slack.com'],
+  'zoom.us': ['t','Zoom video meetings.','Normal. Keep it updated.','https://zoom.us'],
+  'discord': ['t','Discord chat and voice.','Normal. Scammers send malicious files via Discord; don\'t run attachments from strangers.','https://discord.com'],
+  'spotify': ['t','Spotify music streaming.','Normal.','https://www.spotify.com'],
+  'dropbox': ['t','Dropbox cloud storage sync.','Normal. It uploads your synced folders.','https://www.dropbox.com'],
+  'claude': ['t','Claude desktop app by Anthropic.','Normal. Talks to api.anthropic.com and claude.ai.','https://claude.ai/download'],
+  'teamviewer': ['t','TeamViewer remote-control software.','HIGH if you didn\'t install it: tech-support scammers use it to take over computers. Remove it if you don\'t use it.','https://www.teamviewer.com'],
+  'anydesk': ['t','AnyDesk remote-control software.','HIGH if you didn\'t install it: commonly used by scammers. Remove it if you don\'t use it.','https://anydesk.com'],
+};
+const KB_PREFIX = [
+  [/^com\.apple\.webkit\./, ['w','Part of Safari and other apps that show web pages: loads pages in the background.','Normal.']],
+  [/^google chrome/, ['t','Google Chrome web browser, or one of its helpers.','Normal. Keep it updated and review extensions at chrome://extensions.','https://www.google.com/chrome/']],
+  [/^microsoft edge/, ['t','Microsoft Edge web browser, or one of its helpers.','Normal. Keep it updated.','https://www.microsoft.com/edge']],
+  [/^brave browser/, ['t','Brave web browser, or one of its helpers.','Normal.','https://brave.com']],
+  [/^microsoft teams/, ['t','Microsoft Teams chat and meetings.','Normal.','https://www.microsoft.com/microsoft-teams']],
+  [/^(onedrive|microsoft onedrive)/, ['t','OneDrive cloud storage sync.','Normal. It uploads your synced folders to Microsoft.','https://www.microsoft.com/microsoft-365/onedrive']],
+];
+const kbFor = n => { const k = String(n || '').toLowerCase(); return KB[k] || (KB_PREFIX.find(p => p[0].test(k)) || [])[1]; };
+const ORIGIN = {
+  macos: ['Built into macOS', 'o-macos'], appstore: ['Mac App Store app', 'o-thirdparty'], thirdparty: ['Third-party app', 'o-thirdparty'],
+  unsigned: ['Not properly signed', 'o-unsigned'], unknown: ['Unknown (couldn\'t check the file)', 'o-unknown'], checking: ['Checking the file…', 'o-unknown']
+};
+const S = {tab:'conn', q:'', dir:'all', ext:true, closed:false, risky:false, sort:{conn:['rr',-1],apps:['rr',-1],listen:['rr',-1]}};
+try { Object.assign(S, JSON.parse(localStorage.getItem('netmon') || '{}')); } catch(e) {}
+// filters start fresh each time so the list is never empty for a forgotten reason; tab, sort and External only are remembered
+Object.assign(S, {risky: false, closed: false, q: '', dir: 'all'});
+if (!['conn', 'apps', 'listen'].includes(S.tab)) S.tab = 'conn';
+// settings saved by an older version may lack newer tabs' sort order
+S.sort = Object.assign({conn:['rr',-1], apps:['rr',-1], listen:['rr',-1]}, S.sort);
+const save = () => { try { localStorage.setItem('netmon', JSON.stringify(S)); } catch(e) {} };
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rate = b => b == null ? '—' : b < 1024 ? b.toFixed(0)+' B/s' : b < 1048576 ? (b/1024).toFixed(1)+' KB/s' : (b/1048576).toFixed(2)+' MB/s';
+const dur = (a, b) => { let s = Math.max(0, (b - a) / 1000) | 0; if (s < 60) return s+'s'; if (s < 3600) return (s/60|0)+'m '+(s%60)+'s'; return (s/3600|0)+'h '+((s%3600)/60|0)+'m'; };
+const appLabel = c => c.Services ? c.App + ' · ' + c.Services : (c.Description && c.Description.toLowerCase() !== c.App.toLowerCase() ? c.App + ' · ' + c.Description : c.App);
+
+const RANK = {high:2, medium:1};
+let TIPS = [];
+// registers a tooltip for a row and returns the row attributes
+function rowAttrs(risk, issues, who, extra) {
+  const cls = [extra, risk ? 'risk-' + risk : ''].filter(Boolean).join(' ');
+  let tip = '';
+  if (risk) { TIPS.push({risk, issues: [].concat(issues || []), who}); tip = ` data-tip="${TIPS.length - 1}"`; }
+  return ` class="${cls}"${tip}`;
+}
+const riskPill = r => r === 'high' ? '<span class="pill risk">⚠ Risky</span>' : r === 'medium' ? '<span class="pill caution">Check</span>' : '<span class="ok">OK</span>';
+
+function filtered(d) {
+  const q = S.q.trim().toLowerCase();
+  return d.connections.filter(c =>
+    (!S.risky || c.Risk) && (S.closed || !c.Closed) && (!S.ext || c.External) && (S.dir === 'all' || c.Direction === S.dir) &&
+    (!q || [c.App, c.Description, c.Services, c.Path, c.RemoteHost, c.RemoteAddress, c.RemotePort, c.LocalPort, c.PID].join(' ').toLowerCase().includes(q)));
+}
+
+function sortRows(rows, key) {
+  const [k, dir] = S.sort[key];
+  return rows.sort((a, b) => { const x = a[k], y = b[k];
+    return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? ''), undefined, {numeric:true})) * dir; });
+}
+
+function table(cols, rows, key) {
+  if (!rows.length) return emptyMessage();
+  const [sk, sd] = S.sort[key];
+  return '<table><thead><tr>' + cols.map(c => `<th data-k="${c[0]}" data-key="${key}" class="${c[0]===sk?'sorted'+(sd>0?' asc':''):''}">${c[1]}</th>`).join('') +
+    '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+}
+
+function render() {
+  const d = window.NETDATA; if (!d || !d.connections) return;
+  const now = new Date(d.generated);
+  const active = d.connections.filter(c => !c.Closed), ext = active.filter(c => c.External);
+  $('#meta').innerHTML = `[${esc(d.host)} · updated ${now.toLocaleTimeString()} · every ${d.interval}s]` +
+    (d.admin ? '' : ' · <span class="warn">only your own apps are shown: start it with sudo to see every app</span>');
+  TIPS = [];
+  const riskyApps = new Set([...active.filter(c => c.Risk === 'high'), ...d.listeners.filter(l => l.Risk === 'high')].map(x => x.App));
+  const st = [[riskyApps.size,'Risky apps (red)', riskyApps.size ? 'alert' : ''],[active.length,'Active connections'],[ext.filter(c=>c.Direction==='Inbound').length,'External inbound'],
+    [ext.filter(c=>c.Direction==='Outbound').length,'External outbound'],[new Set(ext.map(c=>c.App)).size,'Apps talking out'],
+    [rate(d.rxRate),'Download (all apps)'],[rate(d.txRate),'Upload (all apps)']];
+  $('#stats').innerHTML = st.map(s => `<div class="stat ${s[2] || ''}"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === S.tab));
+  $('#dir').disabled = $('#ext').disabled = S.tab === 'listen';
+  $('#closed').disabled = S.tab === 'listen';
+
+  let out = '';
+  if (S.tab === 'conn') {
+    const rows = sortRows(filtered(d).map(c => ({...c, rr: RANK[c.Risk] || 0, Dur: (c.Closed ? new Date(c.Closed) : now) - new Date(c.FirstSeen)})), 'conn').map(c =>
+      `<tr${rowAttrs(c.Risk, c.Issues, c.App, c.Closed ? 'closed' : '')}><td>${riskPill(c.Risk)}</td><td><span class="pill ${c.Direction==='Inbound'?'in':'out'}">${c.Direction==='Inbound'?'↓ In':'↑ Out'}</span></td>
+      <td><span class="app" data-ai="${esc(c.App)}" data-svc="${esc(c.Services)}">${esc(appLabel(c))}</span><span class="small" title="${esc(c.Path)}">${esc(c.Path)}</span></td><td class="num">${c.PID}</td>
+      <td class="host"${c.RemoteHost ? ` data-full="${esc(c.RemoteHost)}"` : ''}><span class="hn">${esc(c.RemoteHost || '—')}</span></td><td class="num${c.External ? ' ipcell' : ''}">${esc(c.RemoteAddress)}${c.External ? ipChecks(c.RemoteAddress).replace('small checks', 'small checks rowchecks') : ''}</td><td class="num">${c.RemotePort}</td><td class="num">${c.LocalPort}</td>
+      <td><span class="pill ${c.External?'ext':'lan'}">${c.External?'Internet':'Local'}</span></td><td>${c.Closed?'Closed':esc(c.State)}</td><td class="num">${dur(0, c.Dur)}</td></tr>`);
+    out = table([['rr','Risk'],['Direction','Dir'],['App','App'],['PID','PID'],['RemoteHost','Remote host'],['RemoteAddress','Remote IP'],['RemotePort','Port'],
+      ['LocalPort','Local port'],['External','Scope'],['State','State'],['Dur','Age']], rows, 'conn');
+  } else if (S.tab === 'apps') {
+    const g = {};
+    filtered(d).forEach(c => { const a = g[c.App] ||= {App:c.App, label:appLabel(c), Path:c.Path, pids:new Set(), total:0, ext:0, extIn:0, extOut:0, hosts:new Set(), rr:0, issues:new Map(), svc:new Set()};
+      a.pids.add(c.PID); a.total++; if (c.External) { a.ext++; c.Direction==='Inbound' ? a.extIn++ : a.extOut++; } a.hosts.add(c.RemoteHost || c.RemoteAddress); if (!a.Path) a.Path = c.Path;
+      a.rr = Math.max(a.rr, RANK[c.Risk] || 0); if (c.Services) c.Services.split(', ').forEach(s => a.svc.add(s)); [].concat(c.Issues || []).forEach(i => a.issues.set(i.Text, i)); });
+    const rows = sortRows(Object.values(g).map(a => ({...a, nhosts:a.hosts.size})), 'apps').map(a => { const r = ['', 'medium', 'high'][a.rr]; return (
+      `<tr${rowAttrs(r, [...a.issues.values()], a.App, '')}><td>${riskPill(r)}</td><td><a class="link app" data-app="${esc(a.App)}" data-ai="${esc(a.App)}" data-svc="${esc([...a.svc].join(', '))}">${esc(a.label)}</a><span class="small" title="${esc(a.Path)}">${esc(a.Path)}</span></td>
+      <td class="num">${[...a.pids].join(', ')}</td><td class="num">${a.total}</td><td class="num">${a.ext}</td><td class="num">${a.extIn}</td><td class="num">${a.extOut}</td>
+      <td><span class="small hosts" title="${esc([...a.hosts].join('\n'))}">${esc([...a.hosts].slice(0,6).join(', '))}${a.hosts.size>6?' …':''}</span></td></tr>`); });
+    out = table([['rr','Risk'],['App','App'],['pids','PID'],['total','Connections'],['ext','External'],['extIn','Ext. in'],['extOut','Ext. out'],['nhosts','Remote hosts']], rows, 'apps');
+  } else {
+    const q = S.q.trim().toLowerCase();
+    const rows = sortRows(d.listeners.filter(l => (!S.risky || l.Risk) && (!q || [l.App, l.Description, l.Services, l.LocalPort, l.Protocol].join(' ').toLowerCase().includes(q)))
+      .map(l => ({...l, rr: RANK[l.Risk] || 0})), 'listen').map(l =>
+      `<tr${rowAttrs(l.Risk, l.Issues, l.App + ' (port ' + l.LocalPort + ')', '')}><td>${riskPill(l.Risk)}</td><td><span class="app" data-ai="${esc(l.App)}" data-svc="${esc(l.Services)}">${esc(appLabel(l))}</span><span class="small">${esc(l.Path)}</span></td><td class="num">${l.PID}</td><td>${l.Protocol}</td>
+      <td class="num">${esc(l.LocalAddress)}</td><td class="num">${l.LocalPort}</td><td><span class="pill ${l.Exposed?'ext':'lan'}">${l.Exposed?'Reachable from network':'This Mac only'}</span></td></tr>`);
+    out = table([['rr','Risk'],['App','App'],['PID','PID'],['Protocol','Proto'],['LocalAddress','Address'],['LocalPort','Port'],['Exposed','Exposure']], rows, 'listen');
+  }
+  $('#view').innerHTML = out;
+}
+
+// ---- what to say when filters hide everything
+function emptyMessage() {
+  const on = [];
+  if (S.risky) on.push('Risky only');
+  if (S.ext && S.tab !== 'listen') on.push('External only');
+  if (S.dir !== 'all' && S.tab !== 'listen') on.push(S.dir === 'Inbound' ? 'Inbound only' : 'Outbound only');
+  if (S.q.trim()) on.push(`search "${S.q.trim()}"`);
+  if (!on.length) return '<div class="empty">Nothing to show here right now.</div>';
+  const lead = S.risky ? 'No risky apps right now. ' : 'Nothing matches the current filters. ';
+  return `<div class="empty">${esc(lead)}Filters on: ${esc(on.join(', '))}.<button class="clearf" data-clear="1">Clear filters</button></div>`;
+}
+function clearFilters() {
+  Object.assign(S, {risky: false, closed: false, ext: false, q: '', dir: 'all'});
+  $('#q').value = ''; $('#dir').value = 'all'; $('#ext').checked = false; $('#closed').checked = false; $('#risky').checked = false;
+  save(); render();
+}
+
+// look-ups on well-known sites; each opens in your browser only when clicked (the address or name is sent to that site)
+const chk = (url, label, what) => `<a class="link" href="${url}" target="_blank" rel="noopener" title="${what}">${label}</a>`;
+function ipChecks(ip) {
+  const a = encodeURIComponent(ip);
+  return '<span class="small checks">' + [
+    chk(`https://ipinfo.io/${a}`, 'Who owns it?', 'Owner, network and location (opens ipinfo.io)'),
+    chk(`https://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${a}&run=toolpage`, 'Blacklists', 'Is it on spam or abuse blacklists? (opens MxToolbox)'),
+    chk(`https://www.abuseipdb.com/check/${a}`, 'Abuse reports', 'Reports of attacks or abuse from this address (opens AbuseIPDB)'),
+    chk(`https://www.virustotal.com/gui/ip-address/${a}`, 'Reputation', 'Security vendors&#39; verdicts and linked malware (opens VirusTotal)'),
+    chk(`https://www.shodan.io/host/${a}`, 'Exposure', 'Open ports and known vulnerabilities or breaches on this server (opens Shodan)')
+  ].join(' · ') + '</span>';
+}
+// controls
+$('#q').value = S.q; $('#dir').value = S.dir; $('#ext').checked = S.ext; $('#closed').checked = S.closed;
+$('#q').oninput = e => { S.q = e.target.value; save(); render(); };
+$('#dir').onchange = e => { S.dir = e.target.value; save(); render(); };
+$('#ext').onchange = e => { S.ext = e.target.checked; save(); render(); };
+$('#closed').onchange = e => { S.closed = e.target.checked; save(); render(); };
+$('#risky').checked = S.risky;
+$('#risky').onchange = e => { S.risky = e.target.checked; save(); render(); };
+
+// hover tooltip: what's wrong and how to fix it
+const tip = $('#tip');
+document.addEventListener('mousemove', e => {
+  if (!e.target.closest || e.target.closest('[data-ai], #ainfo')) { tip.style.display = 'none'; return; }
+  const row = e.target.closest('tr[data-tip]');
+  const t = row && TIPS[+row.dataset.tip];
+  if (!t) { tip.style.display = 'none'; return; }
+  tip.className = t.risk;
+  tip.innerHTML = `<h4>${esc(t.who)}: ${t.risk === 'high' ? 'risky' : 'worth checking'}</h4>` +
+    t.issues.map(i => `<p><span class="lvl ${i.Level}">${i.Level === 'high' ? 'Risk' : 'Check'}:</span> ${esc(i.Text)}</p>`).join('');
+  tip.style.display = 'block';
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px';
+  tip.style.top = (e.clientY + 16 + h > innerHeight ? e.clientY - h - 12 : e.clientY + 16) + 'px';
+});
+$('#tabs').onclick = e => { if (e.target.dataset.t) { S.tab = e.target.dataset.t; save(); render(); } };
+$('#view').onclick = e => {
+  if (e.target.closest('button[data-clear]')) { clearFilters(); return; }
+  const th = e.target.closest('th[data-key]'); if (th) { const s = S.sort[th.dataset.key]; S.sort[th.dataset.key] = [th.dataset.k, s[0] === th.dataset.k ? -s[1] : 1]; save(); render(); return; }
+  const a = e.target.closest('a[data-app]'); if (a) { S.q = a.dataset.app; S.tab = 'conn'; $('#q').value = S.q; save(); render(); return; }
+};
+
+// hover popup on app names: built-in or not, what it does, risks, links
+const ainfo = $('#ainfo');
+let aiTimer = null, aiOpen = false;
+const GENERIC_RISK = {
+  macos: 'Normal part of macOS, signed by Apple.',
+  appstore: 'Installed from the Mac App Store. Fine if you recognise it; remove it from Launchpad or the Applications folder if not.',
+  thirdparty: 'Installed by you or your IT team. Fine if you recognise it; if not, look it up below and remove it from the Applications folder.',
+  unsigned: 'No valid signature from a known developer, so the publisher can\'t be verified. Small developer tools are often like this; if you don\'t recognise it, look it up below and remove it.',
+  checking: 'Still checking this program\'s signature; hover again in a few seconds.',
+  unknown: 'Its program file couldn\'t be checked. If you don\'t recognise it, look it up below.'
+};
+const SYSTEM_FOLDERS = /^\/(System|usr|bin|sbin|Library\/Apple)\//;
+function showAppInfo(el) {
+  const d = window.NETDATA || {}, name = el.dataset.ai, info = (d.apps || {})[name] || {}, kb = kbFor(name);
+  let origin = info.Origin || 'unknown', guessed = false;
+  if (origin === 'unknown' && kb) { origin = {w:'macos', t:'thirdparty'}[kb[0]]; guessed = true; }
+  const [olabel, ocls] = ORIGIN[origin] || ORIGIN.unknown;
+  const what = kb ? kb[1] : info.Description || 'No description available.';
+  // a macOS name running from somewhere else, and not signed by Apple
+  const disguise = kb && kb[0] === 'w' && info.Path && !SYSTEM_FOLDERS.test(info.Path) && !['macos', 'checking'].includes(info.Origin)
+    ? '<div class="sec" style="color:var(--risk)"><b style="color:var(--risk)">Warning</b>This name belongs to macOS, but this copy runs from elsewhere and isn\'t signed by Apple, which is a common malware disguise.</div>' : '';
+  const signed = info.Publisher ? `Signed by <strong>${esc(info.Publisher)}</strong>` : info.Path && info.Origin !== 'checking' ? 'No valid signature from a known developer' : '';
+  const links = [];
+  if (kb && kb[3]) links.push(`<a href="${kb[3]}" target="_blank" rel="noopener">Official page</a>`);
+  links.push(`<a href="https://www.bing.com/search?q=${encodeURIComponent((name + ' mac ' + (info.Publisher || '') + ' what is it safe').replace(/\s+/g, ' '))}" target="_blank" rel="noopener">Search the web</a>`);
+  ainfo.innerHTML = `<h4>${esc(name)}</h4><span class="origin ${ocls}">${esc(olabel)}</span>` +
+    (guessed ? ' <span class="small" style="display:inline">based on its name</span>' : '') + disguise +
+    `<div class="sec"><b>What it does</b>${esc(what)}</div>` +
+    `<div class="sec"><b>Risks</b>${esc(kb ? kb[2] : GENERIC_RISK[origin] || GENERIC_RISK.unknown)}</div>` +
+    `<div class="sec"><b>Where it lives</b>${info.Path ? `<div class="path">${esc(info.Path)}</div>` : '<span class="small" style="display:inline">macOS didn\'t reveal its location.</span>'}` +
+    (signed ? `<div>${signed}</div>` : '') + '</div>' +
+    `<div class="sec links"><b>Find it online</b>${links.join('')}</div>`;
+  ainfo.style.display = 'block'; aiOpen = true;
+  const r = el.getBoundingClientRect(), w = ainfo.offsetWidth, h = ainfo.offsetHeight;
+  ainfo.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  ainfo.style.top = (r.bottom + 6 + h > innerHeight && r.top - h - 6 > 0 ? r.top - h - 6 : r.bottom + 6) + 'px';
+}
+function hideAppInfo() { ainfo.style.display = 'none'; aiOpen = false; }
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest && e.target.closest('[data-ai]');
+  clearTimeout(aiTimer);
+  if (el) aiTimer = setTimeout(() => showAppInfo(el), 250);
+  else if (e.target.closest && e.target.closest('#ainfo')) return;      // keep open while reading / clicking links
+  else if (aiOpen) aiTimer = setTimeout(hideAppInfo, 300);
+});
+
+// Stop monitor: shuts the app down
+let stopped = false;
+$('#quit').onclick = async () => {
+  if (!confirm('Stop the monitor?\n\nThe app will stop and this tab will close. Start it again to reopen it.')) return;
+  try { await fetch('/quit', {method: 'POST', headers: {'X-NetMon-Token': TOKEN}}); } catch (e) {}
+  closeDashboard();
+};
+
+// close this tab once the app has stopped
+function closeDashboard() {
+  stopped = true;
+  // browsers only let a page close a tab it was opened in fresh (as the app opens it); otherwise say it's done
+  window.close();
+  setTimeout(() => {
+    document.body.innerHTML = '<header><h1>my_connections</h1></header>' +
+      '<div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.<br>' +
+      '<span class="small" style="display:inline">Start the app again to reopen the dashboard.</span></div>';
+    speckle();
+  }, 300);
+}
+
+// live data from the app
+let interval = 3000;
+async function poll() {
+  if (stopped) return;
+  try {
+    const r = await fetch('/data', {headers: {'X-NetMon-Token': TOKEN}, cache: 'no-store'});
+    if (r.status === 403) {
+      // the app was restarted, so this tab's secret key is out of date: reload to get the new one
+      $('#meta').textContent = 'The app restarted, reconnecting…';
+      setTimeout(() => location.reload(), 1000);
+      return;
+    }
+    if (r.ok) {
+      const data = await r.json();
+      window.NETDATA = data; if (data.interval) interval = data.interval * 1000; render();
+    }
+  } catch (e) {
+    // the app is no longer running (for example stopped with Ctrl+C)
+    return closeDashboard();
+  }
+  setTimeout(poll, interval);
+}
+poll();
+// title: white letters with a few small Stanford red dots and patches in random places (new pattern on every start)
+function speckle() {
+  const h = document.querySelector('header h1'); if (!h) return;
+  const dots = [];
+  for (let i = 0; i < 40; i++) {
+    const r = (1.5 + Math.random() * (i < 6 ? 4 : 2)).toFixed(1);   // a few patches, mostly small dots
+    dots.push(`radial-gradient(circle at ${(Math.random() * 100).toFixed(1)}% ${(15 + Math.random() * 70).toFixed(1)}%, #8c1515 ${r}px, transparent ${(+r + 0.6).toFixed(1)}px)`);
+  }
+  h.style.backgroundImage = dots.join(',');
+}
+speckle();
+</script>
+</body>
+</html>
