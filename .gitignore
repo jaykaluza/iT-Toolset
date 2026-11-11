@@ -19,3 +19,6 @@ unblocked.json
 
 MyNetworkPy/build/
 MyNetworkPy/dist/
+
+# accidental nested clone of this repo
+/iT-Toolset/
