@@ -49,7 +49,7 @@ import creds   # adds the saved cloud/tool credentials scan
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.9'
+APP_VERSION = '0.1.10'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)

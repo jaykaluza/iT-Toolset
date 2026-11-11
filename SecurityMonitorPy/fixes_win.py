@@ -578,8 +578,9 @@ def _sha256(path, limit=1024 * 1024 * 1024):
 
 
 def quarantine(path, why='', source=''):
-    low = os.path.abspath(path).lower()
-    if S.in_windows(low) or low.startswith((os.environ.get('ProgramFiles', r'C:\Program Files').lower() + '\\', os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)').lower() + '\\')):
+    sysdirs = (os.environ.get('ProgramFiles', r'C:\Program Files').lower() + '\\', os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)').lower() + '\\')
+    # check both the literal path and the real target, so a symlink/junction pointing into a system folder is refused too
+    if any(S.in_windows(p) or p.startswith(sysdirs) for p in (os.path.abspath(path).lower(), os.path.realpath(path).lower())):
         return bad("That file is in a system folder, so My Security won't move it. Uninstall the program it belongs to.")
     if not os.path.isfile(path):
         return bad('That file is no longer there.')
