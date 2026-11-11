@@ -492,23 +492,90 @@ def _qsave(rows):
         json.dump(rows, f)
 
 
-def quarantine(path):
+# A file's permissions, read before it moves and written back when it is restored. 'Access' and 'Owner' are separate,
+# because putting back an owner other than this account can be refused while the permissions themselves still work.
+GET_SD_PS = r"""
+$ErrorActionPreference = 'Stop'
+try {
+  $i = Get-Item -LiteralPath $env:MS_P -Force
+  ConvertTo-Json -InputObject @{ ok = $true; access = $i.GetAccessControl('Access').GetSecurityDescriptorSddlForm('Access'); owner = $i.GetAccessControl('Owner').GetSecurityDescriptorSddlForm('Owner') } -Compress
+} catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
+"""
+SET_SD_PS = r"""
+$ErrorActionPreference = 'Stop'
+try {
+  $i = Get-Item -LiteralPath $env:MS_P -Force
+  $a = $i.GetAccessControl('Access'); $a.SetSecurityDescriptorSddlForm($env:MS_A, 'Access'); $i.SetAccessControl($a)
+  $ownerOk = $true
+  if ($env:MS_O) { try { $o = $i.GetAccessControl('Owner'); $o.SetSecurityDescriptorSddlForm($env:MS_O, 'Owner'); $i.SetAccessControl($o) } catch { $ownerOk = $false } }
+  ConvertTo-Json -InputObject @{ ok = $true; access = $i.GetAccessControl('Access').GetSecurityDescriptorSddlForm('Access'); ownerOk = $ownerOk } -Compress
+} catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
+"""
+ATTR_KEEP = 0x1 | 0x2 | 0x4 | 0x20   # read-only, hidden, system, archive
+
+
+def _set_attributes(path, attrs):
+    import ctypes
+    return bool(ctypes.windll.kernel32.SetFileAttributesW(str(path), int(attrs) or 0x80))
+
+
+def _read_zone(path):
+    """The "downloaded from the internet" mark Windows keeps beside a file (Mark of the Web)."""
+    try:
+        with open(path + ':Zone.Identifier', 'r', encoding='utf-8', errors='replace') as f:
+            return f.read(4096)
+    except OSError:
+        return ''
+
+
+def _sha256(path, limit=1024 * 1024 * 1024):
+    import hashlib
+    try:
+        if os.path.getsize(path) > limit:
+            return ''
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                h.update(chunk)
+        return h.hexdigest().upper()
+    except OSError:
+        return ''
+
+
+def quarantine(path, why='', source=''):
     low = os.path.abspath(path).lower()
     if S.in_windows(low) or low.startswith((os.environ.get('ProgramFiles', r'C:\Program Files').lower() + '\\', os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)').lower() + '\\')):
-        return bad('That file is in a system folder, so My Security won\'t move it. Uninstall the program it belongs to.')
+        return bad("That file is in a system folder, so My Security won't move it. Uninstall the program it belongs to.")
     if not os.path.isfile(path):
         return bad('That file is no longer there.')
     os.makedirs(QUARANTINE, exist_ok=True)
     if S.is_admin():
         subprocess.run([ICACLS, QUARANTINE, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F'], capture_output=True, creationflags=S.CREATE_NO_WINDOW)
-    qid = uuid.uuid4().hex + '.quarantined'
+    # everything needed to put it back exactly as it was
+    sd = ps(GET_SD_PS, p=path)
     try:
-        shutil.move(path, os.path.join(QUARANTINE, qid))
+        st = os.stat(path)
+        attrs, size = getattr(st, 'st_file_attributes', 0) & ATTR_KEEP, st.st_size
+    except OSError:
+        attrs, size = 0, 0
+    zone, sha = _read_zone(path), _sha256(path)
+    qid = uuid.uuid4().hex + '.quarantined'
+    dest = os.path.join(QUARANTINE, qid)
+    try:
+        if attrs & 0x1:
+            _set_attributes(path, attrs & ~0x1)   # a read-only file can't be moved to another drive
+        shutil.move(path, dest)
     except OSError as e:
+        if attrs & 0x1:
+            _set_attributes(path, attrs)
         return bad(f'Could not move it: {e.strerror or e}. If it is running, end it first.')
-    rows = quarantine_list() + [{'Id': qid, 'Path': path, 'Name': os.path.basename(path), 'When': time.strftime('%Y-%m-%d %H:%M')}]
+    # while it is here, only the quarantine folder's permissions apply: Administrators and Windows
+    locked = S.is_admin() and subprocess.run([ICACLS, dest, '/reset'], capture_output=True, creationflags=S.CREATE_NO_WINDOW).returncode == 0
+    rows = quarantine_list() + [{'Id': qid, 'Path': path, 'Name': os.path.basename(path), 'When': time.strftime('%Y-%m-%d %H:%M'), 'Size': size, 'Sha256': sha,
+                                 'Why': str(why)[:300], 'Source': str(source), 'Access': sd.get('access', '') if sd.get('ok') else '',
+                                 'Owner': sd.get('owner', '') if sd.get('ok') else '', 'Attrs': attrs, 'Zone': zone, 'Locked': bool(locked)}]
     _qsave(rows)
-    return ok(f'Moved {os.path.basename(path)} to quarantine. It can\'t run from there. You can restore it in the Blocked tab.')
+    return ok(f"Moved {os.path.basename(path)} to quarantine ({QUARANTINE}). It can't run from there. Its permissions were saved and come back if you restore it.")
 
 
 def quarantine_restore(qid):
@@ -519,11 +586,31 @@ def quarantine_restore(qid):
     if os.path.exists(e['Path']):
         return bad('A file with that name is back in the original place. Nothing was restored.')
     if S.in_windows(e['Path']):
-        return bad('That path is in the Windows folder, so My Security won\'t write there.')
+        return bad("That path is in the Windows folder, so My Security won't write there.")
     os.makedirs(os.path.dirname(e['Path']), exist_ok=True)
-    shutil.move(os.path.join(QUARANTINE, qid), e['Path'])
+    try:
+        shutil.move(os.path.join(QUARANTINE, qid), e['Path'])
+    except OSError as x:
+        return bad(f'Could not put it back: {x.strerror or x}.')
     _qsave([r for r in rows if r['Id'] != qid])
-    return ok(f"Restored {e['Name']} to {e['Path']}.")
+    notes = []
+    if e.get('Access'):
+        r = ps(SET_SD_PS, p=e['Path'], a=e['Access'], o=e.get('Owner', ''))
+        if not r.get('ok'):
+            notes.append(f"its original permissions could not be put back ({r.get('error', 'Windows refused')})")
+        elif not r.get('ownerOk'):
+            notes.append('its permissions are back, but Windows kept you as its owner')
+    else:
+        notes.append('its original permissions were not saved (an older version quarantined it), so it has the permissions of the folder it is in')
+    if e.get('Zone') and not _read_zone(e['Path']):
+        try:
+            with open(e['Path'] + ':Zone.Identifier', 'w', encoding='utf-8') as f:
+                f.write(e['Zone'])
+        except OSError:
+            notes.append('its "downloaded from the internet" mark could not be put back')
+    if e.get('Attrs'):
+        _set_attributes(e['Path'], e['Attrs'])
+    return {'ok': True, 'message': f"Restored {e['Name']} to {e['Path']}" + (' with its original permissions.' if not notes else '. Note: ' + '; '.join(notes) + '.')}
 
 
 def quarantine_delete(qid):
@@ -531,7 +618,10 @@ def quarantine_delete(qid):
     e = next((r for r in rows if r['Id'] == qid), None)
     if not e:
         return bad('That item is not in quarantine.')
-    os.remove(os.path.join(QUARANTINE, qid))
+    try:
+        os.remove(os.path.join(QUARANTINE, qid))
+    except OSError as x:
+        return bad(f'Could not delete it: {x.strerror or x}.')
     _qsave([r for r in rows if r['Id'] != qid])
     return ok(f"Permanently deleted {e['Name']}.")
 

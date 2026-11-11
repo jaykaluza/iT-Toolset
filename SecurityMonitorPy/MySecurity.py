@@ -42,10 +42,14 @@ import fixes_win as X
 import scans_win as S
 import scans_deep as D   # adds its scans to S.SCANS
 import attempts as T
+import cleanup   # adds the clean-up check and its two fixes
+import hacktools   # adds hacking tools, Sticky Keys and more backdoors to the Hacker tricks check
+import exposure   # adds the Exposure scan: Wi-Fi, SNMP, local web services, developer ports, the network itself
+import creds   # adds the saved cloud/tool credentials scan
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.3'
+APP_VERSION = '0.1.5'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -74,6 +78,8 @@ class App:
         self.attempts = {'on': None, 'rows': [], 'at': '', 'since': ''}
         self.rec_prev = None             # firewall logging settings from before this app turned recording on
         self.att_wake = threading.Event()
+        self.url = ''                    # the dashboard's address, to reopen it after a fix closed the browsers
+        self.notice = None               # the result of a fix whose dashboard tab was closed while it ran
         self.activity_log = os.path.join(APP_DIR, 'activity-log.txt')
         os.makedirs(APP_DIR, exist_ok=True)
         self.prune_log()
@@ -175,7 +181,7 @@ class App:
     def refresh_blocks(self):
         fw = X.firewall_blocks() if self.admin else {'ports': [], 'programs': [], 'ips': []}
         with self.lock:
-            self.blocks = {**fw, 'sites': X.blocked_sites(), 'quarantine': X.quarantine_list()}
+            self.blocks = {**fw, 'sites': X.blocked_sites(), 'quarantine': [{k: q.get(k) for k in ('Id', 'Path', 'Name', 'When', 'Size', 'Sha256', 'Why', 'Source', 'Locked')} | {'Perms': bool(q.get('Access'))} for q in X.quarantine_list()]}
             self.rev += 1
         self.att_wake.set()
 
@@ -443,11 +449,18 @@ class App:
             return {'ok': False, 'message': 'This fix needs Administrator rights. Start My Security as Administrator.'}
         with self.action_lock:
             try:
-                r = X.FIXES[act['fn']](**act['args'])
+                extra = {'why': f['Title'], 'source': f.get('Cat', '')} if act['fn'] == 'quarantine' else {}
+                r = X.FIXES[act['fn']](**act['args'], **extra)
             except Exception as e:
                 self._write_error(traceback.format_exc())
                 r = {'ok': False, 'message': f'That did not work: {e}'}
         self.log('FIXED' if r.get('ok') else 'FAILED', f"{f['Title']}: {r.get('message')}")
+        if r.get('closed') and self.url:   # the browsers it closed took this dashboard with them
+            with self.lock:
+                self.notice = {'At': time.time(), 'ok': bool(r.get('ok')), 'message': r.get('message', '')}
+            self.tab_closed_at = 0
+            open_dashboard(self.url)
+            self.last_client = time.time()
         if r.get('ok') and act['fn'] != 'open_settings':
             with self.lock:
                 f['Done'] = r.get('message')
@@ -541,7 +554,7 @@ class App:
                     'job': {k: self.job[k] for k in ('kind', 'current', 'done', 'total', 'started')} if self.job else None,
                     'autopilotAt': self.autopilot_at, 'plan': plan, 'counts': {**counts, 'low': low}, 'score': score, 'ran': ran,
                     'events': self.events, 'watching': self.watch_started, 'guard': self.guard_on, 'tabs': self.tabs, 'tabAt': self.tab_at, 'alerts': self.alerts[:20],
-                    'tabFindings': {k: self._public(v) for k, v in self.tab_findings.items()}, 'blocks': self.blocks, 'attempts': self.attempts,
+                    'tabFindings': {k: self._public(v) for k, v in self.tab_findings.items()}, 'blocks': self.blocks, 'quarantineDir': X.QUARANTINE, 'notice': self.notice if self.notice and time.time() - self.notice['At'] < 300 else None, 'attempts': self.attempts,
                     'undo': [{k: u[k] for k in ('Id', 'Label', 'What')} for u in self.undo]}
 
 
@@ -828,6 +841,7 @@ def main():
     threading.Thread(target=app.attempts_loop, daemon=True).start()
     server, port, launch_key = start_server(app, args.port)
     url = f'http://localhost:{port}/?k={launch_key}'
+    app.url = url
     if args.app:
         with open(url_file, 'w', encoding='utf-8') as f:
             f.write(url)
@@ -838,7 +852,7 @@ def main():
     try:
         while not app.stop.is_set():
             closed = app.tab_closed_at
-            if args.app and closed > app.last_client and time.time() - closed > 6:
+            if args.app and closed > app.last_client and time.time() - closed > 6 and not app.action_lock.locked():   # a fix that closes the browsers closes this tab too
                 break
             if args.app and time.time() - app.last_client > args.idle_exit * 60 and not app.job:
                 break

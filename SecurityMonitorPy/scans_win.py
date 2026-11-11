@@ -526,6 +526,7 @@ PROTECTION_PS = r'''
 $mp = Get-MpComputerStatus
 $pref = Get-MpPreference
 $sb = $null; try { $sb = Confirm-SecureBootUEFI -ErrorAction Stop } catch {}
+$tpm = $null; try { $t = Get-Tpm -ErrorAction Stop; $tpm = [pscustomobject]@{ Present = [bool]$t.TpmPresent; Ready = [bool]$t.TpmReady } } catch {}
 $dg = Get-CimInstance -Namespace root/Microsoft/Windows/DeviceGuard -ClassName Win32_DeviceGuard
 ConvertTo-Json -InputObject @{
   av = @(Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct | ForEach-Object { [pscustomobject]@{ Name = [string]$_.displayName; State = [int]$_.productState } })
@@ -534,6 +535,7 @@ ConvertTo-Json -InputObject @{
   profiles = @(Get-NetFirewallProfile | ForEach-Object { [pscustomobject]@{ Name = [string]$_.Name; Enabled = [string]$_.Enabled; Inbound = [string]$_.DefaultInboundAction } })
   active = @(Get-NetConnectionProfile | ForEach-Object { [string]$_.NetworkCategory })
   secureBoot = $sb
+  tpm = $tpm
   bitlocker = @(Get-BitLockerVolume | ForEach-Object { [pscustomobject]@{ Mount = [string]$_.MountPoint; Status = [string]$_.ProtectionStatus; Type = [string]$_.VolumeType } })
   vbs = @($dg.SecurityServicesRunning)
   roots = @(Get-ChildItem Cert:\CurrentUser\Root | Where-Object { -not $_.Issuer.Contains('Microsoft') -and (Get-Item -LiteralPath ('Cert:\LocalMachine\Root\' + $_.Thumbprint) -ErrorAction SilentlyContinue) -eq $null } | ForEach-Object { [pscustomobject]@{ Subject = [string]$_.Subject; Thumb = [string]$_.Thumbprint } })
@@ -596,6 +598,14 @@ def scan_system(ctx):
         out.append(F('system', 'sb', 'medium', 'Secure Boot is off', 'Secure Boot makes sure only trusted software starts before Windows.', 'Rootkits can load before your antivirus does.', fix='Turn it on in the BIOS/UEFI settings. This can\'t be done from Windows.'))
     elif p.get('secureBoot') is True:
         out.append(F('system', 'sb', 'ok', 'Secure Boot is on', 'Only trusted software starts before Windows.'))
+    tpm = p.get('tpm') if isinstance(p.get('tpm'), dict) else None
+    if tpm is not None and admin:   # Get-Tpm only reports reliably when elevated; the shipped app runs as admin
+        if not tpm.get('Present'):
+            out.append(F('system', 'tpm', 'low', 'This PC has no security chip (TPM)', 'A TPM is a small chip that safely stores encryption keys and sign-in secrets.', 'Without it, BitLocker and Windows\' stronger credential protections have to fall back to weaker methods.', fix='Check in the BIOS/UEFI whether a TPM (sometimes called PTT or fTPM) can be turned on.'))
+        elif not tpm.get('Ready'):
+            out.append(F('system', 'tpm', 'low', 'The security chip (TPM) is not ready for use', 'A TPM is present but Windows cannot use it yet.', 'BitLocker and credential protections can\'t rely on it until it is prepared.', fix='Open tpm.msc and choose Prepare the TPM, or enable it in the BIOS/UEFI.'))
+        else:
+            out.append(F('system', 'tpm', 'ok', 'Security chip (TPM) is present and ready', 'Encryption keys and sign-in secrets can be stored in hardware.'))
     vols = [v for v in as_list(p.get('bitlocker')) if isinstance(v, dict)]
     sysdrive = os.environ.get('SystemDrive', 'C:')
     for v in vols:
@@ -606,6 +616,8 @@ def scan_system(ctx):
                 out.append(F('system', 'bitlocker', 'ok', f'Drive {sysdrive} is encrypted', 'BitLocker is on.'))
     if not reg_get(HKLM, r'SYSTEM\CurrentControlSet\Control\Lsa', 'RunAsPPL', 0):
         out.append(F('system', 'lsa', 'medium', 'Password memory is not protected (LSA protection off)', 'LSA holds your sign-in secrets in memory. LSA protection stops other programs from reading it.', 'Password-stealing tools read those secrets straight out of memory.', fix='Turn it on. A restart is needed. Very old security drivers might fail to load.', action=A('set_reg', 'Turn on', 'Turn on LSA protection? A restart is needed.', hive='HKLM', path=r'SYSTEM\CurrentControlSet\Control\Lsa', name='RunAsPPL', value=1, kind='dword', reboot=True)))
+    if reg_get(HKLM, r'SYSTEM\CurrentControlSet\Control\Lsa', 'DisableRestrictedAdmin', 1) == 0:
+        out.append(F('system', 'restrictedadmin', 'medium', 'Restricted Admin mode is on (helps pass-the-hash)', 'This lets someone sign in over Remote Desktop with only a stolen password hash, not the real password.', 'If an attacker lifts a password hash from this or another PC, they can log in here over Remote Desktop without ever knowing the password.', fix='Turn it off unless a remote-management tool needs it.', action=A('set_reg', 'Turn off', 'Turn off Restricted Admin mode for Remote Desktop?', hive='HKLM', path=r'SYSTEM\CurrentControlSet\Control\Lsa', name='DisableRestrictedAdmin', value=1, kind='dword')))
     if p and 2 not in [int(x) for x in as_list(p.get('vbs')) if str(x).isdigit()]:
         out.append(F('system', 'hvci', 'low', 'Core Isolation (memory integrity) is off', 'Memory integrity uses the processor to stop tampering with Windows itself.', 'Malicious or vulnerable drivers can take over the kernel.', fix='Windows Security > Device security > Core isolation.', action=A('open_settings', 'Open settings', 'Open Core Isolation settings?', page='windowsdefender://coreisolation')))
     if reg_get(HKLM, r'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer', 'NoDriveTypeAutoRun', 0) != 255:
@@ -883,7 +895,7 @@ SYSTEM_NAMES = {'svchost', 'lsass', 'csrss', 'smss', 'wininit', 'winlogon', 'ser
 LOLBINS = r'(?:powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32|certutil|bitsadmin|msbuild|installutil|forfiles|wmic)'
 # what a process's command line reveals: (pattern, severity, title, plain explanation)
 COMMAND_RULES = [
-    (r'(mimi.?katz|sekurlsa|procdump.*lsass|comsvcs(\.dll)?.*minidump|lsass.*\.dmp)', 'critical', 'Trying to steal passwords from memory', 'This command reads Windows\' password store from memory. Password-stealing tools do this.'),
+    (r'(mimi.?katz|sekurlsa|procdump.*lsass|comsvcs(\.dll)?.*minidump|lsass.*\.dmp|sqldumper(\.exe)?\s[^\n]*0x0?1100)', 'critical', 'Trying to steal passwords from memory', 'This command reads Windows\' password store from memory. Password-stealing tools do this, sometimes through a trusted program such as sqldumper.'),
     (r'(vssadmin.*delete.*shadows|wbadmin.*delete|wmic.*shadowcopy.*delete|bcdedit.*recoveryenabled.*no)', 'critical', 'Deleting backups (ransomware behaviour)', 'Ransomware deletes restore points and backups just before encrypting files.'),
     (r'(Set-MpPreference.*(DisableRealtime|ExclusionPath)|Add-MpPreference.*Exclusion|netsh.*firewall.*(set.*opmode.*disable|state\s+off)|sc\s+(stop|delete)\s+windefend)', 'critical', 'Trying to turn off security protection', 'Malware commonly disables antivirus or the firewall first.'),
     (r'(net1?\s+user\s+\S+\s+\S+\s+/add|net1?\s+localgroup\s+administrators\s+\S+\s+/add)', 'high', 'Creating an account or admin', 'This creates a new account or gives one administrator rights, which intruders do to keep access.'),

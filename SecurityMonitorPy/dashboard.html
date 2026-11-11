@@ -43,6 +43,7 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertic
 th{font-size:13px;color:var(--muted);font-weight:600;background:var(--panel)}tr:last-child td{border-bottom:0}
 tr.s-critical td{background:var(--crit-bg)}tr.s-high td{background:var(--high-bg)}tr.s-medium td{background:var(--med-bg)}
 .pill{display:inline-block;padding:0 7px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.qdir{user-select:all;word-break:break-all}
 .pill.kind{background:var(--panel-2);color:var(--muted)}
 .p-critical{color:#fff;background:var(--crit)}.p-high{color:#fff;background:var(--high)}.p-medium{color:var(--med);background:var(--med-bg);border:1px solid var(--med)}.p-low{color:var(--low);background:var(--low-bg)}.p-info{color:var(--accent);background:rgba(0,113,227,.1)}.p-ok{color:var(--good);background:var(--good-bg)}.p-done{color:#fff;background:var(--good)}
 .title{font-weight:600}.small{color:var(--muted);font-size:12px}.mono{font:11.5px Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-all}
@@ -58,6 +59,7 @@ h3{font-size:14px;font-weight:600;margin:16px 0 4px}h3:first-child{margin-top:0}
 .chip .cn{font-style:normal;font-weight:700;margin-left:5px}
 .score.filtered{cursor:pointer;flex-direction:column;display:flex;justify-content:center;align-items:center;gap:4px}.score small{font-size:10px;font-weight:600;letter-spacing:.02em}
 .how{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 16px;margin-bottom:10px;font-size:13px}.how summary{cursor:pointer;font-weight:600}.how p{margin:6px 0}
+.howtest{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 14px;margin:0 0 10px;font-size:12px}.howtest summary{cursor:pointer;font-weight:600;color:var(--muted);list-style:none}.howtest summary::-webkit-details-marker{display:none}.howtest summary b{font-style:normal}.howtest p{margin:7px 0 2px;color:var(--muted);line-height:1.5}
 .card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px}
 .card.critical{border-left-color:var(--crit)}.card.high{border-left-color:var(--high)}.card.medium{border-left-color:var(--med)}.card.low{border-left-color:var(--low)}.card.ok{border-left-color:var(--good)}
 .card .top{display:flex;gap:8px;align-items:baseline}.card .top .title{flex:1;min-width:0}.card .top .acts{flex:none;display:flex;gap:5px}
@@ -84,11 +86,12 @@ a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text
 <script>
 const TOKEN = '__MYSEC_TOKEN__';
 const TABS = [['auto','Autopilot',[]],['ports','Ports',['ports']],['shares','Shares',['shares']],['protocols','Protocols',['protocols']],['accounts','Accounts',['accounts','adminsetup']],['services','Services',['services']],['system','System',['system']],
-  ['firewall','Firewall',['firewall']],['backdoors','Hacker tricks',['tricks']],['lateral','Lateral',['lateral']],['pentest','Pentest',['pentest','outside']],
-  ['malware','Malware',['malware']],['processes','Processes',[]],['downloads','Downloads',['downloads']],['apps','Apps',['apps','userapps']],['patches','Patches',['patches']],['threats','Threats',['threats','attacks']],['browsers','Browsers',['browsers','extensions']],['events','Events',['events']],['health','Health',['health']],['blocked','Blocked',[]]];
-const LEAD = {shares:'Shared folders and how Windows file sharing (SMB) is set up. This is the most attacked part of Windows.',protocols:'Old network languages that attackers abuse. Most can be turned off with no effect on modern devices.',accounts:'Who can sign in and who has administrator rights.',services:'Background programs that start with Windows, and remote-control tools that can act as a back door.',system:'The main protections: antivirus, firewall, User Account Control, disk encryption, and signs that traffic is being redirected.',malware:'Signs of malware, spyware and keyloggers, and everything that starts automatically.',downloads:'Programs and scripts in Downloads, Desktop, Documents and temporary folders. Clearing moves a file to quarantine, which can be undone.',patches:'Missing Windows updates.',apps:'Apps with newer versions, and apps installed only for this user, with what makes each one risky.',firewall:'Rules that let the network in. These are the rules attackers add or abuse.',backdoors:'The places attackers hide so they survive a restart, and the settings they change to get more rights.',lateral:'How an intruder could move from this PC to your other devices, or into this PC from them. Close the doors here. While the app is open it also warns you when an account gains admin rights or a suspicious service appears.',pentest:'Inside: can a normal account or malware get more privileges, and what can someone on your network reach? Outside: what can the internet see of your connection? It only looks: nothing is exploited or changed.',events:'Errors and critical events from Event Viewer in the last 7 days, explained.',health:'What is slowing this PC down, memory leaks, and disks that are filling up or failing.'};
+  ['firewall','Firewall',['firewall']],['backdoors','Hacker tricks',['tricks']],['lateral','Lateral',['lateral']],['pentest','Pentest',['pentest','creds']],['exposure','Exposure',['exposure','outside']],
+  ['malware','Malware',['malware']],['processes','Processes',[]],['downloads','Downloads',['downloads']],['apps','Apps',['apps','userapps']],['patches','Patches',['patches']],['threats','Threats',['threats','attacks']],['browsers','Browsers',['browsers','extensions']],['events','Events',['events']],['health','Health',['health','cleanup']],['blocked','Blocked',[]],['quarantine','Quarantine',[]]];
+const LEAD = {shares:'Shared folders and how Windows file sharing (SMB) is set up. This is the most attacked part of Windows.',protocols:'Old network languages that attackers abuse. Most can be turned off with no effect on modern devices.',accounts:'Who can sign in and who has administrator rights.',services:'Background programs that start with Windows, and remote-control tools that can act as a back door.',system:'The main protections: antivirus, firewall, User Account Control, disk encryption, and signs that traffic is being redirected.',malware:'Signs of malware, spyware and keyloggers, and everything that starts automatically.',downloads:'Programs and scripts in Downloads, Desktop, Documents and temporary folders. Clearing moves a file to quarantine, which can be undone.',patches:'Missing Windows updates.',apps:'Apps with newer versions, and apps installed only for this user, with what makes each one risky.',firewall:'Rules that let the network in. These are the rules attackers add or abuse.',backdoors:'The places attackers hide so they survive a restart, and the settings they change to get more rights.',lateral:'How an intruder could move from this PC to your other devices, or into this PC from them. Close the doors here. While the app is open it also warns you when an account gains admin rights or a suspicious service appears.',pentest:'Can a normal account or malware on this PC get more privileges? Each test checks a known route to full control. It only looks: nothing is exploited or changed.',exposure:'What this PC and your connection expose to others. On your network: Wi-Fi security and look-alike networks, devices answering SNMP with the factory password, web servers and developer tools running here, and signs of a fake router. From the internet: what the outside can see. It only looks: nothing is exploited or changed.',events:'Errors and critical events from Event Viewer in the last 7 days, explained.',health:'What is slowing this PC down, memory leaks, disks that are filling up or failing, and browsing data and temporary files to clear.'};
+const PROBE_INFO = {pentest:'Each item runs one read-only test for a known way a standard account or malware could gain more control — it reads Windows settings, the registry, file and folder permissions, and the list of running programs. Nothing is attacked, and nothing on this PC is changed or written to disk. The only time anything changes is when you press a fix button on a finding, and that always asks you first and can be undone from the Blocked tab.',exposure:'These checks only look. On your network they read your Wi-Fi settings, ask your router and this PC a single read-only SNMP question, and open one page on any web server running here. From the internet they look up what public scanners have already recorded about your address. Nothing is attacked, and nothing on this PC is changed or written to disk — unless you press a fix button, which always asks first.'};
 const SEVL = {critical:'Critical',high:'High',medium:'Medium',low:'Low',info:'Info',ok:'OK'}, RANK = {critical:4,high:3,medium:2,low:1,info:0,ok:-1};
-const S = {tab:'auto', q:'', problems:false, chip:'', how:false};
+const S = {tab:'auto', q:'', problems:false, chips:new Set(), how:false};
 try { S.tab = localStorage.getItem('mysec-tab') || 'auto'; } catch(e) {}
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -120,7 +123,8 @@ function scanNote(keys) {
 function genericTab(tab) {
   const keys = TABS.find(x => x[0] === tab)[2], note = scanNote(keys);
   const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= 1)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
-  return (LEAD[tab] ? `<div class="note">${esc(LEAD[tab])}</div>` : '') + note + (list.length ? list.map(f => card(f)).join('') : note ? '' : '<div class="empty">Nothing to show here.</div>');
+  const info = PROBE_INFO[tab] ? `<details class="howtest"><summary>&#9432; What's tested, and is it safe?</summary><p>${esc(PROBE_INFO[tab])}</p></details>` : '';
+  return (LEAD[tab] ? `<div class="note">${esc(LEAD[tab])}</div>` : '') + info + note + (list.length ? list.map(f => card(f)).join('') : note ? '' : '<div class="empty">Nothing to show here.</div>');
 }
 
 // ---- Ports
@@ -141,9 +145,10 @@ function portsTab() {
 }
 const tip = $('#tip');
 document.addEventListener('mousemove', e => {
+  const qr = e.target.closest && e.target.closest('[data-qtip]'), q = qr && QTIPS[qr.dataset.qtip];
   const r = e.target.closest && e.target.closest('[data-tip]'), f = r && PTIPS[r.dataset.tip];
-  if (!f) { tip.style.display = 'none'; return; }
-  tip.innerHTML = `<h4>Port ${f.Port} ${esc(f.Proto)} · ${esc(f.Title.split(' · ')[1])}</h4><b>How it works</b>${esc(f.What)}<b>Possible risk</b>${esc(f.Risk)}${(f.Versions || []).length ? '<b>Version: what is safe and what to block</b>' + f.Versions.map(v => `<div class="vi">${vPill(v.Verdict)}<strong>${esc(v.Name)}</strong> <i>${esc(v.State)}</i><br>${esc(v.Why)}</div>`).join('') : f.Version ? `<b>Version</b>${esc(f.Version)}` : ''}${f.ProgVersion ? `<b>Program version</b>${esc(f.ProgVersion)}` : ''}${f.Evidence ?`<b>On this PC</b>${esc(f.Evidence)}` : ''}<b>If you block it</b>${esc(f.Breaks)}<b>Used by</b>${esc(f.App)}${f.Publisher ? ' · signed by ' + esc(f.Publisher) : ''}<div class="path">${esc(f.Path)}</div><b>Listening on</b>${esc(f.Addr)}`;
+  if (!f && !q) { tip.style.display = 'none'; return; }
+  if (q) tip.innerHTML = qTip(q); else tip.innerHTML = `<h4>Port ${f.Port} ${esc(f.Proto)} · ${esc(f.Title.split(' · ')[1])}</h4><b>How it works</b>${esc(f.What)}<b>Possible risk</b>${esc(f.Risk)}${(f.Versions || []).length ? '<b>Version: what is safe and what to block</b>' + f.Versions.map(v => `<div class="vi">${vPill(v.Verdict)}<strong>${esc(v.Name)}</strong> <i>${esc(v.State)}</i><br>${esc(v.Why)}</div>`).join('') : f.Version ? `<b>Version</b>${esc(f.Version)}` : ''}${f.ProgVersion ? `<b>Program version</b>${esc(f.ProgVersion)}` : ''}${f.Evidence ?`<b>On this PC</b>${esc(f.Evidence)}` : ''}<b>If you block it</b>${esc(f.Breaks)}<b>Used by</b>${esc(f.App)}${f.Publisher ? ' · signed by ' + esc(f.Publisher) : ''}<div class="path">${esc(f.Path)}</div><b>Listening on</b>${esc(f.Addr)}`;
   tip.style.display = 'block';
   const w = tip.offsetWidth, h = tip.offsetHeight;
   tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px';
@@ -213,6 +218,40 @@ function attemptsTable(tbl, rows) {
     return `<tr><td>${esc(r.Last.slice(0, 16))}${first}</td><td><span class="pill kind">${KIND[r.Kind] || ''}</span> ${esc(r.Blocked)}</td><td>${what}</td><td>${esc(r.Ports.join(', '))}</td><td><b>${r.Count}</b></td></tr>`;
   }), 'No attempts yet. Every refused connection to or from something you blocked shows here.');
 }
+// ---- Quarantine
+const tabOf = cat => TABS.find(t => t[2].includes(cat));
+const fmtSize = n => !n ? '' : n < 1024 ? n + ' bytes' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+let QTIPS = {};
+function qTable(items) {
+  if (!items.length) return '';
+  return `<table><colgroup><col style="width:24%"><col><col style="width:130px"><col style="width:120px"><col style="width:170px"></colgroup><thead><tr><th>File</th><th>Original location</th><th>From list</th><th>Quarantined</th><th></th></tr></thead><tbody>${items.map(q => {
+    QTIPS[q.Id] = q; const t = tabOf(q.Source);
+    return `<tr><td class="title"><span data-qtip="${esc(q.Id)}">${esc(q.Name)}</span><div class="small">${esc(fmtSize(q.Size))}</div></td><td class="small">${esc(q.Path.slice(0, q.Path.lastIndexOf('\\')) || q.Path)}</td><td>${t ? `<a href="#" data-goto="${t[0]}">${esc(t[1])}</a>` : '<span class="small">—</span>'}</td><td>${esc(q.When)}</td><td><button class="btn" data-unblock="restore" data-key="${esc(q.Id)}">Restore</button> <button class="btn danger" data-unblock="delete" data-key="${esc(q.Id)}">Delete</button></td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+function quarantineTab() {
+  const q = D.blocks.quarantine || [];
+  return `<div class="note"><b>Where quarantined files are kept:</b> <code class="qdir">${esc(D.quarantineDir || '')}</code><br>
+    Each file is moved there under a random name ending in <code>.quarantined</code>, so Windows won't run it if it's double-clicked.${D.admin ? ' Only Administrators and Windows can open that folder.' : ' My Security is not running as Administrator, so this folder is in your own profile and is not locked.'}
+    Its permissions are saved first. <b>Restore</b> puts the file back where it was, with those permissions. <b>Delete</b> removes it for good.
+    Hover over a file name for details. Don't open the folder in File Explorer: Windows would offer to give your account access to it, which unlocks it.</div>` +
+    (q.length ? qTable(q) : '<div class="empty">Quarantine is empty. Files you quarantine from the Downloads, Services or Malware lists show up here.</div>');
+}
+function qSection(tab) {
+  const t = TABS.find(x => x[0] === tab), cats = t ? t[2] : [];
+  if (!cats.length) return '';
+  const items = (D.blocks.quarantine || []).filter(q => cats.includes(q.Source));
+  return items.length ? `<h3>Quarantined from this list <span class="small">${items.length} · kept in ${esc(D.quarantineDir || '')}</span></h3>` + qTable(items) : '';
+}
+function qTip(q) {
+  const t = tabOf(q.Source);
+  return `<h4>${esc(q.Name)}</h4><b>Original location</b><div class="path">${esc(q.Path)}</div><b>Why it was quarantined</b>${esc(q.Why || 'Not recorded')}${t ? ` (from the ${esc(t[1])} list)` : ''}` +
+    `<b>Quarantined</b>${esc(q.When)}${q.Size ? ' · ' + esc(fmtSize(q.Size)) : ''}` +
+    (q.Sha256 ? `<b>SHA-256 fingerprint</b><div class="path">${esc(q.Sha256)}</div>` : '') +
+    `<b>Kept as</b><div class="path">${esc((D.quarantineDir || '') + '\\' + q.Id)}</div>` +
+    `<b>Permissions</b>${q.Perms ? 'Saved. Restore puts them back exactly as they were.' : 'Not saved (an older version quarantined it). Restore gives it the permissions of the folder it goes back to.'}${q.Locked ? ' While quarantined, only Administrators and Windows can open it.' : ''}` +
+    `<b>Restore</b>Moves it back to its original location. Only do this if you trust the file.<b>Delete</b>Removes it for good. This can't be undone.`;
+}
 function blockedTab() {
   const b = D.blocks, tbl = (cols, rows, none) => rows.length ? `<table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>` : `<div class="small">${none}</div>`;
   const ub = (kind, key, label = 'Unblock', cls = '') => `<button class="btn ${cls}" data-unblock="${kind}" data-key="${esc(key)}">${label}</button>`;
@@ -222,7 +261,7 @@ function blockedTab() {
     `<h3>Programs</h3>` + tbl(['Program', 'File', ''], b.programs.map(p => `<tr><td class="title">${esc(p.Name)}</td><td class="small">${esc(p.Path)}</td><td>${ub('program', p.Path)}</td></tr>`), 'No programs blocked yet.') +
     `<h3>Addresses</h3>` + tbl(['Address', ''], b.ips.map(p => `<tr><td>${esc(p.Address)}</td><td>${ub('ip', p.Address)}</td></tr>`), 'No addresses blocked yet.') +
     `<h3>Websites</h3>` + tbl(['Site', ''], b.sites.map(s => `<tr><td>${esc(s)}</td><td>${ub('site', s)}</td></tr>`), 'No sites blocked yet.') +
-    `<h3>Quarantine</h3>` + tbl(['File', 'Came from', 'When', ''], b.quarantine.map(q => `<tr><td class="title">${esc(q.Name)}</td><td class="small">${esc(q.Path)}</td><td>${esc(q.When)}</td><td>${ub('restore', q.Id, 'Restore')} ${ub('delete', q.Id, 'Delete', 'danger')}</td></tr>`), 'Quarantine is empty.') +
+    `<h3>Quarantine</h3><div class="small">${b.quarantine.length ? `${b.quarantine.length} file${b.quarantine.length > 1 ? 's are' : ' is'} in quarantine.` : 'Quarantine is empty.'} See the <a href="#" data-goto="quarantine">Quarantine tab</a> for where they are kept, details, Restore and Delete.</div>` +
     `<h3>Changes you can undo</h3>` + tbl(['Change', ''], D.undo.map(u => `<tr><td><b>${esc(u.What)}</b><div class="small">${esc(u.Label)}</div></td><td><button class="btn" data-undo="${esc(u.Id)}">Undo</button></td></tr>`), 'Nothing to undo in this session. Undo is available until My Security closes.');
 }
 
@@ -238,7 +277,7 @@ function verdict() {
   return ['No problems found', 'Run Autopilot again every week or so, and after installing anything new.'];
 }
 function bucket(title, sub, items) {
-  if (S.chip) items = items.filter(x => x.Scan === S.chip);
+  if (S.chips.size) items = items.filter(x => S.chips.has(x.Scan));
   if (!items.length) return '';
   return `<h3>${title} <span class="small">${items.length} · ${sub}</span></h3>` + items.filter(hit).map(f => card(f, `From: ${esc(f.From)}. `)).join('');
 }
@@ -247,12 +286,16 @@ function autoTab() {
   const pct = j ? Math.round((j.done / j.total) * 100) : 0;
   const p = D.plan, per = {};
   p.forEach(x => per[x.Scan] = (per[x.Scan] || 0) + 1);
-  const chips = Object.entries(D.scans).map(([k, s]) => `<span class="chip ${s.status === 'done' ? 'done' : s.status === 'running' ? 'running' : s.status === 'error' ? 'error' : ''}${S.chip === k ? ' pick' : ''}" data-chip="${k}" title="${per[k] ? 'Show only these ' + per[k] + ' items. ' : 'Nothing to fix from this check. '}${s.at ? 'Finished ' + time(s.at) + ' in ' + s.secs + 's' : ''}">${esc(s.label)}${per[k] ? `<i class="cn">${per[k]}</i>` : ''}</span>`).join('');
-  const scoreTip = S.chip ? 'Click to show everything again' : 'Security score out of 100. Click a check on the right to see only its items, and click here to show everything again.';
-  const hero = `<div class="hero"><div class="score ${cls}${S.chip ? ' filtered' : ''}" id="score" title="${scoreTip}">${val}${S.chip ? '<small>show all</small>' : ''}</div><div class="txt"><b class="v">${esc(v)}</b><span class="small">${esc(sub)}</span>${j ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ''}<div class="chips">${chips}</div></div><button class="btn big solid" id="autopilot" ${j ? 'disabled' : ''}>${j ? `Scanning ${j.done + 1} of ${j.total}…` : 'Autopilot'}</button></div>`;
-  const how = D.ran ? `<details class="how"${S.how ? ' open' : ''}><summary>How to read the score</summary><p>100 means none of the checks found anything worth fixing. Each problem takes points off: a <b>critical</b> one 18, a <b>high</b> one 6, a <b>medium</b> one 1.5 (at most 20 in all), and minor items at most 5 together. So a few high items lower it a lot, and many small ones can't sink it by themselves.</p><p><b>85 to 100</b> green: good. <b>65 to 84</b> amber: fair, fix the listed items when you can. <b>40 to 64</b> orange: poor, several important problems. <b>Below 40</b> red: many important problems, start with "Fix now", then "This week".</p><p>Your ${D.score}: ${D.counts.critical} critical, ${D.counts.high} high, ${D.counts.medium} medium and ${D.counts.low} minor items. Fixing the high items raises it the most. Press a button on an item to fix it, then run Autopilot again to update the score.</p><p>Click a check on the right (a green label) to see only its items. Click the circle to show everything again.</p></details>` : '';
+  const chips = Object.entries(D.scans).map(([k, s]) => `<span class="chip ${s.status === 'done' ? 'done' : s.status === 'running' ? 'running' : s.status === 'error' ? 'error' : ''}${S.chips.has(k) ? ' pick' : ''}" data-chip="${k}" title="${per[k] ? (S.chips.has(k) ? 'Click to remove these ' : 'Click to add these ') + per[k] + ' items. ' : 'Nothing to fix from this check. '}${s.at ? 'Finished ' + time(s.at) + ' in ' + s.secs + 's' : ''}">${esc(s.label)}${per[k] ? `<i class="cn">${per[k]}</i>` : ''}</span>`).join('');
+  const scoreTip = S.chips.size ? 'Click to show everything again' : 'Security score out of 100. Click one or more checks on the right to see only their items, and click here to show everything again.';
+  const hero = `<div class="hero"><div class="score ${cls}${S.chips.size ? ' filtered' : ''}" id="score" title="${scoreTip}">${val}${S.chips.size ? '<small>show all</small>' : ''}</div><div class="txt"><b class="v">${esc(v)}</b><span class="small">${esc(sub)}</span>${j ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ''}<div class="chips">${chips}</div></div><button class="btn big solid" id="autopilot" ${j ? 'disabled' : ''}>${j ? `Scanning ${j.done + 1} of ${j.total}…` : 'Autopilot'}</button></div>`;
+  // name only the sections that are on screen: "Fix now" appears only when something is critical or under attack
+  const shown = [['now', 'Fix now'], ['week', 'This week'], ['later', 'When you have time']].filter(([k]) => p.some(x => x.Bucket === k)).map(([, l]) => `<b>${l}</b>`);
+  const firstStep = !shown.length ? 'Nothing needs fixing right now.' : `Start with the list under ${shown[0]}${shown[1] ? `, then ${shown[1]}` : ''}: ${D.counts.critical ? 'critical items cost the most points' : 'each high item you fix adds about 6 points'}.`;
+  const how = D.ran ? `<details class="how"${S.how ? ' open' : ''}><summary>How to read the score</summary><p>100 means none of the checks found anything worth fixing. Each problem takes points off: a <b>critical</b> one 18, a <b>high</b> one 6, a <b>medium</b> one 1.5 (at most 20 in all), and minor items at most 5 together. So a few high items lower it a lot, and many small ones can't sink it by themselves.</p><p><b>85 to 100</b> green: good. <b>65 to 84</b> amber: fair, fix the listed items when you can. <b>40 to 64</b> orange: poor, several important problems. <b>Below 40</b> red: many important problems.</p><p>Your ${D.score}: ${D.counts.critical} critical, ${D.counts.high} high, ${D.counts.medium} medium and ${D.counts.low} minor items. ${firstStep} Press the button on an item to fix it (items without a button say what to do), then run Autopilot again to update the score.</p><p>Click one or more checks on the right (the green labels) to see only their items. Click the circle to show everything again.</p></details>` : '';
   const adm = D.admin ? '' : '<div class="note"><b>My Security is not running as Administrator,</b> so some checks and all system fixes are unavailable. MySecurity.exe asks for it by itself.</div>';
-  const pick = S.chip && D.scans[S.chip] ? `<div class="note">Showing only <b>${esc(D.scans[S.chip].label)}</b>${per[S.chip] ? '' : ': nothing to fix from this check. Its minor items and what passed are in its tab'}. Click the score circle to show everything again.</div>` : '';
+  const picked = [...S.chips].filter(k => D.scans[k]), empty = picked.filter(k => !per[k]);
+  const pick = picked.length ? `<div class="note">Showing only <b>${picked.map(k => esc(D.scans[k].label)).join('</b>, <b>')}</b> (${((n) => n + (n === 1 ? ' item' : ' items'))(picked.reduce((n, k) => n + (per[k] || 0), 0))}).${empty.length ? ` Nothing to fix from ${empty.map(k => esc(D.scans[k].label)).join(', ')}: minor items and what passed are in each tab.` : ''} Click more checks to add them, click a picked one to remove it, or click the score circle to show everything again.</div>` : '';
   return hero + how + adm + pick + bucket('Fix now', 'an attacker could use these today', p.filter(x => x.Bucket === 'now')) + bucket('This week', 'important, not an emergency', p.filter(x => x.Bucket === 'week')) + bucket('When you have time', 'worth doing', p.filter(x => x.Bucket === 'later')) +
     (D.ran ? `<p class="small">${D.counts.low} minor items and everything that passed are in each tab. The score is a rough guide: it can't prove that a PC is clean.</p>` : '');
 }
@@ -266,16 +309,18 @@ function render() {
     let n = cats.flatMap(k => D.scans[k].findings).filter(f => RANK[f.Sev] >= 2 && !f.Done);
     if (id === 'processes') n = D.events.filter(e => e.Running && RANK[e.Sev] >= 3);
     if (id === 'browsers') n = n.concat(D.tabs.filter(t => RANK[t.Sev] >= 3));
+    if (id === 'quarantine') { const k = (D.blocks.quarantine || []).length; return `<button data-t="${id}" class="${id === S.tab ? 'on' : ''}">${label}${k ? `<span class="n medium">${k}</span>` : ''}</button>`; }
     const top = n.reduce((m, f) => Math.max(m, RANK[f.Sev]), 0);
     return `<button data-t="${id}" class="${id === 'auto' ? 'auto ' : ''}${id === S.tab ? 'on' : ''}">${label}${n.length ? `<span class="n ${top === 4 ? 'critical' : top === 2 ? 'medium' : ''}">${n.length}</span>` : ''}</button>`;
   }).join('');
   const scannable = TABS.find(t => t[0] === S.tab)[2];
   $('#rescan').style.display = scannable.length ? '' : 'none'; $('#rescan').disabled = !!D.job;
-  $('#q').style.display = $('#problems').parentElement.style.display = S.tab === 'auto' || S.tab === 'blocked' ? 'none' : '';
+  $('#q').style.display = $('#problems').parentElement.style.display = S.tab === 'auto' || S.tab === 'blocked' || S.tab === 'quarantine' ? 'none' : '';
   // a redraw while someone types in the Blocked tab's port box would wipe it
   const keep = document.activeElement && document.activeElement.id === 'bport' ? $('#bport').value : null;
   const y = scrollY;
-  $('#view').innerHTML = ({auto: autoTab, ports: portsTab, processes: processesTab, threats: threatsTab, browsers: browsersTab, blocked: blockedTab}[S.tab] || (() => genericTab(S.tab)))();
+  QTIPS = {};
+  $('#view').innerHTML = ({auto: autoTab, ports: portsTab, processes: processesTab, threats: threatsTab, browsers: browsersTab, blocked: blockedTab, quarantine: quarantineTab}[S.tab] || (() => genericTab(S.tab)))() + qSection(S.tab);
   if (keep !== null) { $('#bport').value = keep; $('#bport').focus(); }
   scrollTo(0, y);
 }
@@ -295,10 +340,12 @@ $('#openlog').onclick = async () => toast(await post('/openlog'));
 $('#view').addEventListener('change', async e => { if (e.target.id === 'guard') { toast(await post('/guard', {on: e.target.checked})); } });
 $('#view').onclick = async e => {
   const t = e.target;
+  const go = t.closest('[data-goto]');
+  if (go) { e.preventDefault(); S.tab = go.dataset.goto; try { localStorage.setItem('mysec-tab', S.tab); } catch (x) {} render(); scrollTo(0, 0); return; }
   if (t.closest('.how summary')) { S.how = !t.closest('details').open; return; }
   const chip = t.closest('[data-chip]');
-  if (chip) { S.chip = S.chip === chip.dataset.chip ? '' : chip.dataset.chip; return render(); }
-  if (t.closest('#score')) { if (S.chip) { S.chip = ''; render(); } return; }
+  if (chip) { const k = chip.dataset.chip; S.chips.has(k) ? S.chips.delete(k) : S.chips.add(k); return render(); }
+  if (t.closest('#score')) { if (S.chips.size) { S.chips.clear(); render(); } return; }
   if (t.id === 'autopilot') { toast(await post('/autopilot')); return poll(true); }
   if (t.id === 'bbtn') { const port = +$('#bport').value, proto = $('#bproto').value; if (!(port >= 1 && port <= 65535)) return toast({ok: false, message: 'Type a port number from 1 to 65535.'}); if (!confirm(`Block incoming ${proto} port ${port}?\n\nOther devices will not be able to connect to it.`)) return; return toast(await post('/block-port', {port, proto})); }
   if (t.dataset.act) { const f = lookup(t.dataset.act); if (!f || !f.Action || !confirm(f.Action.confirm)) return; BUSY.add(f.Id); render(); const r = await post('/action', {id: f.Id}); BUSY.delete(f.Id); toast(r); return poll(true); }
@@ -319,10 +366,11 @@ async function poll(once) {
   try {
     const r = await fetch('/data?rev=' + REV, {headers: {'X-MySec-Token': TOKEN}, cache: 'no-store'});
     if (r.status === 403) { $('#meta').textContent = 'The app restarted, reconnecting…'; setTimeout(() => location.reload(), 1000); return; }
-    if (r.ok) { const d = await r.json(); if (d.stopping) return closed(); if (!d.same) { D = d; REV = d.rev; render(); } }
+    if (r.ok) { const d = await r.json(); if (d.stopping) return closed(); if (!d.same) { D = d; REV = d.rev; render(); if (D.notice && !noticeShown) { noticeShown = true; toast(D.notice); } } }
   } catch (e) { return closed(); }
   timer = setTimeout(poll, 2000);
 }
+let noticeShown = false;
 poll();
 </script>
 </body>
