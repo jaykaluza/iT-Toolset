@@ -855,10 +855,11 @@ def scan_pentest(ctx):
     if ports:
         lines = [f"TCP {f['Port']} {port_info(f['Port'])[0]}: {f.get('App')}" for f in sorted(ports, key=lambda f: f['Port'])]
         worst = 'high' if any(f['Sev'] in ('critical', 'high') for f in ports) else 'medium'
-        add(F('pentest', 'lan-view', worst, f'An attacker on your network can reach {len(ports)} services here', 'These ports are open on your network addresses, and the firewall lets them through.', 'This is exactly what someone on your Wi-Fi would see. Each is explained, with a Block button, in the Ports tab.', '\n'.join(lines[:25]), 'Block anything you do not need, in the Ports tab.'))
+        add(F('pentest', 'lan-view', worst, f'An attacker on your network can reach {len(ports)} services here', 'These ports are open on your network addresses, and the firewall lets them through.', 'This is exactly what someone on your Wi-Fi would see.', '\n'.join(lines[:25]), 'Open the Ports tab, where each of these is explained and has its own Block button, and block anything you do not need.', Goto='ports'))
     else:
         ok_tests.append(_TEST_NAMES[11])
-    add(F('pentest', 'passed', 'ok', f'Inside test: {len(ok_tests)} of {len(_TEST_NAMES)} attack paths are closed', 'Each test checks whether a known route to more privileges is open. Nothing was exploited or changed.', evidence=', '.join(ok_tests)))
+    open_tests = [t for t in _TEST_NAMES if t not in ok_tests]
+    add(F('pentest', 'passed', 'ok', f'Inside test: {len(ok_tests)} of {len(_TEST_NAMES)} attack paths are closed', 'Each test checks whether a known route to more privileges is open. Nothing was exploited or changed. Here is everything it checked:', evidence='Closed: ' + (', '.join(ok_tests) or 'none') + (('\nNeeds attention (shown above): ' + ', '.join(open_tests)) if open_tests else '')))
     return out
 
 
