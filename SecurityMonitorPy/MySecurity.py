@@ -49,7 +49,7 @@ import creds   # adds the saved cloud/tool credentials scan
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.5'
+APP_VERSION = '0.1.6'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -80,6 +80,7 @@ class App:
         self.att_wake = threading.Event()
         self.url = ''                    # the dashboard's address, to reopen it after a fix closed the browsers
         self.notice = None               # the result of a fix whose dashboard tab was closed while it ran
+        self.restore_point = None         # 'ok' / 'failed' once a System Restore point has been tried this session
         self.activity_log = os.path.join(APP_DIR, 'activity-log.txt')
         os.makedirs(APP_DIR, exist_ok=True)
         self.prune_log()
@@ -447,13 +448,21 @@ class App:
         act = f['Action']
         if not self.admin and act['fn'] not in X.NO_ADMIN_NEEDED and act['args'].get('hive') != 'HKCU':
             return {'ok': False, 'message': 'This fix needs Administrator rights. Start My Security as Administrator.'}
+        rp_note = ''
         with self.action_lock:
+            if self.admin and act['fn'] in X.RESTORE_BEFORE and self.restore_point is None:
+                rp = X.create_restore_point()
+                self.restore_point = 'ok' if rp.get('ok') else 'failed'
+                self.log('RESTORE' if rp.get('ok') else 'RESTORE-FAIL', rp.get('message', ''))
+                rp_note = (' A Windows System Restore point was created first, so you can roll this change back.' if rp.get('ok')
+                           else f" (No System Restore point could be made — {rp.get('message', '')} — so the change was applied without one.)")
             try:
                 extra = {'why': f['Title'], 'source': f.get('Cat', '')} if act['fn'] == 'quarantine' else {}
                 r = X.FIXES[act['fn']](**act['args'], **extra)
             except Exception as e:
                 self._write_error(traceback.format_exc())
                 r = {'ok': False, 'message': f'That did not work: {e}'}
+        r['message'] = r.get('message', '') + rp_note
         self.log('FIXED' if r.get('ok') else 'FAILED', f"{f['Title']}: {r.get('message')}")
         if r.get('closed') and self.url:   # the browsers it closed took this dashboard with them
             with self.lock:

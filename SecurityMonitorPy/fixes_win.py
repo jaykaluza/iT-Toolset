@@ -56,6 +56,39 @@ HIVES = {'HKLM': winreg.HKEY_LOCAL_MACHINE, 'HKCU': winreg.HKEY_CURRENT_USER}
 KINDS = {'dword': winreg.REG_DWORD, 'sz': winreg.REG_SZ}
 MISSING = '__missing__'
 
+# A Windows System Restore point, made once before the first system-config change of a session, so those
+# registry/service/firewall changes have a one-click rollback. Turns on System Protection if it is off, and
+# steps past Windows' "one restore point per 24 hours" limit just for this call, then puts that setting back.
+RESTORE_PS = r'''
+$drive = "$env:SystemDrive\"
+try { Enable-ComputerRestore -Drive $drive -ErrorAction Stop } catch {}
+$k = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore'
+$old = $null
+try { $old = (Get-ItemProperty -Path $k -Name SystemRestorePointCreationFrequency -ErrorAction Stop).SystemRestorePointCreationFrequency } catch {}
+try { New-ItemProperty -Path $k -Name SystemRestorePointCreationFrequency -Value 0 -PropertyType DWord -Force -ErrorAction Stop | Out-Null } catch {}
+try { Checkpoint-Computer -Description 'My Security: before a fix' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop; $res = @{ ok = $true } }
+catch { $res = @{ ok = $false; error = [string]$_.Exception.Message } }
+if ($old -ne $null) { try { Set-ItemProperty -Path $k -Name SystemRestorePointCreationFrequency -Value $old -ErrorAction SilentlyContinue } catch {} }
+else { try { Remove-ItemProperty -Path $k -Name SystemRestorePointCreationFrequency -ErrorAction SilentlyContinue } catch {} }
+ConvertTo-Json -InputObject $res -Compress
+'''
+
+# The fixes that make a lasting change to Windows' own settings, where a restore point is worth having first.
+# Quick, already-reversible actions (blocking an address or port, quarantining a file) are left out so they stay instant.
+RESTORE_BEFORE = {'set_reg', 'set_regs', 'disable_tls', 'disable_smb1', 'smb_signing', 'disable_netbios', 'disable_feature', 'remove_share',
+                  'disable_account', 'remove_admin', 'disable_autologon', 'disable_service', 'quote_service', 'remove_run', 'remove_ifeo',
+                  'disable_task', 'defender_remove_exclusion', 'firewall_on', 'disable_fw_rules', 'lock_path', 'remove_hosts_line', 'remove_portproxy'}
+
+
+def create_restore_point():
+    """Make a System Restore point. Needs admin and working System Protection; returns {'ok', 'message'}."""
+    if not S.is_admin():
+        return {'ok': False, 'message': 'needs Administrator rights'}
+    row = S.ps_one(RESTORE_PS, timeout=180)
+    if row.get('ok'):
+        return {'ok': True, 'message': 'restore point created'}
+    return {'ok': False, 'message': str(row.get('error') or 'System Protection may be turned off')[:200]}
+
 
 def set_reg(hive, path, name, value, kind='dword', reboot=False):
     h = HIVES[hive]
