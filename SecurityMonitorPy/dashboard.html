@@ -81,6 +81,9 @@ a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text
 #tip .vi{margin-top:4px}#tip .vi .pill{font-size:11px;margin-right:5px}#tip .vi i{font-style:normal;color:var(--muted)}
 #tip{position:fixed;z-index:10;width:400px;max-width:calc(100vw - 16px);background:var(--panel);color:var(--text);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;pointer-events:none;display:none}
 #tip h4{margin:0 0 6px;font-size:14px}#tip b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:7px}#tip .path{font:11.5px Consolas,monospace;word-break:break-all;color:var(--muted)}
+.chk .nm[data-help]{cursor:help;text-decoration:underline dotted;text-underline-offset:2px;text-decoration-color:var(--muted)}
+#htip{position:fixed;z-index:13;width:420px;max-width:calc(100vw - 16px);max-height:min(60vh,360px);overflow-y:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:13px;line-height:1.45;display:none}
+#htip h4{margin:0 0 6px;font-size:14px}#htip b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:9px}#htip p{margin:2px 0 0}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:12;max-width:min(560px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:none}#toast.bad{border-left-color:var(--crit)}
 .form{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:10px}
 @media (max-width:760px){.stats{flex-wrap:wrap}table{table-layout:auto}}
@@ -91,7 +94,7 @@ a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text
 <div class="stats" id="stats"></div>
 <div class="bar"><div class="tabs" id="tabs"></div><input type="search" id="q" placeholder="Filter…"><label class="tog"><input type="checkbox" id="problems"> Problems only</label><button class="btn" id="rescan">Scan this tab</button></div>
 <div class="wrap" id="view"></div>
-<div id="tip"></div><div id="toast"></div>
+<div id="tip"></div><div id="htip"></div><div id="toast"></div>
 <script>
 const TOKEN = '__MYSEC_TOKEN__';
 const TABS = [['auto','Autopilot',[]],['ports','Ports',['ports']],['shares','Shares',['shares']],['protocols','Protocols',['protocols']],['accounts','Accounts',['accounts','adminsetup']],['services','Services',['services']],['system','System',['system']],
@@ -99,6 +102,20 @@ const TABS = [['auto','Autopilot',[]],['ports','Ports',['ports']],['shares','Sha
   ['malware','Malware',['malware']],['processes','Processes',[]],['downloads','Downloads',['downloads']],['apps','Apps',['apps','userapps']],['patches','Patches',['patches']],['threats','Threats',['threats','attacks']],['browsers','Browsers',['browsers','extensions']],['events','Events',['events']],['health','Health',['health','cleanup']],['blocked','Blocked',[]],['quarantine','Quarantine',[]]];
 const LEAD = {shares:'Shared folders and how Windows file sharing (SMB) is set up. This is the most attacked part of Windows.',protocols:'Old network languages that attackers abuse. Most can be turned off with no effect on modern devices.',accounts:'Who can sign in and who has administrator rights.',services:'Background programs that start with Windows, and remote-control tools that can act as a back door.',system:'The main protections: antivirus, firewall, User Account Control, disk encryption, and signs that traffic is being redirected.',malware:'Signs of malware, spyware and keyloggers, and everything that starts automatically.',downloads:'Programs and scripts in Downloads, Desktop, Documents and temporary folders. Clearing moves a file to quarantine, which can be undone.',patches:'Missing Windows updates.',apps:'Apps with newer versions, and apps installed only for this user, with what makes each one risky.',firewall:'Rules that let the network in. These are the rules attackers add or abuse.',backdoors:'The places attackers hide so they survive a restart, and the settings they change to get more rights.',lateral:'How an intruder could move from this PC to your other devices, or into this PC from them. Close the doors here. While the app is open it also warns you when an account gains admin rights or a suspicious service appears.',pentest:'Can a normal account or malware on this PC get more privileges? Each test checks a known route to full control. It only looks: nothing is exploited or changed.',exposure:'What this PC and your connection expose to others. On your network: Wi-Fi security and look-alike networks, devices answering SNMP with the factory password, web servers and developer tools running here, and signs of a fake router. From the internet: what the outside can see. It only looks: nothing is exploited or changed.',events:'Errors and critical events from Event Viewer in the last 7 days, explained.',health:'What is slowing this PC down, memory leaks, disks that are filling up or failing, and browsing data and temporary files to clear.'};
 const PROBE_INFO = {pentest:'Each item runs one read-only test for a known way a standard account or malware could gain more control. The twelve checks: always-elevated installers (AlwaysInstallElevated), programs a standard user can overwrite, writable SYSTEM scheduled-task files, weak service permissions, writable folders in the system PATH, read access to the password database (SAM), dangerous account privileges, Windows answer files holding passwords, passwords in command history, saved Windows credentials, print-driver settings (PrintNightmare), and what your network can reach. It only reads settings, the registry, file and folder permissions, and the list of running programs — nothing is attacked, and nothing on this PC is changed or written to disk unless you press a fix button, which always asks first and can be undone from the Blocked tab.',exposure:'These checks only look. On your network they read your Wi-Fi settings, ask your router and this PC a single read-only SNMP question, and open one page on any web server running here. From the internet they look up what public scanners have already recorded about your address. Nothing is attacked, and nothing on this PC is changed or written to disk — unless you press a fix button, which always asks first.'};
+const CHECK_HELP = {
+  'Always-elevated installers': {what:'A Windows policy (AlwaysInstallElevated) that lets any .msi installer run as SYSTEM — the highest level on the PC — no matter who starts it.', how:'A standard user or malware builds a tiny malicious .msi and launches it. Because the policy forces it to run elevated, the payload inside runs as SYSTEM and takes over the machine. It is one of the most reliable local privilege-escalation tricks.', best:'Leave both the per-machine and per-user AlwaysInstallElevated values off (the Windows default). Never enable them to make software installs easier.'},
+  'Writable service files': {what:'The program file (.exe) a Windows service runs is sitting in a folder a normal user is allowed to overwrite.', how:'An attacker replaces the service\'s .exe with their own, then waits for the service to start — or restarts the PC. The service runs the replacement with the service\'s account, usually SYSTEM.', best:'Install services under Program Files or System32, where only administrators can write. Remove write access for standard users from any service\'s install folder.'},
+  'Writable SYSTEM task files': {what:'A scheduled task that runs as SYSTEM points at a script or program a standard user can edit.', how:'The attacker rewrites the file the task runs. The next time the task fires — on a timer, at logon, or on an event — their code runs with SYSTEM rights.', best:'Keep files used by SYSTEM-level scheduled tasks in admin-only locations, and review task actions for anything living in user-writable folders.'},
+  'Weak service permissions': {what:'A service\'s own configuration can be changed by a standard user — for example they can alter what program it launches or which account it uses.', how:'Instead of replacing a file, the attacker just reconfigures the service to run their command (sc config binPath=…), then starts it. It runs as the service account.', best:'Services should only be configurable by administrators. Remove change/write permissions granted to ordinary users or groups like Authenticated Users.'},
+  'Writable system PATH folders': {what:'A folder listed in the system PATH can be written to by standard users, and PATH is how Windows finds programs by name.', how:'The attacker drops a malicious file named like a common tool (or a missing DLL) into the writable PATH folder. When a privileged program or service calls that name, Windows finds the attacker\'s copy first and runs it.', best:'Every folder on the system PATH should be writable only by administrators. Remove user-writable directories from PATH.'},
+  'Password database permissions': {what:'The SAM hive — the file holding local account password hashes — is readable by accounts that should not have access.', how:'The attacker copies the SAM (and SYSTEM) hive, extracts the password hashes offline, then cracks them or uses them directly in pass-the-hash attacks to log in as other users, including administrators.', best:'Only SYSTEM and Administrators should read the SAM. This is the default; a loosened permission (sometimes called HiveNightmare/SeriousSAM) must be corrected and old shadow copies cleared.'},
+  'Dangerous account privileges': {what:'The current account holds a Windows privilege that can be turned into full control — such as SeImpersonate, SeDebug, SeBackup, SeRestore, SeTakeOwnership or SeLoadDriver.', how:'Each of these is a known escalation route: impersonation privileges feed "potato" attacks that steal a SYSTEM token; backup/restore read protected files; load-driver installs a malicious kernel driver. Service accounts often carry them unnecessarily.', best:'Grant these privileges only to accounts that truly need them. Audit service accounts and remove powerful rights they do not use.'},
+  'Answer files with passwords': {what:'Windows setup answer files (Unattend.xml, sysprep.inf, Autounattend.xml) left on disk, sometimes containing the local administrator password.', how:'These files are created during automated installs. Attackers search well-known paths for them; a stored administrator password — even base64-encoded — lets them log straight in as admin.', best:'Delete answer files after setup. Never leave credentials in them, and scrub deployment images before use.'},
+  'Passwords in command history': {what:'PowerShell console history (and similar files) holding commands that contain passwords, keys or tokens typed in plain text.', how:'The history file is saved per user and is easy to read. Anyone who reaches the account — or a later attacker on the box — harvests any secret that was ever typed on a command line.', best:'Avoid passing secrets as command-line arguments. Clear PowerShell history (or disable it) after any command that contained a credential.'},
+  'Saved Windows credentials': {what:'Credentials stored in Windows Credential Manager (via cmdkey/runas /savecred) that let a program sign in to another account or machine without a prompt.', how:'An attacker lists saved credentials and runs their own command with runas /savecred, borrowing the stored login — often an admin or domain account — without ever knowing the password.', best:'Avoid storing reusable credentials, especially privileged ones. Remove saved entries you no longer need from Credential Manager.'},
+  'Print driver settings': {what:'Print Spooler settings that allow non-administrators to install printer drivers (the PrintNightmare family of flaws).', how:'A standard user or remote attacker installs a malicious "printer driver," which Windows loads with SYSTEM rights — giving instant code execution as SYSTEM, locally or across the network.', best:'Keep Windows fully patched and set the policy so only administrators can add printer drivers. Disable the Print Spooler on machines that do not print.'},
+  'What your network can reach': {what:'A view of which of your other devices this PC can connect to, and over which ports — the paths an intruder on this machine would use to spread.', how:'Once an attacker controls this PC, they pivot: they scan the reachable devices and attack open services (file shares, remote desktop, management ports) to move laterally across your network.', best:'Limit what each device exposes to the local network, close unused services and ports, and segment sensitive devices so a single compromised PC cannot reach everything.'}
+};
 const SEVL = {critical:'Critical',high:'High',medium:'Medium',low:'Low',info:'Info',ok:'OK'}, RANK = {critical:4,high:3,medium:2,low:1,info:0,ok:-1};
 const S = {tab:'auto', q:'', problems:false, chips:new Set(), how:false, howtest:false};
 try { S.tab = localStorage.getItem('mysec-tab') || 'auto'; } catch(e) {}
@@ -127,13 +144,16 @@ function card(f, extra) {
 function scanNote(keys) {
   const s = keys.map(k => D.scans[k]);
   if (D.job && keys.includes(D.job.current)) return `<div class="note"><b>Scanning…</b> ${esc(D.scans[D.job.current].label)}.</div>`;
-  if (s.every(x => x.status === 'never')) return `<div class="empty">Not scanned yet. Use <b>Scan this tab</b>, or run <b>Autopilot</b> to do everything.</div>`;
+  if (s.every(x => x.status === 'never')) return D.job
+    ? `<div class="note"><b>A scan is running.</b> This tab is queued — it will fill in shortly.</div>`
+    : `<div class="empty">Not scanned yet. Use <b>Scan this tab</b>, or run <b>Autopilot</b> to do everything.</div>`;
   return '';
 }
 function checklist(items) {
+  const hv = n => CHECK_HELP[n] ? ` data-help="${esc(n)}"` : '';
   return '<div class="checks">' + items.map(c => c.Ok
-    ? `<div class="chk ok"><span class="mk">✓</span><span class="nm">${esc(c.Name)}</span><span class="st">OK</span></div>`
-    : `<div class="chk bad"><span class="mk">✗</span><span class="nm">${esc(c.Name)}:</span><span class="st">${esc(c.Detail || 'needs attention')}</span></div>`
+    ? `<div class="chk ok"><span class="mk">✓</span><span class="nm"${hv(c.Name)}>${esc(c.Name)}</span><span class="st">OK</span></div>`
+    : `<div class="chk bad"><span class="mk">✗</span><span class="nm"${hv(c.Name)}>${esc(c.Name)}:</span><span class="st">${esc(c.Detail || 'needs attention')}</span></div>`
   ).join('') + '</div>';
 }
 function genericTab(tab) {
@@ -149,7 +169,7 @@ function genericTab(tab) {
 const VERDICT = {safe: 'Safe', weak: 'Weak', block: 'Block'};
 const vPill = v => v ? `<span class="pill v-${v}">${VERDICT[v]}</span>` : '';
 const verCell = f => f.Version ? `<div class="ver">${vPill(f.Verdict)}${esc(f.Version)}</div>` : '<span class="small">—</span>';
-const allowText = f => !f.Exposed ? '<span class="pill p-ok">This PC only</span>' : f.Allowed === true ? '<span class="pill p-medium">Open to network</span>' : f.Allowed === false ? '<span class="pill p-low">Firewall closes it</span>' : '<span class="pill p-low">Listening</span>';
+const allowText = f => f.Blocked ? '<span class="pill p-ok">You blocked it</span>' : !f.Exposed ? '<span class="pill p-ok">This PC only</span>' : f.Allowed === true ? '<span class="pill p-medium">Open to network</span>' : f.Allowed === false ? '<span class="pill p-low">Firewall closes it</span>' : '<span class="pill p-low">Listening</span>';
 let PTIPS = {};
 function portsTab() {
   const note = scanNote(['ports']), blocked = new Set((D.blocks.ports || []).map(p => p.Key));
@@ -173,13 +193,31 @@ document.addEventListener('mousemove', e => {
   tip.style.top = (e.clientY + 16 + h > innerHeight ? Math.max(8, e.clientY - h - 12) : e.clientY + 16) + 'px';
 });
 
+// ---- Scrollable help tooltip on each check name
+const htip = $('#htip');
+let htipTimer = null;
+function showHtip(el) {
+  const h = CHECK_HELP[el.dataset.help]; if (!h) return;
+  clearTimeout(htipTimer);
+  htip.innerHTML = `<h4>${esc(el.dataset.help)}</h4><b>What it is</b><p>${esc(h.what)}</p><b>How it's exploited</b><p>${esc(h.how)}</p><b>Best practice</b><p>${esc(h.best)}</p>`;
+  htip.scrollTop = 0; htip.style.display = 'block';
+  const r = el.getBoundingClientRect(), w = htip.offsetWidth, hh = htip.offsetHeight;
+  htip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  htip.style.top = (r.bottom + 6 + hh > innerHeight ? Math.max(8, r.top - hh - 6) : r.bottom + 6) + 'px';
+}
+const hideHtip = () => { htipTimer = setTimeout(() => { htip.style.display = 'none'; }, 180); };
+document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-help]'); if (el) showHtip(el); });
+document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-help]'); if (el && !(e.relatedTarget && htip.contains(e.relatedTarget))) hideHtip(); });
+htip.addEventListener('mouseenter', () => clearTimeout(htipTimer));
+htip.addEventListener('mouseleave', hideHtip);
+
 // ---- Processes
 function eventButtons(id) {
   const e = D.events.find(x => x.Id === id); if (!e || !e.Running) return '<span class="small">Ended</span>';
   return `<button class="btn danger" data-kill="${id}">End</button><button class="btn danger" data-blockp="${id}">End and block</button>`;
 }
 function processesTab() {
-  const list = D.events.filter(e => hit(e) && (!S.problems || RANK[e.Sev] >= 2));
+  const list = D.events.filter(e => hit(e) && (!S.problems || (e.Running && RANK[e.Sev] >= 2)));
   const intro = `<div class="note">My Security looks at every program the moment it starts, for as long as this app is open: what it is, where it lives, who started it and what it was told to do. <b>${D.watching ? 'Watching now.' : 'Starting…'}</b> A very short-lived program can finish before it is seen.</div>`;
   if (!list.length) return intro + '<div class="empty">No risky programs have been seen.</div>';
   return intro + list.map(e => `<div class="card ${e.Sev}"><div class="top">${pill(e.Sev)}<span class="title">${esc(e.Name)} <span class="small">PID ${e.PID}${e.Parent ? ' · started by ' + esc(e.Parent) : ''} · ${e.Existing ? 'already running' : time(e.When)}${e.Running ? '' : ' · ended'}</span></span><span class="acts">${eventButtons(e.Id)}</span></div>
@@ -332,7 +370,10 @@ function render() {
     return `<button data-t="${id}" class="${id === 'auto' ? 'auto ' : ''}${id === S.tab ? 'on' : ''}">${label}${n.length ? `<span class="n ${top === 4 ? 'critical' : top === 2 ? 'medium' : ''}">${n.length}</span>` : ''}</button>`;
   }).join('');
   const scannable = TABS.find(t => t[0] === S.tab)[2];
-  $('#rescan').style.display = scannable.length ? '' : 'none'; $('#rescan').disabled = !!D.job;
+  const rb = $('#rescan');
+  rb.style.display = scannable.length ? '' : 'none'; rb.disabled = !!D.job;
+  rb.textContent = D.job ? 'Scanning…' : 'Scan this tab';
+  rb.title = D.job ? 'A scan is already running. This button works again once it finishes.' : '';
   $('#q').style.display = $('#problems').parentElement.style.display = S.tab === 'auto' || S.tab === 'blocked' || S.tab === 'quarantine' ? 'none' : '';
   // a redraw while someone types in the Blocked tab's port box would wipe it
   const keep = document.activeElement && document.activeElement.id === 'bport' ? $('#bport').value : null;

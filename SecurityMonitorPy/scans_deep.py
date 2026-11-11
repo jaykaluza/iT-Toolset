@@ -486,6 +486,32 @@ UAC_KEYS = ('ms-settings', 'mscfile', 'exefile', 'Folder', 'AppX82a6gwre4fdg3bt6
 GOOD_DNS = {'1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4', '9.9.9.9', '149.112.112.112', '208.67.222.222', '208.67.220.220', '94.140.14.14', '94.140.15.15', '1.1.1.2', '1.0.0.2', '1.1.1.3', '1.0.0.3'}
 DOWNLOAD_CODE = re.compile(r'(downloadstring|downloadfile|net\.webclient|invoke-webrequest|\biwr\b|\birm\b|\biex\b|invoke-expression|frombase64string)', re.I)
 _TRICK_COUNT = 24
+# every check the Hacker-tricks scan runs, with the finding-id prefixes it produces when that check finds something
+_TRICK_CHECKS = [
+    ('Hidden port forwards (netsh portproxy)', ['portproxy:']),
+    ('Sign-in system DLLs (LSA packages)', ['lsa:']),
+    ('Forced DLLs in new programs (AppCertDlls)', ['appcert']),
+    ('Launch-on-exit triggers (SilentProcessExit)', ['spe:']),
+    ('Per-user sign-in run keys (Winlogon/Load/Run)', ['hkcu:']),
+    ('Office test startup DLL', ['officetest']),
+    ('.NET profiler injection (COR_PROFILER)', ['cor']),
+    ('Screensaver program location', ['scr']),
+    ('Admin-prompt bypass keys (UAC bypass)', ['uacb:']),
+    ('Hidden policy startup entries', ['polrun:']),
+    ('Active Setup stub programs', ['stub:']),
+    ('Netsh helper DLLs', ['netsh:']),
+    ('Anonymous shares and pipes (null sessions)', ['null:']),
+    ('Remote Desktop port', ['rdpport']),
+    ('Remote Desktop silent shadowing', ['shadow']),
+    ('Vulnerable-driver blocklist', ['byovd']),
+    ('PowerShell execution policy', ['execpol']),
+    ('PowerShell script logging', ['sbl']),
+    ('PowerShell profile scripts', ['psprofile:']),
+    ('Kernel drivers (location and signature)', ['drv:']),
+    ('Service DLL locations', ['svcdll:']),
+    ('BITS download jobs', ['bits:']),
+    ('DNS servers', ['dns:']),
+]
 
 
 def scan_tricks(ctx):
@@ -583,8 +609,12 @@ def scan_tricks(ctx):
                 add(F('tricks', 'dns:' + str(ip), 'low', f'DNS server: {ip}', 'DNS turns site names into addresses. This server is on the internet, and is not one of the big public services.', 'Usually your internet provider\'s. A malicious one can send you to fake sites.', str(ip), 'If it isn\'t your provider\'s, change it. Look it up at the link.', Link=f'https://www.abuseipdb.com/check/{ip}'))
         except ValueError:
             pass
-    if not [x for x in out if x['Sev'] in ('critical', 'high')]:
-        add(F('tricks', 'clean', 'ok', 'None of the known persistence tricks were found', f'Checked {_TRICK_COUNT} places that attackers use to hide or survive a restart, alongside the checks in the Malware and Services tabs.'))
+    checks = []
+    for cname, prefixes in _TRICK_CHECKS:
+        titles = list(dict.fromkeys(f['Title'] for f in out if any(f['Id'].startswith('tricks:' + p) for p in prefixes)))
+        checks.append({'Name': cname, 'Ok': not titles, 'Detail': '; '.join(titles)})
+    n_ok = sum(1 for c in checks if c['Ok'])
+    add(F('tricks', 'clean', 'ok', f'Hacker-tricks check: {n_ok} of {len(checks)} hiding places are clear', f'Checked {_TRICK_COUNT} places that attackers use to hide or survive a restart, alongside the checks in the Malware and Services tabs. Nothing was changed.', Checks=checks))
     return out
 
 
@@ -701,6 +731,9 @@ LATERAL_RULES = [
     (r'schtasks.*/s\s+\S+.*/create', 'high', 'Creating a scheduled task on another PC', 'A standard way of spreading across a network.'),
     (r'(net1?(\.exe)?["\s]+use|copy|xcopy|robocopy)\b.*\\\\\S+\\(admin|[a-z])\$', 'high', 'Reaching another PC\'s hidden admin share', 'This is how tools get copied to the next victim.'),
     (r'runas(\.exe)?["\s].*/netonly', 'medium', 'Using other credentials for network access', 'Fine for admins. Attackers use this with stolen passwords.'),
+    (r'\[adsisearcher\]|new-object\s+system\.directoryservices\.directorysearcher', 'low', 'Quiet Active Directory search', 'Looking accounts and groups up straight through LDAP skips the usual tools and leaves fewer traces. Administrators do this too, but it is also how an intruder maps a domain without being noticed.'),
+    (r'\b(get-net(user|group|computer|domain|session|loggedon|localgroup)|get-domain(user|group|computer|controller|policy|trust)|get-objectacl|invoke-userhunter|find-localadminaccess|invoke-(blood|sharp)hound)\b', 'high', 'Active Directory attack-mapping tool', 'These PowerView and BloodHound commands map a Windows domain to find a path to Domain Admin.'),
+    (r'nltest\s+/(domain_trusts|dclist|dsgetdc)|dsquery\s+\*|net1?(\.exe)?\s+group\s+"?domain admins"?\s+/domain', 'medium', 'Mapping the Windows domain', 'Listing domain trusts, domain controllers or the Domain Admins group is a common early step for an intruder. Administrators run these too.'),
     (r'reg(\.exe)?\s+add.*\\(ms-settings|mscfile|exefile)\\shell\\open\\command', 'critical', 'Planting an admin prompt bypass', 'This registry change makes Windows run a program as administrator without asking.'),
     (r'(cmd|powershell|pwsh).*\b(fodhelper|computerdefaults|sdclt|wsreset)(\.exe)?\b', 'high', 'Possible admin prompt bypass', 'These Windows programs raise their own rights, and are abused to skip the prompt.'),
     (r'\b(juicypotato|printspoofer|godpotato|roguepotato|sweetpotato|rubeus|sharpup|winpeas|powerup\.ps1|seatbelt|bloodhound|sharphound|crackmapexec|netexec|impacket|wmiexec|smbexec|atexec|lazagne)\b', 'critical', 'Known attack tool', 'This name belongs to a tool for stealing credentials, raising privileges or spreading.'),
@@ -755,22 +788,32 @@ function Writable($p) {
     if ($r.AccessControlType -eq 'Allow' -and $open -contains $r.IdentityReference.Value -and ([long]$r.FileSystemRights -band $mask) -and -not ($r.PropagationFlags -band 2)) { return $r.IdentityReference.Translate([Security.Principal.NTAccount]).Value }
   }; ''
 }
+function WritableReg($p) {
+  try { $a = Get-Acl -LiteralPath $p -ErrorAction Stop } catch { return '' }
+  foreach ($r in $a.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
+    if ($r.AccessControlType -eq 'Allow' -and $open -contains $r.IdentityReference.Value -and ([long]$r.RegistryRights -band $mask) -and -not ($r.PropagationFlags -band 2)) { return $r.IdentityReference.Translate([Security.Principal.NTAccount]).Value }
+  }; ''
+}
 function ExeOf($c) { $c = [Environment]::ExpandEnvironmentVariables([string]$c).Trim(); if ($c -match '^"([^"]+)"') { $Matches[1] } elseif ($c -match '^(.+?\.(exe|bat|cmd|ps1|dll))(\s|$)') { $Matches[1] } else { ($c -split ' ')[0] } }
 $hits = New-Object Collections.ArrayList
 function Check($kind, $name, $path, $run) { if (-not $path -or $path.StartsWith($env:windir, 'OrdinalIgnoreCase')) { return }
   if (Test-Path -LiteralPath $path -PathType Leaf) { $w = Writable $path; if ($w) { [void]$hits.Add([pscustomobject]@{ Kind = $kind; Name = $name; Path = $path; Who = $w; Run = $run; What = 'file' }) }
-    $dir = Split-Path -LiteralPath $path; $w = Writable $dir; if ($w) { [void]$hits.Add([pscustomobject]@{ Kind = $kind; Name = $name; Path = $dir; Who = $w; Run = $run; What = 'folder' }) } } }
+    $dir = Split-Path -LiteralPath $path; $w = Writable $dir; if ($w) { [void]$hits.Add([pscustomobject]@{ Kind = $kind; Name = $name; Path = $dir; Who = $w; Run = $run; What = 'folder' }) } }
+  elseif ($path -match '\\') { $dir = Split-Path -LiteralPath $path; if (Test-Path -LiteralPath $dir -PathType Container) { $w = Writable $dir; if ($w) { [void]$hits.Add([pscustomobject]@{ Kind = $kind; Name = $name; Path = $path; Who = $w; Run = $run; What = 'missing' }) } } } }
 $weak = New-Object Collections.ArrayList
 foreach ($s in Get-CimInstance Win32_Service) { $e = ExeOf $s.PathName; Check 'service' ([string]$s.Name) $e ([string]$s.StartName)
-  if ($e -and -not $e.StartsWith($env:windir, 'OrdinalIgnoreCase')) { $sd = (& "$env:windir\System32\sc.exe" sdshow $s.Name) -join ''
-    if ($sd -match '\(A;[^;]*;[A-Z]*(DC|WD|WO|GA|FA)[A-Z]*;;;(WD|AU|BU|IU)\)') { [void]$weak.Add([pscustomobject]@{ Name = [string]$s.Name; Display = [string]$s.DisplayName; Run = [string]$s.StartName }) } } }
+  $via = ''
+  try { if (WritableReg "HKLM:\SYSTEM\CurrentControlSet\Services\$($s.Name)") { $via = 'registry' } } catch {}
+  if (-not $via -and $e -and -not $e.StartsWith($env:windir, 'OrdinalIgnoreCase')) { $sd = (& "$env:windir\System32\sc.exe" sdshow $s.Name) -join ''
+    if ($sd -match '\(A;[^;]*;[A-Z]*(DC|WD|WO|GA|FA)[A-Z]*;;;(WD|AU|BU|IU)\)') { $via = 'permissions' } }
+  if ($via) { [void]$weak.Add([pscustomobject]@{ Name = [string]$s.Name; Display = [string]$s.DisplayName; Run = [string]$s.StartName; Via = $via }) } }
 foreach ($t in Get-ScheduledTask | Where-Object { $_.State -ne 'Disabled' -and $_.Principal.UserId -match 'SYSTEM|S-1-5-18' }) { foreach ($a in @($t.Actions)) { if ($a.Execute) { Check 'task' ([string]($t.TaskPath + $t.TaskName)) (ExeOf $a.Execute) 'SYSTEM' } } }
 $path = New-Object Collections.ArrayList
 foreach ($d in ([Environment]::GetEnvironmentVariable('Path', 'Machine') -split ';')) { $d = [Environment]::ExpandEnvironmentVariables($d).Trim().TrimEnd('\'); if ($d -and -not $d.StartsWith($env:windir, 'OrdinalIgnoreCase') -and (Test-Path -LiteralPath $d)) { $w = Writable $d; if ($w) { [void]$path.Add([pscustomobject]@{ Path = $d; Who = $w }) } } }
 $sam = ''; try { foreach ($r in (Get-Acl -LiteralPath "$env:windir\System32\config\SAM" -ErrorAction Stop).GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) { if ($r.IdentityReference.Value -eq 'S-1-5-32-545' -and $r.AccessControlType -eq 'Allow') { $sam = 'yes' } } } catch {}
 ConvertTo-Json -InputObject @{ ok = $true; hits = @($hits); weak = @($weak); path = @($path); sam = $sam; spooler = [string](Get-Service Spooler).Status } -Depth 3 -Compress
 '''
-ESCALATION_PRIVS = {'SeImpersonatePrivilege': 'impersonate other accounts', 'SeDebugPrivilege': 'read and control any program', 'SeBackupPrivilege': 'read every file', 'SeRestorePrivilege': 'overwrite every file', 'SeTakeOwnershipPrivilege': 'take over any file', 'SeLoadDriverPrivilege': 'load kernel drivers', 'SeTcbPrivilege': 'act as part of Windows', 'SeCreateTokenPrivilege': 'forge sign-in tokens', 'SeAssignPrimaryTokenPrivilege': 'start programs as another account'}
+ESCALATION_PRIVS = {'SeImpersonatePrivilege': 'impersonate other accounts', 'SeDebugPrivilege': 'read and control any program', 'SeBackupPrivilege': 'read every file', 'SeRestorePrivilege': 'overwrite every file', 'SeTakeOwnershipPrivilege': 'take over any file', 'SeLoadDriverPrivilege': 'load kernel drivers', 'SeTcbPrivilege': 'act as part of Windows', 'SeCreateTokenPrivilege': 'forge sign-in tokens', 'SeAssignPrimaryTokenPrivilege': 'start programs as another account', 'SeManageVolumePrivilege': 'read raw disk volumes and bypass file permissions'}
 UNATTEND = [r'Panther\Unattend.xml', r'Panther\Unattend\Unattend.xml', r'Panther\Unattended.xml', r'System32\Sysprep\sysprep.xml', r'System32\Sysprep\Unattend.xml', r'System32\Sysprep\Panther\Unattend.xml']
 SECRET_LINE = re.compile(r'(-password\b|-credential\b.*-asplaintext|converto-securestring.*-asplaintext|\bpassword\s*=|\bpasswd\b|api[_-]?key|net\s+use\s.*/user:|authorization:\s*bearer|\btoken\s*=|cmdkey\s+/add)', re.I)
 _TEST_NAMES = ['Always-elevated installers', 'Writable service files', 'Writable SYSTEM task files', 'Weak service permissions', 'Writable system PATH folders', 'Password database permissions', 'Dangerous account privileges', 'Answer files with passwords', 'Passwords in command history', 'Saved Windows credentials', 'Print driver settings', 'What your network can reach']
@@ -792,13 +835,18 @@ def scan_pentest(ctx):
     system_run = re.compile(r'(localsystem|system|^$)', re.I)
     for h in hits:
         sys_ = bool(system_run.search(str(h.get('Run') or '')))
-        kind, what = h.get('Kind'), h.get('What')
-        word = 'program file' if what == 'file' else 'folder'
-        add(F('pentest', f"write:{kind}:{h.get('Name')}:{what}", 'critical' if sys_ and what == 'file' else 'high', f"Standard users can change the {word} of {kind} {h.get('Name')}", f"It runs as {h.get('Run') or 'SYSTEM'}, and {h.get('Who')} can write to it.", ('Replace the program and it runs with full control at the next start.' if what == 'file' else 'Drop a DLL next to the program and it loads with full control at the next start.') + ' Privilege escalation in one step.', h.get('Path'), 'Remove write access for normal users.', A('lock_path', 'Lock it down', f"Remove write access for normal users?\n\n{h.get('Path')}\n\nYou can undo this in the Blocked tab.", path=h.get('Path')), Active=sys_))
+        kind, what, who, run, path = h.get('Kind'), h.get('What'), h.get('Who'), h.get('Run') or 'SYSTEM', h.get('Path')
+        if what == 'missing':
+            folder = os.path.dirname(str(path))
+            add(F('pentest', f"write:{kind}:{h.get('Name')}:missing", 'critical' if sys_ else 'high', f"{str(kind).capitalize()} {h.get('Name')} looks for a file that is not there, and a standard user can supply it", f"It runs as {run}, the file {path} does not exist, and {who} can create it in that folder.", 'Create the missing program or DLL there and it loads with full control at the next start. This is a "phantom DLL" hijack.', path, 'Remove write access to that folder for normal users, or reinstall the software so the file is present.', A('lock_path', 'Lock the folder', f"Remove write access for normal users?\n\n{folder}\n\nYou can undo this in the Blocked tab.", path=folder), Active=sys_))
+        else:
+            word = 'program file' if what == 'file' else 'folder'
+            add(F('pentest', f"write:{kind}:{h.get('Name')}:{what}", 'critical' if sys_ and what == 'file' else 'high', f"Standard users can change the {word} of {kind} {h.get('Name')}", f"It runs as {run}, and {who} can write to it.", ('Replace the program and it runs with full control at the next start.' if what == 'file' else 'Drop a DLL next to the program and it loads with full control at the next start.') + ' Privilege escalation in one step.', path, 'Remove write access for normal users.', A('lock_path', 'Lock it down', f"Remove write access for normal users?\n\n{path}\n\nYou can undo this in the Blocked tab.", path=path), Active=sys_))
     ok_tests.extend(t for t, used in ((_TEST_NAMES[1], any(h.get('Kind') == 'service' for h in hits)), (_TEST_NAMES[2], any(h.get('Kind') == 'task' for h in hits))) if not used)
     weak = [w for w in as_list(d.get('weak')) if isinstance(w, dict)]
     for w in weak:
-        add(F('pentest', 'svcperm:' + str(w.get('Name')), 'critical', f"Standard users can reconfigure the service {w.get('Display')}", f"It runs as {w.get('Run')}.", 'Point the service at any program, restart it, and that program runs with full control.', w.get('Name'), 'Reinstall or update the software, and report it to its maker. Its permissions are wrong.', Active=True))
+        how = 'Its registry key can be edited by standard users.' if w.get('Via') == 'registry' else 'Its security settings let standard users change what it runs.'
+        add(F('pentest', 'svcperm:' + str(w.get('Name')), 'critical', f"Standard users can reconfigure the service {w.get('Display')}", f"It runs as {w.get('Run')}. {how}", 'Point the service at any program, restart it, and that program runs with full control.', w.get('Name'), 'Reinstall or update the software, and report it to its maker. Its permissions are wrong.', Active=True))
     if not weak:
         ok_tests.append(_TEST_NAMES[3])
     paths = [p for p in as_list(d.get('path')) if isinstance(p, dict)]
@@ -845,7 +893,7 @@ def scan_pentest(ctx):
     targets = sorted(set(re.findall(r':target=([^\r\n]+)', _run(os.path.join(S.SYSTEM32, 'cmdkey.exe'), '/list'))))
     targets = [t for t in targets if not t.startswith(('WindowsLive:', 'MicrosoftAccount:', 'MicrosoftOffice', 'OneDrive', 'XboxLive', 'msTeams', 'Adobe'))]
     if targets:
-        add(F('pentest', 'cmdkey', 'low', f'{len(targets)} saved Windows sign-ins', 'Windows Credential Manager holds these. Only the names are shown.', 'Malware running as you can reuse them to reach those places without knowing the password.', '\n'.join(targets[:12]), 'Remove the ones you no longer need in Credential Manager.'))
+        add(F('pentest', 'cmdkey', 'low', f'{len(targets)} saved Windows sign-ins', 'Windows Credential Manager holds these. Only the names are shown.', 'Malware running as you can reuse them to reach those places without knowing the password.', '\n'.join(targets[:12]), 'Open Credential Manager and remove the Windows Credentials you no longer need.', A('open_settings', 'Open Credential Manager', 'Open Windows Credential Manager?', page='credmgr')))
     else:
         ok_tests.append(_TEST_NAMES[9])
     pp = r'SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint'

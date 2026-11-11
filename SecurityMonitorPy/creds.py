@@ -39,6 +39,9 @@ def scan_creds(ctx):
          'Amazon Web Services keys', 'full use of your AWS account, where servers and data cost real money'),
         (os.path.join(home, '.azure', 'accessTokens.json'), False, (), 'high', 'Microsoft Azure sign-in tokens', 'your Azure cloud account'),
         (os.path.join(home, '.azure', 'msal_token_cache.json'), False, (), 'high', 'Microsoft Azure sign-in tokens', 'your Azure cloud account'),
+        (os.path.join(home, '.azure', 'msal_token_cache.bin'), False, (), 'high', 'Azure PowerShell sign-in tokens', 'your Azure cloud account'),
+        (os.path.join(home, '.azure', 'AzureRmContext.json'), True, ('cachedata": "', 'cachedata":"', 'accesstoken', 'refreshtoken'), 'high', 'Azure PowerShell saved sign-in tokens', 'your Azure cloud account and its subscriptions'),
+        (os.path.join(home, '.azure', 'TokenCache.dat'), False, (), 'high', 'Azure PowerShell token cache', 'your Azure cloud account'),
         (os.path.join(appd, 'gcloud', 'credentials.db'), False, (), 'high', 'Google Cloud sign-in', 'your Google Cloud account'),
         (os.path.join(appd, 'gcloud', 'legacy_credentials'), False, (), 'high', 'Google Cloud sign-in', 'your Google Cloud account'),
         (os.path.join(home, '.config', 'gcloud', 'credentials.db'), False, (), 'high', 'Google Cloud sign-in', 'your Google Cloud account'),
@@ -93,9 +96,54 @@ def scan_creds(ctx):
     except OSError:
         pass
 
+    # PuTTY can keep a plaintext proxy password in each saved session
+    try:
+        import winreg
+        base = r'Software\SimonTatham\PuTTY\Sessions'
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, base) as k:
+            i, pw = 0, 0
+            while True:
+                try:
+                    sub = winreg.EnumKey(k, i)
+                except OSError:
+                    break
+                i += 1
+                try:
+                    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, base + '\\' + sub) as sk:
+                        val, _t = winreg.QueryValueEx(sk, 'ProxyPassword')
+                        if val:
+                            pw += 1
+                except OSError:
+                    pass
+            if pw:
+                out.append(F('creds', 'putty-proxy', 'high', f'PuTTY has {pw} saved proxy password{"s" if pw > 1 else ""} in plain text',
+                             'PuTTY stores the proxy password of a saved session unencrypted in the registry.', 'Anything running as you can read it straight out of the registry.',
+                             base, 'Clear the proxy password in PuTTY, or remove saved sessions you do not use.'))
+    except OSError:
+        pass
+
+    # the Windows OpenSSH agent keeps added private keys in the registry, usable with no passphrase
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\OpenSSH\Agent\Keys') as k:
+            n = 0
+            while True:
+                try:
+                    winreg.EnumKey(k, n)
+                except OSError:
+                    break
+                n += 1
+            if n:
+                out.append(F('creds', 'ssh-agent-reg', 'medium', f'{n} SSH key{"s are" if n > 1 else " is"} stored in the Windows SSH agent',
+                             'The OpenSSH agent keeps your added private keys in the registry so you do not retype the passphrase.',
+                             'Anything running as you can ask the agent to sign in with them, with no passphrase. SSH key files are checked in the Lateral tab.',
+                             r'HKCU\Software\OpenSSH\Agent\Keys', 'If you do not use ssh-agent, clear them: in PowerShell run ssh-add -D, and set the ssh-agent service to Manual if you do not need it.'))
+    except OSError:
+        pass
+
     if not out:
         out.append(F('creds', 'clean', 'ok', 'No unprotected cloud or tool sign-ins found',
-                     'Checked the usual spots for AWS, Azure, Google Cloud, Kubernetes, Docker, Git, npm, PyPI, FileZilla and WinSCP. SSH keys are checked in the Lateral tab.'))
+                     'Checked the usual spots for AWS, Azure, Google Cloud, Kubernetes, Docker, Git, npm, PyPI, FileZilla, WinSCP and PuTTY. SSH keys are checked in the Lateral tab.'))
     return out
 
 

@@ -54,6 +54,10 @@ HACK_TOOLS = {
     'sharpup': ('SharpUp, which looks for ways to become administrator', 'high'), 'privesccheck': ('PrivescCheck, which looks for ways to become administrator', 'high'),
     'jaws-enum': ('JAWS, which looks for ways to become administrator', 'high'), 'sherlock.ps1': ('Sherlock, which lists exploitable missing updates', 'high'),
     'adpeas': ('adPEAS, which surveys a Windows domain for attacks', 'high'), 'pingcastle': ('PingCastle. An audit tool, also used by attackers to map a domain', 'low'), 'empire': ('PowerShell Empire, a remote-control kit', 'high'), 'covenant': ('Covenant, a remote-control kit', 'high'),
+    'netripper': ('NetRipper, which steals passwords from inside browsers and other programs', 'critical'), 'fakelogonscreen': ('FakeLogonScreen, which shows a fake Windows sign-in to capture your password', 'critical'),
+    'winpwnage': ('WinPwnage, a kit of User Account Control bypasses and privilege-escalation tricks', 'high'), 'sharpchrome': ('SharpChrome, which copies saved browser passwords and cookies', 'critical'),
+    'powerview': ('PowerView, which maps an Active Directory domain to plan an attack', 'high'), 'azurehound': ('AzureHound, which maps a Microsoft Entra / Azure AD tenant to plan an attack', 'high'),
+    'aadinternals': ('AADInternals, a toolkit for attacking Microsoft Entra / Azure AD', 'high'), 'roadrecon': ('ROADrecon, which pulls a copy of a Microsoft Entra / Azure AD tenant', 'high'),
 }
 TOOL_RE = re.compile('|'.join(re.escape(k.removesuffix('.exe')) for k in HACK_TOOLS), re.I)
 LOOK_IN = [os.path.join(USER, 'Downloads'), os.path.join(USER, 'Desktop'), os.path.join(USER, 'Documents'), os.environ.get('TEMP', ''),
@@ -71,6 +75,32 @@ def _tool(name):
     return None
 
 
+def _is_reparse(path):
+    """True if the path is a reparse point (a directory junction or symbolic link)."""
+    try:
+        return bool(os.lstat(path).st_file_attributes & 0x400)   # FILE_ATTRIBUTE_REPARSE_POINT
+    except OSError:
+        return False
+
+
+# folders a redirect should never secretly point into, lower-case
+_SENSITIVE_DIRS = [os.path.normpath(p).lower() for p in (
+    os.environ.get('WINDIR', r'C:\Windows'), os.path.join(os.environ.get('WINDIR', r'C:\Windows'), 'System32'),
+    os.environ.get('ProgramFiles', r'C:\Program Files'), os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) if p]
+
+
+def _junction_target(path):
+    """The folder a directory junction/symlink points at, cleaned of the \\??\\ prefix; '' if it isn't one or can't be read."""
+    try:
+        t = os.readlink(path)
+    except OSError:
+        return ''
+    for pre in ('\\??\\', '\\\\?\\'):
+        if t.startswith(pre):
+            t = t[len(pre):]
+    return t
+
+
 def _walk(top, depth):
     """Files and folders up to a few levels deep, without following links."""
     if not top or not os.path.isdir(top):
@@ -81,13 +111,15 @@ def _walk(top, depth):
             yield os.path.join(root, d), True
         for f in files:
             yield os.path.join(root, f), False
-        # but only descend into ordinary folders: not system ones, and never a dot-only or trailing dot/space
-        # name, which normalises back to its parent and would make os.walk loop (an NTFS hiding trick).
+        # but only descend into ordinary folders: not system ones, never a dot-only or trailing dot/space
+        # name (it normalises back to its parent and would make os.walk loop), and never a junction/symlink
+        # (following one could lead anywhere, including into a system folder an attacker redirected it to).
         if root.count('\\') - base >= depth:
             dirs[:] = []
         else:
             dirs[:] = [d for d in dirs if not d.startswith('$') and d.rstrip(' .') == d
-                       and d.lower() not in ('windows', 'program files', 'program files (x86)', 'packages', 'microsoft', 'node_modules', '.git')]
+                       and d.lower() not in ('windows', 'program files', 'program files (x86)', 'packages', 'microsoft', 'node_modules', '.git')
+                       and not _is_reparse(os.path.join(root, d))]
 
 
 # ---- cookie theft and shortcut tricks
@@ -267,7 +299,19 @@ _k32.FindNextStreamW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
 _k32.FindNextStreamW.restype = wintypes.BOOL
 _k32.FindClose.argtypes = [ctypes.c_void_p]
 _k32.FindClose.restype = wintypes.BOOL
+_k32.GetLongPathNameW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+_k32.GetLongPathNameW.restype = wintypes.DWORD
 _INVALID = ctypes.c_void_p(-1).value
+
+
+def _longpath(p):
+    """Expand 8.3 short names (C:\\Users\\TELEWI~1\\...) to the real long path, so the same folder isn't walked twice."""
+    try:
+        buf = ctypes.create_unicode_buffer(1024)
+        n = _k32.GetLongPathNameW(p, buf, 1024)
+        return buf.value if 0 < n < 1024 else p
+    except OSError:
+        return p
 
 
 def _streams(path):
@@ -303,11 +347,12 @@ def ntfs_tricks(out):
     add = out.append
     seen_dirs, flagged, checked = set(), set(), 0
     for top in HIDE_SPOTS:
-        key = os.path.normcase(os.path.abspath(top)) if top else ''
-        if not top or key in seen_dirs or not os.path.isdir(top):
+        ltop = _longpath(os.path.abspath(top)) if top else ''   # expand 8.3 names so every spot yields the same long paths and duplicates collapse
+        key = os.path.normcase(ltop)
+        if not top or key in seen_dirs or not os.path.isdir(ltop):
             continue
         seen_dirs.add(key)
-        for path, is_dir in _walk(top, 2):
+        for path, is_dir in _walk(ltop, 2):
             name = os.path.basename(path)
             trick = _name_trick(name)
             if trick:
@@ -319,6 +364,17 @@ def ntfs_tricks(out):
                           'Names like this are a deliberate hiding trick. Windows and normal programs do not create them.',
                           path, 'Have the PC checked. Removing it may need a special path (\\?\\) or a tool like PowerShell.', Path=path))
                 continue
+            if is_dir and _is_reparse(path):
+                target = _junction_target(path)
+                tn = os.path.normpath(target).lower() if target else ''
+                if tn and any(tn == s or tn.startswith(s + os.sep) for s in _SENSITIVE_DIRS):
+                    fkey = 'junction:' + os.path.normcase(path)
+                    if fkey not in flagged:
+                        flagged.add(fkey)
+                        add(F('tricks', fkey, 'high', 'A folder secretly redirects into a Windows system folder',
+                              f'The folder "{name}" is a directory junction — a redirect — that points at {target}.',
+                              'A standard user can create one of these. Attackers use it to trick a program running as SYSTEM (such as an antivirus restoring a file from quarantine) into writing into a protected folder, which can hand them full control. This is the AVGater technique.',
+                              f'{path}  ->  {target}', 'If you did not create this redirect, remove it (this deletes only the junction, not the folder it points to): in a command prompt run  rmdir "' + path + '"', Path=path, Active=True))
             if is_dir or checked > 6000:
                 continue
             checked += 1
@@ -366,10 +422,15 @@ _install()
 
 # Disguised commands: carets, pieces of environment variables and delayed expansion hide words such as "powershell" from simple filters.
 OBFUSCATION_RULES = [
-    (r'(\w\^){3,}\w', 'high', 'Disguised command (^ between letters)', 'Carets split words so that filters looking for "powershell" or "http" miss them. Normal programs never write commands this way.'),
-    (r'%[a-z_]+:~-?\d+,?-?\d*%.*%[a-z_]+:~-?\d+,?-?\d*%', 'high', 'Disguised command (built from pieces of variables)', 'The command assembles words from fragments of environment variables, a known way to hide what it runs.'),
+    (r'[a-z0-9]\^[a-z0-9]', 'high', 'Disguised command (^ inserted into a word)', 'A caret inside a word splits it so filters looking for "powershell" or "http" miss it. Normal programs never write commands this way.'),
+    (r'([a-z]"){2,}[a-z]', 'high', 'Disguised command (quotes inserted into a word)', 'Quotes placed inside a word, like po"w"ershell, hide the real program name from filters while cmd.exe still runs it.'),
+    (r'[\^"]{3,}', 'high', 'Disguised command (stacked carets and quotes)', 'A run of carets and quotes is a cmd.exe trick to break up a program name so filters miss it, while Windows still runs it.'),
+    (r'%[a-z_]+:~-?\d+,?-?\d*%.*%[a-z_]+:~-?\d+,?-?\d*%|[a-z]%[a-z_()]+:~-?\d+,?-?\d*%[a-z]', 'high', 'Disguised command (built from pieces of variables)', 'The command assembles words from fragments of environment variables, a known way to hide what it runs.'),
     (r'cmd(\.exe)?["\s]+/v(:on)?\b.*![a-z_]+:', 'high', 'Disguised command (delayed expansion tricks)', 'Rebuilds the real command at run time so logs don\'t show it.'),
     (r'(-join\s*\(?\s*\[char|\[char\]\s*\d+\s*\+\s*\[char\]|\.replace\(.{1,6},\s*.{0,3}\).*\.replace\(.{1,6},\s*.{0,3}\).*(iex|invoke))', 'high', 'Disguised PowerShell (built character by character)', 'The script builds its own text at run time so that antivirus and logs don\'t see it.'),
+    (r'(?:^|\s)[\u2010-\u2015\u2212][a-z]{2,}', 'high', 'Disguised command (look-alike dash in a switch)', 'An option such as "\u2015ver" uses a Unicode dash that looks like a hyphen, so a filter misses the switch while Windows still accepts it.'),
+    (r'\\\\(127\.0\.0\.1|localhost|0\.0\.0\.0|\[?::1\]?)\\[a-z]\$\\', 'high', 'Disguised path (this PC reached as if it were on the network)', 'Running a local program through \\\\127.0.0.1\\C$ avoids the "C:\\" pattern that filters watch for.'),
+    (r'(?<!:)[\\/]{3,}', 'medium', 'Disguised path (extra slashes)', 'Windows ignores repeated or mixed slashes in a path, so attackers pad a path to slip past filters.'),
     (r'::\$index_allocation|::\$data\b|\\\\\?\\[a-z]:\\[^"\s]*[\s.]["\\]', 'high', 'Hidden-path trick', 'Uses NTFS stream names or names ending in a dot or space, which normal tools can\'t open or list.'),
 ]
 S.COMMAND_RULES.extend((re.compile(p, re.I | re.S), sv, t, w) for p, sv, t, w in OBFUSCATION_RULES)
@@ -394,5 +455,11 @@ LOLBIN_RULES = [
      'medium', 'Giving an account remote-access or extra rights', 'Adding a user to these groups is sometimes normal IT work, but it is also how an intruder keeps entry to the PC.'),
     (r'runas\s+[^\n]*/savecred',
      'medium', 'Running a program with another account\'s saved password', 'If a powerful account\'s password was once saved, this runs programs as that account without needing to know it.'),
+    (r'powershell(\.exe)?\s[^\n]*-v(ersion)?\s*2(\.0)?\b',
+     'high', 'Starting PowerShell in old version 2', 'Version 2 skips the anti-malware scan and the command logging that newer PowerShell does. Attackers force it to hide what a script is doing.'),
+    (r'wmic(\.exe)?\s[^\n]*process\s+call\s+create',
+     'medium', 'Starting a program through WMI', 'Launching a program this way hides which program really started it. Post-exploitation tools use it to break that trail.'),
+    (r'(msbuild|installutil|regasm|regsvcs)(\.exe)?\s[^\n]*(\\(temp|appdata\\local\\temp|downloads|public|programdata)\\|\\\\[^\\\s]+\\)[^\n]*',
+     'high', 'Using a Windows build tool to run code and skip app rules', 'MSBuild and similar .NET tools can compile and run code from a project file. Attackers point them at a file in a temporary or shared folder to run their own code and bypass application allow-listing such as AppLocker.'),
 ]
 S.COMMAND_RULES.extend((re.compile(p, re.I | re.S), sv, t, w) for p, sv, t, w in LOLBIN_RULES)

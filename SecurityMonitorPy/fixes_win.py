@@ -276,6 +276,8 @@ def open_settings(page):
     try:
         if page == 'bitlocker':
             subprocess.Popen([os.path.join(S.SYSTEM32, 'control.exe'), '/name', 'Microsoft.BitLockerDriveEncryption'], creationflags=S.CREATE_NO_WINDOW)
+        elif page == 'credmgr':
+            subprocess.Popen([os.path.join(S.SYSTEM32, 'control.exe'), '/name', 'Microsoft.CredentialManager'], creationflags=S.CREATE_NO_WINDOW)
         elif page in SETTINGS_PAGES:
             os.startfile(page)
         else:

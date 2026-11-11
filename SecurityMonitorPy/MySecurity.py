@@ -49,7 +49,7 @@ import creds   # adds the saved cloud/tool credentials scan
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.8'
+APP_VERSION = '0.1.9'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -147,6 +147,7 @@ class App:
 
     def _run_job(self):
         fns = {k: f for k, _l, f in S.SCANS}
+        self.ctx['blocked_ports'] = {p['Key'] for p in self.blocks.get('ports', [])}
         job = self.job
         for key in list(job['queue']):
             with self.lock:
@@ -478,7 +479,14 @@ class App:
                 self.rev += 1
             if act['fn'] in ('block_port', 'block_ip', 'block_process', 'block_site', 'quarantine'):
                 self.refresh_blocks()
+            if act['fn'] == 'block_port':
+                self._rescan_port_views()
         return {'ok': bool(r.get('ok')), 'message': r.get('message', '')}
+
+    def _rescan_port_views(self):
+        # a port block/unblock changes what the Ports and Pentest tabs should show; refresh both so they stay in step
+        if not self.job:
+            self.start_scans({'ports', 'pentest'}, 'ports')
 
     def do_undo(self, uid):
         with self.lock:
@@ -504,6 +512,8 @@ class App:
             r = fn(str(key))
         self.log(kind.upper() if r.get('ok') else 'FAILED', f"{key}: {r.get('message')}")
         self.refresh_blocks()
+        if kind == 'port' and r.get('ok'):
+            self._rescan_port_views()
         return {'ok': bool(r.get('ok')), 'message': r.get('message', '')}
 
     def block_port_manual(self, port, proto):
@@ -512,6 +522,8 @@ class App:
         r = X.block_port(int(port), str(proto))
         self.log('BLOCKED' if r.get('ok') else 'FAILED', f'Port {proto} {port}: {r.get("message")}')
         self.refresh_blocks()
+        if r.get('ok'):
+            self._rescan_port_views()
         return {'ok': bool(r.get('ok')), 'message': r.get('message', '')}
 
     def open_log(self):

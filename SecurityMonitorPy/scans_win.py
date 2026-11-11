@@ -484,6 +484,9 @@ def scan_ports(ctx):
                 if prog in ('any', '') or prog == lower or (pid == 4 and prog == 'system'):
                     allowed = True
                     break
+        blocked_by_app = exposed and f'{proto}:{port}' in ctx.get('blocked_ports', ())
+        if blocked_by_app:
+            allowed = False   # the app added a firewall block rule, which overrides any allow rule
         info = signs.get(path, {})
         unsigned = bool(path) and not in_windows(path) and is_unsigned(info)
         tool = next((v2 for k2, v2 in REMOTE_TOOLS.items() if k2 in app.lower()), '')
@@ -506,6 +509,8 @@ def scan_ports(ctx):
                 sev, why = ('high', 'You are on a Public network and this service is open to everyone on it.') if public else ('medium', 'Open to devices on your network. Close it if you do not share files or manage this PC remotely.')
             elif allowed is False:
                 sev, why = 'low', 'Something is listening, but Windows Firewall has no rule letting the network reach it.'
+            if blocked_by_app:
+                sev, why = 'low', 'You blocked this port. Windows Firewall refuses incoming connections to it from other devices.'
         ver = vers.get((proto, port), {})
         bad_ver = [i for i in ver.get('Versions', []) if i['Verdict'] == 'block' and versions.measured(i)]   # general protocol advice is reported by the Protocols tab
         if exposed and bad_ver and SEV_RANK[sev] < SEV_RANK['high'] and allowed is not False:
@@ -513,7 +518,7 @@ def scan_ports(ctx):
         blockable = exposed and (proto, port) not in NEVER_BLOCK_PORTS and pid != ctx.get('self_pid')
         action = A('block_port', 'Block', f'Block incoming {proto} port {port} ({name})?\n\nWindows Firewall will refuse connections to it from other devices.\n\nThis may break: {breaks}\n\nYou can unblock it anytime in the Blocked tab.', port=port, proto=proto) if blockable else None
         out.append(F('ports', f'{proto}:{port}', sev, f'{proto} {port} · {name}', how, risk, why, f'Blocking will break: {breaks}', action,
-                     Port=port, Proto=proto, Addr=', '.join(sorted(v['addrs'])), App=app, PID=pid, Path=path, Exposed=exposed, Allowed=allowed,
+                     Port=port, Proto=proto, Addr=', '.join(sorted(v['addrs'])), App=app, PID=pid, Path=path, Exposed=exposed, Allowed=allowed, Blocked=blocked_by_app,
                      Publisher=info.get('Publisher', ''), Breaks=breaks, Version=ver.get('Version', ''), Verdict=ver.get('Verdict', ''), Versions=ver.get('Versions', []), ProgVersion=ver.get('Program', '')))
     if not rules:
         out.append(F('ports', 'fw-unknown', 'info', 'Firewall rules could not be read', 'My Security could not read Windows Firewall rules, so it can\'t say which ports the firewall lets through.', fix='Run My Security as Administrator.'))
@@ -620,6 +625,21 @@ def scan_system(ctx):
         out.append(F('system', 'restrictedadmin', 'medium', 'Restricted Admin mode is on (helps pass-the-hash)', 'This lets someone sign in over Remote Desktop with only a stolen password hash, not the real password.', 'If an attacker lifts a password hash from this or another PC, they can log in here over Remote Desktop without ever knowing the password.', fix='Turn it off unless a remote-management tool needs it.', action=A('set_reg', 'Turn off', 'Turn off Restricted Admin mode for Remote Desktop?', hive='HKLM', path=r'SYSTEM\CurrentControlSet\Control\Lsa', name='DisableRestrictedAdmin', value=1, kind='dword')))
     if p and 2 not in [int(x) for x in as_list(p.get('vbs')) if str(x).isdigit()]:
         out.append(F('system', 'hvci', 'low', 'Core Isolation (memory integrity) is off', 'Memory integrity uses the processor to stop tampering with Windows itself.', 'Malicious or vulnerable drivers can take over the kernel.', fix='Windows Security > Device security > Core isolation.', action=A('open_settings', 'Open settings', 'Open Core Isolation settings?', page='windowsdefender://coreisolation')))
+    if p and 1 not in [int(x) for x in as_list(p.get('vbs')) if str(x).isdigit()]:
+        out.append(F('system', 'credguard', 'info', 'Credential Guard is off', 'Credential Guard uses the processor to lock your sign-in secrets away, so even an administrator or malware cannot read them from memory.', 'Without it, a program running with high privileges can still lift password hashes and sign-in tickets out of memory. This is normal on home PCs; it is extra hardening, not a flaw.', fix='Optional, mainly for business PCs: turn on Core Isolation / Credential Guard. It needs a 64-bit PC with virtualization enabled.', action=A('open_settings', 'Open settings', 'Open Core Isolation settings?', page='windowsdefender://coreisolation')))
+    srp = r'SOFTWARE\Policies\Microsoft\Windows\SrpV2'
+    if reg_subkeys(HKLM, srp):
+        out.append(F('system', 'applocker', 'ok', 'Application allow-listing is set up (AppLocker)', 'Only approved programs are allowed to run on this PC.'))
+    else:
+        out.append(F('system', 'applocker', 'info', 'No application allow-listing is set up (AppLocker / App Control)', 'Application control lets only approved programs run and blocks everything else — unknown downloads, scripts and hacking tools included.', 'Without it, any program a standard user or malware can launch will run. This is normal on home PCs; it is a hardening step, not a flaw.', fix='Optional, mainly for managed or business PCs: set up AppLocker or App Control for Business (WDAC / Microsoft Defender Application Control).'))
+    if os.environ.get('USERDNSDOMAIN'):
+        cached = str(reg_get(HKLM, r'SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon', 'CachedLogonsCount', '10'))
+        try:
+            nc = int(cached)
+        except ValueError:
+            nc = 10
+        if nc > 0:
+            out.append(F('system', 'cachedcreds', 'low', f'This PC caches up to {nc} domain sign-ins', 'So you can still log in when the company network is unreachable, Windows stores the last few domain sign-ins. The stored verifiers can be taken offline and cracked.', 'An attacker who gets administrator on this PC can pull these and crack weak domain passwords at their leisure.', cached, 'On a laptop, lower it (for example to 1–2) via Group Policy: "Interactive logon: Number of previous logons to cache".'))
     if reg_get(HKLM, r'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer', 'NoDriveTypeAutoRun', 0) != 255:
         out.append(F('system', 'autorun', 'low', 'AutoRun is not fully off', 'AutoRun can start programs when a USB drive or disc is connected.', 'An infected USB stick can run by itself.', fix='Turn it off.', action=A('set_reg', 'Turn off', 'Turn off AutoRun for all drives?', hive='HKLM', path=r'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer', name='NoDriveTypeAutoRun', value=255, kind='dword')))
     try:
@@ -928,11 +948,28 @@ def decode_encoded(cmd):
         return ''
 
 
+_DEOBF_DASH = re.compile(r'[‐-―−﹘﹣－]')
+_DEOBF_QUOTE = re.compile(r'(?<=\w)"+(?=\w)')
+
+def deobfuscate(cmd):
+    """Strip the cmd.exe disguises (carets, quotes inside a word, look-alike dashes) so the real command shows through.
+    Returns '' when nothing was disguised, so callers can tell a plain command from a hidden one."""
+    if not cmd or ('^' not in cmd and '"' not in cmd and not _DEOBF_DASH.search(cmd)):
+        return ''
+    s = _DEOBF_DASH.sub('-', cmd.replace('^', ''))
+    s = _DEOBF_QUOTE.sub('', s)
+    return s if s != cmd else ''
+
+
 def judge_process(name, path, cmd, parent, sign=None):
     """(severity, [(title, explanation)]) for one process, from what it is, where it lives and what it was told to do."""
     low, hits = name.lower(), []
     plain = decode_encoded(cmd)
-    text = (cmd or '') + ('\n' + plain if plain else '')
+    clear = deobfuscate(cmd or '')   # the command with cmd.exe disguises (^, in-word quotes, look-alike dashes) removed
+    text = (cmd or '') + ('\n' + plain if plain else '') + ('\n' + clear if clear else '')
+    # the Nesiam "My …" tools read your open browser tabs with an encoded UIAutomation command — the user's own app, not a threat
+    if plain and 'UIAutomation' in plain and re.search(r'Get-Process\s+chrome\b', plain, re.I):
+        return '', []
     for rx, sev, title, why in COMMAND_RULES:
         if rx.search(text):
             hits.append((sev, title, why))
@@ -1005,15 +1042,24 @@ def scan_malware(ctx):
         out.append(F('malware', 'defender-full', 'info', 'Full system scan', 'A full scan checks every file on the PC.', fix='It can take hours and slows the PC while it runs.', action=A('defender_scan', 'Full scan', 'Start a Microsoft Defender full scan?\n\nThis can take hours.', kind='full')))
     elif others:
         out.append(F('malware', 'other-av', 'info', f"Malware scanning is handled by {', '.join(others)}", 'Windows lets one antivirus lead. Microsoft Defender is not running here, so My Security can\'t start antivirus scans or read detections.', 'The checks below still run, but they look for warning signs and are not a replacement for an antivirus scan.', fix=f"Use {others[0]}'s own console or your IT team to see detections and run scans."))
-    active_threats = [t for t in as_list(d.get('threats')) if isinstance(t, dict)]
-    for t in active_threats:
+    all_threats = [t for t in as_list(d.get('threats')) if isinstance(t, dict)]
+    for t in all_threats:
         files = [re.sub(r'^\w+:_?', '', str(r)) for r in as_list(t.get('Resources'))][:6]
         live = bool(t.get('Active'))
-        out.append(F('malware', 'threat:' + str(t.get('Id')), 'critical' if live or int(t.get('Sev') or 0) >= 4 else 'high', f"Malware detected: {t.get('Name')}", 'Microsoft Defender identified this threat on this PC.', ('It is active right now.' if live else 'Defender has dealt with it or is waiting for you to decide.') + ' Look up the name to see what it does.', '\n'.join(files), 'Clear it with Defender.', A('defender_remove', 'Remove threats', 'Have Microsoft Defender remove all active threats?') if defender_on and admin else None, Active=live, Link='https://www.microsoft.com/en-us/wdsi/threats/malware-encyclopedia-description?Name=' + urllib.parse.quote(str(t.get('Name')))))
-    live_ids = {str(t.get('Id')) for t in active_threats}
+        name = t.get('Name')
+        if live:
+            title, sev = f"Malware detected: {name}", ('critical' if int(t.get('Sev') or 0) >= 4 else 'high')
+            risk, fix = 'It is active right now. Look up the name to see what it does.', 'Clear it with Defender.'
+            act = A('defender_remove', 'Remove threats', 'Have Microsoft Defender remove all active threats?') if defender_on and admin else None
+        else:
+            title, sev = f"Threat Defender already handled: {name}", 'info'   # already removed/quarantined, so not a current threat — shown only for your records
+            risk = 'Microsoft Defender has already removed or quarantined it, so it is not a danger now. Look up the name to see what it does.'
+            fix, act = 'Nothing to do unless it keeps coming back. If it does, run a full Defender scan.', None
+        out.append(F('malware', 'threat:' + str(t.get('Id')), sev, title, 'Microsoft Defender identified this threat on this PC.', risk, '\n'.join(files), fix, act, Active=live, Link='https://www.microsoft.com/en-us/wdsi/threats/malware-encyclopedia-description?Name=' + urllib.parse.quote(str(name))))
+    live_ids = {str(t.get('Id')) for t in all_threats}
     for det in as_list(d.get('detections'))[:15]:   # already dealt with, but worth knowing about
         if isinstance(det, dict) and str(det.get('Id')) not in live_ids and str(det.get('When', '')) >= (dt.date.today() - dt.timedelta(days=30)).isoformat():
-            out.append(F('malware', f"detected:{det.get('Id')}:{det.get('When')}", 'low', f"Defender caught something on {det.get('When')}", 'Microsoft Defender detected a threat recently and dealt with it.', 'Worth knowing where it came from.', '\n'.join(str(r) for r in as_list(det.get('Resources'))[:4]), 'Nothing to do unless it keeps coming back.'))
+            out.append(F('malware', f"detected:{det.get('Id')}:{det.get('When')}", 'info', f"Defender caught something on {det.get('When')}", 'Microsoft Defender detected a threat recently and dealt with it.', 'Worth knowing where it came from.', '\n'.join(str(r) for r in as_list(det.get('Resources'))[:4]), 'Nothing to do unless it keeps coming back.'))
     autostart = 0
     hkeys = [(HKLM, 'HKLM', r'SOFTWARE\Microsoft\Windows\CurrentVersion\Run'), (HKLM, 'HKLM', r'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run'), (HKLM, 'HKLM', r'SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'),
              (HKCU, 'HKCU', r'SOFTWARE\Microsoft\Windows\CurrentVersion\Run'), (HKCU, 'HKCU', r'SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce')]
@@ -1122,6 +1168,10 @@ def file_sha256(path):
     return h.hexdigest()
 
 
+# the Nesiam "My …" tools are the user's own apps; never flag their executables as suspicious downloads
+OWN_APPS = {'mysecurity.exe', 'myconnections.exe', 'mynetwork.exe', 'mydisks.exe', 'mycertificates.exe',
+            'myprofilemover.exe', 'myvirtualimagemaker.exe', 'mywindowscloner.exe'}
+
 def scan_downloads(ctx):
     home = os.environ.get('USERPROFILE', '')
     roots = [(os.path.join(home, 'Downloads'), 3), (os.path.join(home, 'Desktop'), 1), (os.path.join(home, 'Documents'), 1), (os.environ.get('TEMP', ''), 2), (os.environ.get('PUBLIC', ''), 2)]
@@ -1147,6 +1197,9 @@ def scan_downloads(ctx):
     out, seen_ok = [], 0
     for p in found:
         name, ext = os.path.basename(p), os.path.splitext(p)[1].lower()
+        if name.lower() in OWN_APPS:   # the app's own executable (and its PyInstaller temp copies) — not a threat
+            seen_ok += 1
+            continue
         zone, url, ref = _zone(p)
         info = signs.get(p, {})
         internet = zone in (3, 4)
