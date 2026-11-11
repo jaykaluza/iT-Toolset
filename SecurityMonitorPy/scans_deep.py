@@ -774,6 +774,8 @@ ESCALATION_PRIVS = {'SeImpersonatePrivilege': 'impersonate other accounts', 'SeD
 UNATTEND = [r'Panther\Unattend.xml', r'Panther\Unattend\Unattend.xml', r'Panther\Unattended.xml', r'System32\Sysprep\sysprep.xml', r'System32\Sysprep\Unattend.xml', r'System32\Sysprep\Panther\Unattend.xml']
 SECRET_LINE = re.compile(r'(-password\b|-credential\b.*-asplaintext|converto-securestring.*-asplaintext|\bpassword\s*=|\bpasswd\b|api[_-]?key|net\s+use\s.*/user:|authorization:\s*bearer|\btoken\s*=|cmdkey\s+/add)', re.I)
 _TEST_NAMES = ['Always-elevated installers', 'Writable service files', 'Writable SYSTEM task files', 'Weak service permissions', 'Writable system PATH folders', 'Password database permissions', 'Dangerous account privileges', 'Answer files with passwords', 'Passwords in command history', 'Saved Windows credentials', 'Print driver settings', 'What your network can reach']
+# the finding-id prefixes each test produces when it fails, so the checklist can show what needs fixing
+_CHECK_IDS = [['aie'], ['write:service:'], ['write:task:'], ['svcperm:'], ['path:'], ['hive'], ['privs'], ['unattend:'], ['pshist'], ['cmdkey'], ['printnightmare'], ['lan-view']]
 
 
 def scan_pentest(ctx):
@@ -858,8 +860,18 @@ def scan_pentest(ctx):
         add(F('pentest', 'lan-view', worst, f'An attacker on your network can reach {len(ports)} services here', 'These ports are open on your network addresses, and the firewall lets them through.', 'This is exactly what someone on your Wi-Fi would see.', '\n'.join(lines[:25]), 'Open the Ports tab, where each of these is explained and has its own Block button, and block anything you do not need.', Goto='ports'))
     else:
         ok_tests.append(_TEST_NAMES[11])
-    open_tests = [t for t in _TEST_NAMES if t not in ok_tests]
-    add(F('pentest', 'passed', 'ok', f'Inside test: {len(ok_tests)} of {len(_TEST_NAMES)} attack paths are closed', 'Each test checks whether a known route to more privileges is open. Nothing was exploited or changed. Here is everything it checked:', evidence='Closed: ' + (', '.join(ok_tests) or 'none') + (('\nNeeds attention (shown above): ' + ', '.join(open_tests)) if open_tests else '')))
+    # one status line per test: OK when closed, otherwise the heading(s) of the problem(s) it found
+    checklist = []
+    for i, name in enumerate(_TEST_NAMES):
+        if name in ok_tests:
+            checklist.append({'Name': name, 'Ok': True, 'Detail': ''})
+        else:
+            titles = []
+            for f in out:
+                if any(f['Id'].startswith('pentest:' + pre) for pre in _CHECK_IDS[i]) and f['Title'] not in titles:
+                    titles.append(f['Title'])
+            checklist.append({'Name': name, 'Ok': False, 'Detail': '; '.join(titles) or 'needs attention'})
+    add(F('pentest', 'passed', 'ok', f'Inside test: {len(ok_tests)} of {len(_TEST_NAMES)} attack paths are closed', 'Each test checks whether a known route to more privileges is open. Nothing was exploited or changed. The full list is below.', Checks=checklist))
     return out
 
 

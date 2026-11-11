@@ -60,6 +60,15 @@ h3{font-size:14px;font-weight:600;margin:16px 0 4px}h3:first-child{margin-top:0}
 .score.filtered{cursor:pointer;flex-direction:column;display:flex;justify-content:center;align-items:center;gap:4px}.score small{font-size:10px;font-weight:600;letter-spacing:.02em}
 .how{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 16px;margin-bottom:10px;font-size:13px}.how summary{cursor:pointer;font-weight:600}.how p{margin:6px 0}
 .howtest{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 14px;margin:0 0 10px;font-size:12px}.howtest summary{cursor:pointer;font-weight:600;color:var(--muted);list-style:none}.howtest summary::-webkit-details-marker{display:none}.howtest summary b{font-style:normal}.howtest p{margin:7px 0 2px;color:var(--muted);line-height:1.5}
+.checks{display:flex;flex-direction:column;gap:4px;margin:0 0 12px}
+.chk{display:flex;align-items:center;gap:9px;padding:7px 13px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.chk .mk{font-weight:800;width:15px;text-align:center;flex:none}
+.chk .nm{font-weight:600}
+.chk.ok .mk{color:#1a9d4b}
+.chk.ok .st{margin-left:auto;color:#1a9d4b;font-weight:700;font-size:12px}
+.chk.bad{border-color:#e0b33a;background:var(--panel-2)}
+.chk.bad .mk{color:#c0392b}
+.chk.bad .st{margin-left:10px;color:var(--muted);line-height:1.4}
 .card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px}
 .card.critical{border-left-color:var(--crit)}.card.high{border-left-color:var(--high)}.card.medium{border-left-color:var(--med)}.card.low{border-left-color:var(--low)}.card.ok{border-left-color:var(--good)}
 .card .top{display:flex;gap:8px;align-items:baseline}.card .top .title{flex:1;min-width:0}.card .top .acts{flex:none;display:flex;gap:5px}
@@ -91,7 +100,7 @@ const TABS = [['auto','Autopilot',[]],['ports','Ports',['ports']],['shares','Sha
 const LEAD = {shares:'Shared folders and how Windows file sharing (SMB) is set up. This is the most attacked part of Windows.',protocols:'Old network languages that attackers abuse. Most can be turned off with no effect on modern devices.',accounts:'Who can sign in and who has administrator rights.',services:'Background programs that start with Windows, and remote-control tools that can act as a back door.',system:'The main protections: antivirus, firewall, User Account Control, disk encryption, and signs that traffic is being redirected.',malware:'Signs of malware, spyware and keyloggers, and everything that starts automatically.',downloads:'Programs and scripts in Downloads, Desktop, Documents and temporary folders. Clearing moves a file to quarantine, which can be undone.',patches:'Missing Windows updates.',apps:'Apps with newer versions, and apps installed only for this user, with what makes each one risky.',firewall:'Rules that let the network in. These are the rules attackers add or abuse.',backdoors:'The places attackers hide so they survive a restart, and the settings they change to get more rights.',lateral:'How an intruder could move from this PC to your other devices, or into this PC from them. Close the doors here. While the app is open it also warns you when an account gains admin rights or a suspicious service appears.',pentest:'Can a normal account or malware on this PC get more privileges? Each test checks a known route to full control. It only looks: nothing is exploited or changed.',exposure:'What this PC and your connection expose to others. On your network: Wi-Fi security and look-alike networks, devices answering SNMP with the factory password, web servers and developer tools running here, and signs of a fake router. From the internet: what the outside can see. It only looks: nothing is exploited or changed.',events:'Errors and critical events from Event Viewer in the last 7 days, explained.',health:'What is slowing this PC down, memory leaks, disks that are filling up or failing, and browsing data and temporary files to clear.'};
 const PROBE_INFO = {pentest:'Each item runs one read-only test for a known way a standard account or malware could gain more control. The twelve checks: always-elevated installers (AlwaysInstallElevated), programs a standard user can overwrite, writable SYSTEM scheduled-task files, weak service permissions, writable folders in the system PATH, read access to the password database (SAM), dangerous account privileges, Windows answer files holding passwords, passwords in command history, saved Windows credentials, print-driver settings (PrintNightmare), and what your network can reach. It only reads settings, the registry, file and folder permissions, and the list of running programs — nothing is attacked, and nothing on this PC is changed or written to disk unless you press a fix button, which always asks first and can be undone from the Blocked tab.',exposure:'These checks only look. On your network they read your Wi-Fi settings, ask your router and this PC a single read-only SNMP question, and open one page on any web server running here. From the internet they look up what public scanners have already recorded about your address. Nothing is attacked, and nothing on this PC is changed or written to disk — unless you press a fix button, which always asks first.'};
 const SEVL = {critical:'Critical',high:'High',medium:'Medium',low:'Low',info:'Info',ok:'OK'}, RANK = {critical:4,high:3,medium:2,low:1,info:0,ok:-1};
-const S = {tab:'auto', q:'', problems:false, chips:new Set(), how:false};
+const S = {tab:'auto', q:'', problems:false, chips:new Set(), how:false, howtest:false};
 try { S.tab = localStorage.getItem('mysec-tab') || 'auto'; } catch(e) {}
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -121,11 +130,19 @@ function scanNote(keys) {
   if (s.every(x => x.status === 'never')) return `<div class="empty">Not scanned yet. Use <b>Scan this tab</b>, or run <b>Autopilot</b> to do everything.</div>`;
   return '';
 }
+function checklist(items) {
+  return '<div class="checks">' + items.map(c => c.Ok
+    ? `<div class="chk ok"><span class="mk">✓</span><span class="nm">${esc(c.Name)}</span><span class="st">OK</span></div>`
+    : `<div class="chk bad"><span class="mk">✗</span><span class="nm">${esc(c.Name)}:</span><span class="st">${esc(c.Detail || 'needs attention')}</span></div>`
+  ).join('') + '</div>';
+}
 function genericTab(tab) {
   const keys = TABS.find(x => x[0] === tab)[2], note = scanNote(keys);
-  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= 1)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
-  const info = PROBE_INFO[tab] ? `<details class="howtest"><summary>&#9432; What's tested, and is it safe?</summary><p>${esc(PROBE_INFO[tab])}</p></details>` : '';
-  return (LEAD[tab] ? `<div class="note">${esc(LEAD[tab])}</div>` : '') + info + note + (list.length ? list.map(f => card(f)).join('') : note ? '' : '<div class="empty">Nothing to show here.</div>');
+  const sum = findings(tab).find(f => Array.isArray(f.Checks));
+  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= 1) && !Array.isArray(f.Checks)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  const info = PROBE_INFO[tab] ? `<details class="howtest"${S.howtest ? ' open' : ''}><summary>&#9432; What's tested, and is it safe?</summary><p>${esc(PROBE_INFO[tab])}</p></details>` : '';
+  const checks = sum ? `<div class="note"><b>Checks performed</b> — ${sum.Checks.filter(c => c.Ok).length} of ${sum.Checks.length} are clear. A green tick is fine; anything marked needs fixing, and its full card is below.</div>` + checklist(sum.Checks) : '';
+  return (LEAD[tab] ? `<div class="note">${esc(LEAD[tab])}</div>` : '') + info + checks + note + (list.length ? list.map(f => card(f)).join('') : note ? '' : '<div class="empty">Nothing to show here.</div>');
 }
 
 // ---- Ports
@@ -344,6 +361,7 @@ $('#view').onclick = async e => {
   const go = t.closest('[data-goto]');
   if (go) { e.preventDefault(); S.tab = go.dataset.goto; try { localStorage.setItem('mysec-tab', S.tab); } catch (x) {} render(); scrollTo(0, 0); return; }
   if (t.closest('.how summary')) { S.how = !t.closest('details').open; return; }
+  if (t.closest('.howtest summary')) { S.howtest = !t.closest('details').open; return; }
   const chip = t.closest('[data-chip]');
   if (chip) { const k = chip.dataset.chip; S.chips.has(k) ? S.chips.delete(k) : S.chips.add(k); return render(); }
   if (t.closest('#score')) { if (S.chips.size) { S.chips.clear(); render(); } return; }
