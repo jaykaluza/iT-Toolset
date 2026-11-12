@@ -21,7 +21,9 @@ ConvertTo-Json -InputObject @($out) -Compress
 SET_PS = r'''
 $ErrorActionPreference = 'Stop'
 try {
-  foreach ($p in @($env:MS_J | ConvertFrom-Json)) { Set-NetFirewallProfile -Name $p.Name -LogBlocked $p.LogBlocked -LogMaxSizeKilobytes ([int]$p.Size) }
+  # assign first: in Windows PowerShell 5.1, @($x | ConvertFrom-Json) wraps a JSON list inside another list, which made [int]$p.Size fail
+  $list = $env:MS_J | ConvertFrom-Json
+  foreach ($p in @($list)) { Set-NetFirewallProfile -Name $p.Name -LogBlocked $p.LogBlocked -LogMaxSizeKilobytes ([int]$p.Size) }
   ConvertTo-Json -InputObject @{ ok = $true } -Compress
 } catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
 '''

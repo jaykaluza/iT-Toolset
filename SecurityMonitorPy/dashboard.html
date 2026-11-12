@@ -51,7 +51,7 @@ tr.s-critical td{background:var(--crit-bg)}tr.s-high td{background:var(--high-bg
 .empty{padding:30px;text-align:center;color:var(--muted)}
 h3{font-size:14px;font-weight:600;margin:16px 0 4px}h3:first-child{margin-top:0}h3 .small{font-weight:400}
 .hero{display:flex;flex-wrap:wrap;gap:16px 26px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:10px}
-.score{flex:none;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font:700 25px/1 -apple-system,"Segoe UI",system-ui;color:#fff;background:var(--low)}.score.good{background:var(--good)}.score.fair{background:var(--med)}.score.poor{background:var(--high)}.score.bad{background:var(--crit)}
+.score{flex:none;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font:700 25px/1 -apple-system,"Segoe UI",system-ui;color:var(--low);background:#fff;border:3px solid var(--low)}.score.good{color:var(--good);border-color:var(--good)}.score.fair{color:var(--med);border-color:var(--med)}.score.poor{color:var(--high);border-color:var(--high)}.score.bad{color:var(--crit);border-color:var(--crit)}
 .hero .txt{flex:1 1 320px;min-width:0}.hero .txt b.v{font-size:16px;font-weight:600;display:block;margin-bottom:2px}
 .progress{height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:var(--brand);transition:width .3s}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.chip{font-size:11px;padding:0 7px;border-radius:99px;background:var(--panel-2);color:var(--muted);white-space:nowrap}.chip.done{background:var(--good-bg);color:var(--good)}.chip.running{background:var(--brand);color:#fff}.chip.error{background:var(--crit-bg);color:var(--crit)}
@@ -59,8 +59,11 @@ h3{font-size:14px;font-weight:600;margin:16px 0 4px}h3:first-child{margin-top:0}
 .chip .cn{font-style:normal;font-weight:700;margin-left:5px}
 .score.filtered{cursor:pointer;flex-direction:column;display:flex;justify-content:center;align-items:center;gap:4px}.score small{font-size:10px;font-weight:600;letter-spacing:.02em}
 .how{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 16px;margin-bottom:10px;font-size:13px}.how summary{cursor:pointer;font-weight:600}.how p{margin:6px 0}
+.clr{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}.clr span{font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .howtest{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 14px;margin:0 0 10px;font-size:12px}.howtest summary{cursor:pointer;font-weight:600;color:var(--muted);list-style:none}.howtest summary::-webkit-details-marker{display:none}.howtest summary b{font-style:normal}.howtest p{margin:7px 0 2px;color:var(--muted);line-height:1.5}
 .checks{display:flex;flex-direction:column;gap:4px;margin:0 0 12px}
+.toolsbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px;margin:0 0 12px;font-size:13px}.toolsbox summary{cursor:pointer;font-weight:600;list-style:none}.toolsbox summary::-webkit-details-marker{display:none}
+.toolgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:3px 16px;margin-top:8px}.tl{display:flex;gap:7px;align-items:baseline;font-size:12.5px;cursor:help}.tl .mk{font-weight:800;width:13px;flex:none;text-align:center}.tl.ok .mk{color:#1a9d4b}.tl.bad{grid-column:1/-1;color:var(--crit);font-weight:600}.tl.bad .mk{color:#c0392b}
 .chk{display:flex;align-items:center;gap:9px;padding:7px 13px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:13px}
 .chk .mk{font-weight:800;width:15px;text-align:center;flex:none}
 .chk .nm{font-weight:600}
@@ -81,7 +84,9 @@ a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text
 #tip .vi{margin-top:4px}#tip .vi .pill{font-size:11px;margin-right:5px}#tip .vi i{font-style:normal;color:var(--muted)}
 #tip{position:fixed;z-index:10;width:400px;max-width:calc(100vw - 16px);background:var(--panel);color:var(--text);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;pointer-events:none;display:none}
 #tip h4{margin:0 0 6px;font-size:14px}#tip b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:7px}#tip .path{font:11.5px Consolas,monospace;word-break:break-all;color:var(--muted)}
-.chk .nm[data-help]{cursor:help;text-decoration:underline dotted;text-underline-offset:2px;text-decoration-color:var(--muted)}
+.chk .nm[data-help],.card .title[data-phelp]{cursor:help;text-decoration:underline dotted;text-underline-offset:2px;text-decoration-color:var(--muted)}
+.mono[data-phelp]{cursor:help}.mono[data-phelp]:hover{outline:1px dotted var(--muted);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px}.seg .n{font-weight:400;opacity:.75;margin-left:4px}.btn[disabled]{opacity:.45;cursor:not-allowed}
 #htip{position:fixed;z-index:13;width:420px;max-width:calc(100vw - 16px);max-height:min(60vh,360px);overflow-y:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:13px;line-height:1.45;display:none}
 #htip h4{margin:0 0 6px;font-size:14px}#htip b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:9px}#htip p{margin:2px 0 0}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:12;max-width:min(560px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:none}#toast.bad{border-left-color:var(--crit)}
@@ -92,7 +97,7 @@ a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text
 <body>
 <header><h1><a href="https://jaykaluza.github.io/iT-Toolset/" target="nesiam-landing" title="Go to the Nesiam.com landing page">my_security</a></h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every detection, fix, block and undo from the last 30 days">Activity log</button><button id="quit" title="Stop My Security and close the app">Stop</button></header>
 <div class="stats" id="stats"></div>
-<div class="bar"><div class="tabs" id="tabs"></div><input type="search" id="q" placeholder="Filter…"><label class="tog"><input type="checkbox" id="problems"> Problems only</label><button class="btn" id="rescan">Scan this tab</button></div>
+<div class="bar"><div class="tabs" id="tabs"></div><input type="search" id="q" placeholder="Filter…"><label class="tog" title="Show only Medium, High and Critical items. Low and informational items are hidden."><input type="checkbox" id="problems"> Problems only</label><button class="btn" id="rescan">Scan this tab</button></div>
 <div class="wrap" id="view"></div>
 <div id="tip"></div><div id="htip"></div><div id="toast"></div>
 <script>
@@ -117,7 +122,8 @@ const CHECK_HELP = {
   'What your network can reach': {what:'A view of which of your other devices this PC can connect to, and over which ports — the paths an intruder on this machine would use to spread.', how:'Once an attacker controls this PC, they pivot: they scan the reachable devices and attack open services (file shares, remote desktop, management ports) to move laterally across your network.', best:'Limit what each device exposes to the local network, close unused services and ports, and segment sensitive devices so a single compromised PC cannot reach everything.'}
 };
 const SEVL = {critical:'Critical',high:'High',medium:'Medium',low:'Low',info:'Info',ok:'OK'}, RANK = {critical:4,high:3,medium:2,low:1,info:0,ok:-1};
-const S = {tab:'auto', q:'', problems:false, chips:new Set(), how:false, howtest:false};
+const PROBLEM_MIN = 2;   // "Problems only" keeps Medium and above on every tab; Low and informational items are minor
+const S = {tab:'auto', q:'', problems:false, chips:new Set(), how:false, howtest:false, proc:'all', tools:false};
 try { S.tab = localStorage.getItem('mysec-tab') || 'auto'; } catch(e) {}
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -132,13 +138,23 @@ function actButton(f) {
   if (f.Done) return '<span class="pill p-done">Done</span>';
   if (!f.Action) return '';
   const danger = /block|end|remove|turn off|stop|quarantine|disable/i.test(f.Action.label);
-  return `<button class="btn ${danger ? 'danger' : ''}" data-act="${esc(f.Id)}" ${BUSY.has(f.Id) ? 'disabled' : ''}>${BUSY.has(f.Id) ? 'Working…' : esc(f.Action.label)}</button>`;
+  const busy = BUSY.has(f.Id);
+  const alt = f.Alt ? `<button class="btn ${/block|end|remove|turn off|stop|quarantine|disable/i.test(f.Alt.label) ? 'danger' : ''}" data-act="${esc(f.Id)}" data-alt="1" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : esc(f.Alt.label)}</button>` : '';
+  return `<button class="btn ${danger ? 'danger' : ''}" data-act="${esc(f.Id)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : esc(f.Action.label)}</button>${alt}`;
+}
+function acts(f) {
+  if (f.EventId) return eventButtons(f.EventId);
+  const clear = `<button class="btn" data-dismiss="${esc(f.Id)}" title="Hide this alert. You can restore it any time from the Autopilot tab.">Clear this alert</button>`;
+  // a low-risk finding can be cleared even when it has a button, for example one that only an administrator can resolve
+  if (f.Action || f.Done) return actButton(f) + (f.Sev === 'low' && !f.Done ? clear : '');
+  // a finding with nothing to fix (e.g. an Event Viewer error) can be cleared so it stops being listed
+  return RANK[f.Sev] >= 1 ? clear : '';
 }
 function card(f, extra) {
   const links = [];
   if (f.Link && safeLink(f.Link)) links.push(`<a class="link" href="${safeLink(f.Link)}" target="_blank" rel="noopener">More about this</a>`);
   if (f.Goto) { const gt = TABS.find(x => x[0] === f.Goto); links.push(`<a class="link" href="#" data-goto="${esc(f.Goto)}">Go to the ${esc(gt ? gt[1] : f.Goto)} tab →</a>`); }
-  return `<div class="card ${f.Sev}"><div class="top">${pill(f.Sev)}<span class="title">${esc(f.Title)}</span><span class="acts">${f.EventId ? eventButtons(f.EventId) : actButton(f)}</span></div>
+  return `<div class="card ${f.Sev}"><div class="top">${pill(f.Sev)}<span class="title">${esc(f.Title)}</span><span class="acts">${acts(f)}</span></div>
     <p class="why">${esc(f.What)}</p>${f.Risk ? `<p class="why"><b>How it's abused:</b> ${esc(f.Risk)}</p>` : ''}${f.Evidence ? `<div class="mono">${esc(f.Evidence)}</div>` : ''}${f.Fix ? `<p class="hint"><b>How to fix it:</b> ${esc(f.Fix)}</p>` : ''}${links.length || extra ? `<p class="hint">${extra || ''}${links.join(' · ')}</p>` : ''}</div>`;
 }
 function scanNote(keys) {
@@ -156,13 +172,22 @@ function checklist(items) {
     : `<div class="chk bad"><span class="mk">✗</span><span class="nm"${hv(c.Name)}>${esc(c.Name)}:</span><span class="st">${esc(c.Detail || 'needs attention')}</span></div>`
   ).join('') + '</div>';
 }
+// every hacking tool a scan looks for, each with a green tick when it was not found
+function toolList(items) {
+  const found = items.filter(t => !t.Ok).length;
+  return `<details class="toolsbox"${S.tools || found ? ' open' : ''}><summary>&#128269; Hacking tools looked for: ${items.length - found} of ${items.length} not found${found ? ` · <span style="color:var(--crit)">${found} found</span>` : ''}</summary><div class="toolgrid">` +
+    items.map(t => t.Ok ? `<div class="tl ok" title="${esc(t.What)}"><span class="mk">✓</span><span>${esc(t.Name)}</span></div>`
+      : `<div class="tl bad" title="${esc(t.What)}"><span class="mk">✗</span><span>${esc(t.Name)} found: ${esc(t.Detail || 'see below')}</span></div>`).join('') + '</div></details>';
+}
 function genericTab(tab) {
   const keys = TABS.find(x => x[0] === tab)[2], note = scanNote(keys);
   const sum = findings(tab).find(f => Array.isArray(f.Checks));
-  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= 1) && !Array.isArray(f.Checks)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= PROBLEM_MIN) && !Array.isArray(f.Checks)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  const hiddenN = S.problems ? findings(tab).filter(f => hit(f) && !Array.isArray(f.Checks)).length - list.length : 0;
   const info = PROBE_INFO[tab] ? `<details class="howtest"${S.howtest ? ' open' : ''}><summary>&#9432; What's tested, and is it safe?</summary><p>${esc(PROBE_INFO[tab])}</p></details>` : '';
-  const checks = sum ? `<div class="note"><b>Checks performed</b> — ${sum.Checks.filter(c => c.Ok).length} of ${sum.Checks.length} are clear. A green tick is fine; anything marked needs fixing, and its full card is below.</div>` + checklist(sum.Checks) : '';
-  return (LEAD[tab] ? `<div class="note">${esc(LEAD[tab])}</div>` : '') + info + checks + note + (list.length ? list.map(f => card(f)).join('') : note ? '' : '<div class="empty">Nothing to show here.</div>');
+  const checks = sum ? `<div class="note"><b>Checks performed</b> — ${sum.Checks.filter(c => c.Ok).length} of ${sum.Checks.length} are clear. A green tick is fine; anything marked needs fixing, and its full card is below.</div>` + checklist(sum.Checks) + (Array.isArray(sum.Tools) ? toolList(sum.Tools) : '') : '';
+  const hiddenMsg = hiddenN ? `<div class="empty">${list.length ? '' : 'No problems here. '}${hiddenN} minor or informational item${hiddenN === 1 ? ' is' : 's are'} hidden. Turn off <b>Problems only</b> to see ${hiddenN === 1 ? 'it' : 'them'}.</div>` : '';
+  return (LEAD[tab] ? `<div class="note">${esc(LEAD[tab])}</div>` : '') + info + checks + note + (list.length ? list.map(f => card(f)).join('') + hiddenMsg : note ? '' : hiddenMsg || '<div class="empty">Nothing to show here.</div>');
 }
 
 // ---- Ports
@@ -196,42 +221,195 @@ document.addEventListener('mousemove', e => {
 // ---- Scrollable help tooltip on each check name
 const htip = $('#htip');
 let htipTimer = null;
-function showHtip(el) {
-  const h = CHECK_HELP[el.dataset.help]; if (!h) return;
+// what a hoverable name explains: {title, secs: [[label, [paragraphs]]]}
+function helpFor(el) {
+  if (el.dataset.help) { const h = CHECK_HELP[el.dataset.help]; return h ? {title: el.dataset.help, secs: [['What it is', [h.what]], ["How it's exploited", [h.how]], ['Best practice', [h.best]]]} : null; }
+  if (el.dataset.phelp) return PROCTIPS[el.dataset.phelp] || null;
+  return null;
+}
+function showHtip(el, ev) {
+  const h = helpFor(el); if (!h) return;
   clearTimeout(htipTimer);
-  htip.innerHTML = `<h4>${esc(el.dataset.help)}</h4><b>What it is</b><p>${esc(h.what)}</p><b>How it's exploited</b><p>${esc(h.how)}</p><b>Best practice</b><p>${esc(h.best)}</p>`;
+  const wasOpen = htip.style.display === 'block' && htip.dataset.for === (el.dataset.help || el.dataset.phelp);
+  htip.innerHTML = `<h4>${esc(h.title)}</h4>` + h.secs.map(([label, lines]) => `<b>${esc(label)}</b>` + lines.map(x => `<p>${esc(x)}</p>`).join('')).join('');
+  htip.dataset.for = el.dataset.help || el.dataset.phelp;
+  if (wasOpen) return;   // already showing this one: moving across the text inside it must not reset its position or scrolling
   htip.scrollTop = 0; htip.style.display = 'block';
   const r = el.getBoundingClientRect(), w = htip.offsetWidth, hh = htip.offsetHeight;
-  htip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
-  htip.style.top = (r.bottom + 6 + hh > innerHeight ? Math.max(8, r.top - hh - 6) : r.bottom + 6) + 'px';
+  const tall = ev && r.height > 100;   // a tall block (a command) opens beside the pointer, not below the whole block
+  const x = tall ? ev.clientX + 14 : r.left, below = tall ? ev.clientY + 16 : r.bottom + 6, above = tall ? ev.clientY - 12 : r.top;
+  htip.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + 'px';
+  htip.style.top = (below + hh > innerHeight ? Math.max(8, above - hh - 6) : below) + 'px';
 }
-const hideHtip = () => { htipTimer = setTimeout(() => { htip.style.display = 'none'; }, 180); };
-document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-help]'); if (el) showHtip(el); });
-document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-help]'); if (el && !(e.relatedTarget && htip.contains(e.relatedTarget))) hideHtip(); });
+const hideHtip = () => { htipTimer = setTimeout(() => { htip.style.display = 'none'; htip.dataset.for = ''; }, 180); };
+document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-help],[data-phelp]'); if (el) showHtip(el, e); });
+document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-help],[data-phelp]'); if (el && !(e.relatedTarget && htip.contains(e.relatedTarget))) hideHtip(); });
 htip.addEventListener('mouseenter', () => clearTimeout(htipTimer));
 htip.addEventListener('mouseleave', hideHtip);
 
 // ---- Processes
+// Running program: End, End and block. Ended program: Block. Windows' own and shared tools (PowerShell, cmd…) can't be blocked
+// themselves, so the useful block there is the program that started them ("Block <parent>").
 function eventButtons(id) {
-  const e = D.events.find(x => x.Id === id); if (!e || !e.Running) return '<span class="small">Ended</span>';
-  return `<button class="btn danger" data-kill="${id}">End</button><button class="btn danger" data-blockp="${id}">End and block</button>`;
+  const e = D.events.find(x => x.Id === id); if (!e) return '';
+  const blocked = new Set((D.blocks.programs || []).map(p => String(p.Path).toLowerCase()));
+  const procBlocked = e.Path && blocked.has(e.Path.toLowerCase()), parentBlocked = e.ParentPath && blocked.has(e.ParentPath.toLowerCase());
+  const own = procBlocked ? '<span class="pill p-done" title="Blocked. You can unblock it in the Blocked tab.">Blocked</span>'
+    : e.BlockWhy ? `<button class="btn danger" disabled title="${esc(e.BlockWhy)}">${e.Running ? 'End and block' : 'Block'}</button>`
+    : `<button class="btn danger" data-blockp="${e.Id}" title="${e.Running ? 'End it and stop its program from starting or connecting again' : 'Stop its program from starting or connecting again'}">${e.Running ? 'End and block' : 'Block'}</button>`;
+  const par = !e.Parent || procBlocked ? '' : parentBlocked ? `<span class="pill p-done" title="Blocked. You can unblock it in the Blocked tab.">${esc(e.Parent)} blocked</span>`
+    : e.ParentBlockWhy ? '' : `<button class="btn danger" data-blockparent="${e.Id}" title="Block ${esc(e.Parent)}, the program that started this. It is ended if running.">Block ${esc(e.Parent)}</button>`;
+  return (e.Running ? `<button class="btn danger" data-kill="${e.Id}">End</button>` : '<span class="small">Ended</span>') + own + par;
+}
+
+// ---- hover explanation for each process: what it is, what it is doing, who started it, best practice
+const PROC_ABOUT = {
+  powershell: "PowerShell is Windows' built-in command and scripting tool. It can change settings, read files and the registry, and download and run code, which is why attackers use it so often.",
+  pwsh: "PowerShell is a command and scripting tool. It can change settings, read files and the registry, and download and run code.",
+  cmd: 'The Windows command prompt. It runs commands and batch files, and can start almost any other program.',
+  wscript: 'Windows Script Host. It runs .vbs and .js script files as programs, with no browser protections.',
+  cscript: 'Windows Script Host (command-line). It runs .vbs and .js script files as programs.',
+  mshta: 'Runs HTML application (.hta) files as full programs, with none of a browser\'s protections.',
+  rundll32: 'Runs a function from a DLL file. Attackers use it to run malicious code under a trusted Windows name.',
+  regsvr32: 'Registers DLL files. It is also abused to load and run code straight from the internet.',
+  certutil: 'A certificate tool that can also download files and decode hidden data.',
+  bitsadmin: "Windows' background transfer tool. It can download files quietly, even after a restart.",
+  msbuild: 'Compiles and runs .NET project files. Attackers use it to run code and slip past application allow-lists.',
+  wmic: 'Windows Management tool. It can start programs and run commands on this or other PCs.',
+  python: 'The Python interpreter. It runs whatever script it is given, so what matters is which script.'
+};
+const BROWSER_NAMES = ['chrome', 'msedge', 'firefox', 'opera', 'brave', 'vivaldi'], OFFICE_NAMES = ['winword', 'excel', 'powerpnt', 'outlook', 'onenote', 'acrobat', 'acrord32'], SCRIPT_HOSTS = ['python', 'pythonw', 'node', 'java', 'wscript', 'cscript', 'powershell', 'pwsh', 'cmd'];
+// a program in the chain is My Security if it is MySecurity.exe, or Python running MySecurity.py as its script (a shell that merely mentions the name does not count)
+const ownApp = e => (e.Chain || []).some(a => String(a.Name).toLowerCase() === 'mysecurity' || /[\\/]mysecurity\.exe\s*$/i.test(a.Path || '') ||
+  (/^(py|pythonw?)$/i.test(a.Name) && /^\S*python\S*\s+(-\S+\s+)*\S*mysecurity\.py(\s|$)/i.test(String(a.Cmd || '').replace(/^"([^"]+)"/, '$1'))));
+const launchLines = e => (e.Chain || []).map(a => `${a.Name} (PID ${a.PID})${a.Cmd ? ': ' + a.Cmd : a.Path ? ': ' + a.Path : ''}`);
+const launchBlock = e => (e.Chain || []).length ? `<p class="hint"><b>Launched by:</b> ${e.Chain.map(a => esc(a.Name)).join(' ← ')}${ownApp(e) ? ' — <b>this chain includes My Security itself</b>: its own helper, or another copy of it' : ''}</p><div class="mono">${launchLines(e).map(esc).join('\n')}</div>` : '';
+function parentNote(e) {
+  const p = String(e.Parent || '').toLowerCase();
+  if (!p) return 'Windows did not report which program started it.';
+  if (ownApp(e)) return `${e.Parent} started it, and the chain above it includes My Security. This is most likely My Security's own helper checking files or Windows settings (or a second copy of My Security running). Look at the launch chain on the card to be sure.`;
+  if (OFFICE_NAMES.includes(p)) return `${e.Parent} started it. Documents and mail programs should not start command tools. This is how malicious macros and attachments take over a PC.`;
+  if (BROWSER_NAMES.includes(p)) return `Your browser (${e.Parent}) started it. A web page should not be able to start a command tool. It can be a drive-by infection, or an extension doing it on purpose.`;
+  if (p === 'explorer') return 'File Explorer started it, which usually means someone double-clicked a file or shortcut.';
+  if (SCRIPT_HOSTS.includes(p)) return `${e.Parent} started it, so a script or program ran it. Find out which script: it may be one of your own tools, or the real culprit.`;
+  return `${e.Parent} started it. If you do not know that program, it is the one to look into.`;
+}
+function bestPractice(e) {
+  const t = e.Reasons.map(r => r.Title).join(' | ').toLowerCase(), out = [];
+  if (/encoded|hidden \(/.test(t)) out.push('Read the decoded text on the card to see what it really does. Admin tools and installers sometimes encode commands, so unknown source plus hidden command means end it and block what started it.');
+  if (/disguised|hidden-path|look-alike|stacked/.test(t)) out.push('Normal programs never disguise their own commands. Treat it as hostile: end it, block the program that started it, then run a full Microsoft Defender scan from the Malware tab.');
+  if (/started (powershell|cmd|wscript|cscript|mshta)|office|your browser/.test(t)) out.push('Close the document or web page that triggered it, never enable macros you did not expect, and keep Office and your browser updated.');
+  if (/remote-control|remote desktop|remote assistance/.test(t)) out.push('Only keep remote-control tools you installed yourself. Scammers ask you to install them. If you did not, uninstall it and change your passwords.');
+  if (/password|lsass|credential|mimikatz|spy|attack tool|password store/.test(t)) out.push('End it at once. Change your important passwords from a different device, then run a full Defender scan.');
+  if (/backup|ransomware|event logs|turn off security|turning off/.test(t)) out.push('End it at once, disconnect from the network, and do not restart the PC until you know what ran. In the System tab, turn protection back on.');
+  if (/temporary or public folder|unsigned/.test(t)) out.push('Programs run from Temp, Downloads or Public are a common malware pattern. If it is not an installer you just ran, quarantine the file (Downloads tab) and check its fingerprint on VirusTotal.');
+  if (/download|bits|certutil|internet/.test(t)) out.push('Fetching programs through built-in Windows tools is a way to avoid antivirus. If you did not do it, end it and look at what it downloaded.');
+  out.push('Only end or block what you do not recognise. Ending a program can lose its unsaved work. Block works on a program file; Windows tools like PowerShell cannot be blocked, so block the program that started them. Everything blocked is listed in the Blocked tab, where you can undo it.');
+  return out;
+}
+let PROCTIPS = {};
+function procHelp(e) {
+  const about = PROC_ABOUT[String(e.Name).toLowerCase()] || `${e.Name} is a program that ${e.Path ? 'runs from ' + e.Path : 'Windows did not show the location of'}.`;
+  return {title: `${e.Name} (PID ${e.PID})`, secs: [
+    ['What it is', [about]],
+    ['What it is doing', e.Reasons.map(r => `${r.Title}. ${r.Why}`).concat(e.Decoded ? ['Its command was hidden. The decoded text is shown on the card.'] : [])],
+    ['Who started it', [parentNote(e)].concat((e.Chain || []).length ? ['Launch chain, nearest first:'].concat(launchLines(e)) : [])],
+    ['Best practice', bestPractice(e)]
+  ]};
+}
+// ---- what a command is trying to do, worked out from the command text: [pattern, kind, plain-words description]
+// kinds: read = only looks, change = alters the PC, warn = a warning sign, info = harmless plumbing
+const WELL_KNOWN_SIDS = {'S-1-5-32-544': 'Administrators', 'S-1-5-32-545': 'Users', 'S-1-5-32-547': 'Power Users', 'S-1-5-32-551': 'Backup Operators', 'S-1-5-32-555': 'Remote Desktop Users', 'S-1-5-32-562': 'Distributed COM Users', 'S-1-5-32-578': 'Hyper-V Administrators', 'S-1-5-32-580': 'Remote Management Users', 'S-1-1-0': 'Everyone', 'S-1-5-18': 'SYSTEM'};
+const STEPS = [
+  [/Invoke-WebRequest|\biwr\b|Invoke-RestMethod|\birm\b|DownloadString|DownloadFile|Net\.WebClient|Start-BitsTransfer|bitsadmin|\bcurl\b|\bwget\b|urlcache/i, 'warn', 'Downloads something from the internet, or sends data to it.'],
+  [/Invoke-Expression|\biex\b/i, 'warn', 'Runs text as code, so what really happens is decided while it runs.'],
+  [/FromBase64String/i, 'warn', 'Decodes hidden (base64) data, often in order to run it.'],
+  [/Add-Type\s+-TypeDefinition|DllImport|VirtualAlloc|WriteProcessMemory|CreateRemoteThread/i, 'warn', 'Loads or builds low-level code, which can reach into other programs.'],
+  [/-WindowStyle\s+Hidden|-w\s+hidden/i, 'warn', 'Hides its own window.'],
+  [/Get-Clipboard|Clipboard\]::GetText/i, 'warn', 'Reads whatever you last copied (the clipboard).'],
+  [/Register-ScheduledTask|schtasks(\.exe)?\s+\/create|New-ScheduledTask/i, 'warn', 'Creates a scheduled task, a common way to keep something running after restarts.'],
+  [/Add-LocalGroupMember|net1?\s+localgroup\s+\S+\s+\S+\s+\/add|New-LocalUser|net1?\s+user\s+\S+\s+\S+\s+\/add/i, 'warn', 'Adds an account, or gives an account more rights.'],
+  [/Set-MpPreference|Add-MpPreference|Remove-MpPreference/i, 'change', 'CHANGES Microsoft Defender settings.'],
+  [/Set-NetFirewallProfile|New-NetFirewallRule|Remove-NetFirewallRule|Enable-NetFirewallRule|Disable-NetFirewallRule|netsh\s+advfirewall/i, 'change', 'CHANGES Windows Firewall rules or settings.'],
+  [/Set-ItemProperty|New-ItemProperty|Remove-ItemProperty|New-Item\s+['"]?HK|reg(\.exe)?\s+(add|delete)/i, 'change', 'CHANGES the registry.'],
+  [/Set-Service|Stop-Service|Start-Service|\bsc(\.exe)?\s+(config|stop|start|delete|create)/i, 'change', 'Starts, stops or changes Windows services.'],
+  [/Stop-Process|taskkill|\.Kill\(\)/i, 'change', 'Ends running programs.'],
+  [/Remove-Item|\bdel\s|\berase\s|\brmdir\b|\[IO\.File\]::Delete/i, 'change', 'DELETES files or folders.'],
+  [/Set-Content|Out-File|Add-Content|WriteAllText/i, 'change', 'Writes files to disk.'],
+  [/Copy-Item|Move-Item|Rename-Item|\bcopy\s|\bmove\s/i, 'change', 'Copies, moves or renames files.'],
+  [/icacls|Set-Acl|takeown/i, 'change', 'Changes who may open or change files.'],
+  [/Checkpoint-Computer|Enable-ComputerRestore/i, 'change', 'Creates a System Restore point.'],
+  [/Start-Process|Invoke-Item|Invoke-Command|\[Diagnostics\.Process\]::Start/i, 'change', 'Starts another program.'],
+  [/Get-LocalGroupMember|net1?\s+localgroup/i, 'read', 'Lists who belongs to a group, for example who is an administrator.'],
+  [/Get-LocalGroup\b/i, 'read', 'Looks up a local group of accounts.'],
+  [/Get-LocalUser|net1?\s+user\b|Win32_UserAccount/i, 'read', 'Lists the user accounts on this PC.'],
+  [/WindowsIdentity\]::GetCurrent|whoami/i, 'read', 'Finds out which account is running it.'],
+  [/Get-Process\b|tasklist|Win32_Process/i, 'read', 'Lists the programs that are running.'],
+  [/Get-Service\b|Win32_Service|\bsc(\.exe)?\s+query/i, 'read', 'Lists Windows services.'],
+  [/Get-ScheduledTask\b|schtasks\s+\/query/i, 'read', 'Lists scheduled tasks.'],
+  [/Get-NetTCPConnection|Get-NetUDPEndpoint|netstat/i, 'read', 'Lists network connections and open ports.'],
+  [/Get-NetFirewall(Rule|Profile|PortFilter|ApplicationFilter|AddressFilter)\b/i, 'read', 'Reads Windows Firewall rules and settings.'],
+  [/Get-NetNeighbor|Get-NetRoute|Get-NetIPAddress|Get-DnsClientServerAddress|Get-NetConnectionProfile|\barp\s+-a|ipconfig/i, 'read', 'Reads network settings: addresses, routes and nearby devices.'],
+  [/Get-AuthenticodeSignature/i, 'read', 'Checks the digital signature of files: who made them, and whether they have been tampered with.'],
+  [/GetVersionInfo|VersionInfo/i, 'read', 'Reads the version and publisher details of files.'],
+  [/Get-Mp(ComputerStatus|Preference|Threat|ThreatDetection)/i, 'read', 'Reads Microsoft Defender status and settings.'],
+  [/Get-BitLockerVolume|Get-Tpm|Confirm-SecureBootUEFI|Win32_DeviceGuard/i, 'read', 'Reads disk-encryption, TPM and boot-protection status.'],
+  [/Get-ItemProperty|Get-ChildItem\s+['"]?(HK|Cert:)|reg(\.exe)?\s+query|Get-Item\s+['"]?HK/i, 'read', 'Reads settings from the registry or the certificate store.'],
+  [/Get-WinEvent|Get-EventLog|wevtutil\s+qe/i, 'read', 'Reads the Windows event logs.'],
+  [/Get-CimInstance|Get-WmiObject|wmic\s+\S+\s+get/i, 'read', 'Asks Windows (WMI) for system information.'],
+  [/UIAutomationClient|UIAutomationTypes/i, 'read', 'Reads the titles and text of windows on screen, such as browser tab names.'],
+  [/Get-Content|\btype\s/i, 'read', 'Reads the contents of files.'],
+  [/Get-ChildItem|\bdir\s|Test-Path|Get-Acl|Get-Item\b/i, 'read', 'Looks at files and folders: names and permissions.'],
+  [/Start-Sleep|\btimeout\s/i, 'info', 'Waits for a while.'],
+  [/ConvertFrom-Json|\$env:MS_/i, 'info', 'Receives its input from the program that started it.'],
+  [/ConvertTo-Json|ConvertTo-Csv|Out-String|Write-Output/i, 'info', 'Hands its result back as data to the program that started it.']
+];
+function explainCommand(e) {
+  const text = String(e.Decoded || e.Cmd || ''), hits = [];
+  for (const [rx, kind, desc] of STEPS) { const m = rx.exec(text); if (m) hits.push({i: m.index, kind, desc}); }
+  hits.sort((a, b) => a.i - b.i);
+  const warn = hits.filter(h => h.kind === 'warn'), change = hits.filter(h => h.kind === 'change'), read = hits.filter(h => h.kind === 'read');
+  const sids = [...new Set(text.match(/S-1-\d+(?:-\d+)+/g) || [])].filter(s => WELL_KNOWN_SIDS[s]).map(s => `${s} means "${WELL_KNOWN_SIDS[s]}".`);
+  const own = /\$env:MS_[A-Z]+/.test(text) || ownApp(e);
+  const summary = warn.length ? [`Warning signs: ${warn.map(h => h.desc.replace(/\.$/, '').toLowerCase()).join('; ')}.`].concat(change.length ? ['It also changes things on the PC.'] : [])
+    : change.length ? [`It changes things on this PC: ${change.map(h => h.desc.replace(/\.$/, '').replace(/^CHANGES /, 'changes ').replace(/^DELETES /, 'deletes ')).join('; ')}.`]
+    : read.length ? ['It only looks at information and passes it back. It does not change anything on the PC.']
+    : ['My Security does not recognise the steps in this command, so it cannot say what it is for. Read the text itself, and treat an unknown, hidden command as suspect.'];
+  const steps = hits.filter(h => h.kind !== 'info' || hits.length === 1).map(h => `${h.kind === 'warn' ? '⚠ ' : h.kind === 'change' ? '✎ ' : '• '}${h.desc}`).concat(sids);
+  const info = hits.filter(h => h.kind === 'info').map(h => h.desc);
+  const secs = [
+    ['In short', summary.concat(own ? ["It looks like one of My Security's own helper scripts: it takes its input from variables that My Security sets. Check the launch chain on the card to be sure."] : [])],
+    ['Step by step', steps.length ? steps : ['No recognised steps.']]
+  ];
+  if (info.length) secs.push(['Plumbing', info]);
+  secs.push(['Who ran it', [parentNote(e)]]);
+  secs.push(['Best practice', ['Judge a command by two things: who started it, and whether it only reads or also changes, downloads or runs things. A command that only reads, started by a program you know, is normally fine. A hidden command that changes, downloads or runs code, started by something you do not recognise, is not: end it and block what started it.']]);
+  return {title: 'What this command is trying to do', secs};
 }
 function processesTab() {
-  const list = D.events.filter(e => hit(e) && (!S.problems || (e.Running && RANK[e.Sev] >= 2)));
-  const intro = `<div class="note">My Security looks at every program the moment it starts, for as long as this app is open: what it is, where it lives, who started it and what it was told to do. <b>${D.watching ? 'Watching now.' : 'Starting…'}</b> A very short-lived program can finish before it is seen.</div>`;
-  if (!list.length) return intro + '<div class="empty">No risky programs have been seen.</div>';
-  return intro + list.map(e => `<div class="card ${e.Sev}"><div class="top">${pill(e.Sev)}<span class="title">${esc(e.Name)} <span class="small">PID ${e.PID}${e.Parent ? ' · started by ' + esc(e.Parent) : ''} · ${e.Existing ? 'already running' : time(e.When)}${e.Running ? '' : ' · ended'}</span></span><span class="acts">${eventButtons(e.Id)}</span></div>
-    ${e.Reasons.map(r => `<p class="why"><b>${esc(r.Title)}.</b> ${esc(r.Why)}</p>`).join('')}${e.Publisher ? `<p class="hint">Signed by ${esc(e.Publisher)}</p>` : ''}<div class="mono">${esc(e.Cmd || e.Path)}</div>${e.Decoded ? `<p class="hint"><b>Decoded command:</b></p><div class="mono">${esc(e.Decoded)}</div>` : ''}</div>`).join('');
+  const base = D.events.filter(e => hit(e) && (!S.problems || RANK[e.Sev] >= 2));
+  const nRun = base.filter(e => e.Running).length, nEnd = base.length - nRun;
+  const list = base.filter(e => S.proc === 'running' ? e.Running : S.proc === 'ended' ? !e.Running : true);
+  const intro = `<div class="note">My Security looks at every program the moment it starts, for as long as this app is open: what it is, where it lives, who started it and what it was told to do. <b>${D.watching ? 'Watching now.' : 'Starting…'}</b> A very short-lived program can finish before it is seen. <b>Hover over a program's name</b> to see what it is trying to do and the best way to handle it.</div>`;
+  const seg = `<div class="seg">${[['all', 'All', base.length], ['running', 'Running now', nRun], ['ended', 'Recently ended', nEnd]].map(([k, l, n]) => `<button class="btn${S.proc === k ? ' solid' : ''}" data-proc="${k}">${l}<span class="n">${n}</span></button>`).join('')}</div>`;
+  PROCTIPS = {};
+  if (!D.events.length) return intro + '<div class="empty">No risky programs have been seen.</div>';
+  if (!list.length) return intro + seg + `<div class="empty">${S.proc === 'running' ? 'No risky programs are running right now.' : S.proc === 'ended' ? 'No risky programs have ended since My Security started.' : 'Nothing matches.'}</div>`;
+  return intro + seg + list.map(e => { PROCTIPS[e.Id] = procHelp(e); PROCTIPS['cmd:' + e.Id] = explainCommand(e); return `<div class="card ${e.Sev}"><div class="top">${pill(e.Sev)}<span class="title" data-phelp="${e.Id}">${esc(e.Name)} <span class="small">PID ${e.PID}${e.Parent ? ' · started by ' + esc(e.Parent) : ''} · ${e.Existing ? 'already running' : time(e.When)}${e.Running ? '' : ' · ended'}</span></span><span class="acts">${eventButtons(e.Id)}</span></div>
+    ${e.Reasons.map(r => `<p class="why"><b>${esc(r.Title)}.</b> ${esc(r.Why)}</p>`).join('')}${launchBlock(e)}${e.Publisher ? `<p class="hint">Signed by ${esc(e.Publisher)}</p>` : ''}<div class="mono" data-phelp="cmd:${e.Id}">${esc(e.Cmd || e.Path)}</div>${e.Decoded ? `<p class="hint"><b>Decoded command:</b> <span class="small">hover over it to see what it is trying to do</span></p><div class="mono" data-phelp="cmd:${e.Id}">${esc(e.Decoded)}</div>` : ''}</div>`; }).join('');
 }
 
 // ---- Threats
 const THREAT_STATE = {exposed:['Looks unpatched','p-critical'],check:['On this PC: check version','p-medium'],patched:['On this PC: looks patched','p-ok'],none:['Not on this PC','p-low']};
 function threatsTab() {
   const note = scanNote(['threats','attacks']), all = findings('threats'), sum = all.find(f => f.Latest);
-  const list = all.filter(f => !f.Latest && hit(f) && (!S.problems || RANK[f.Sev] >= 1)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
-  const latest = sum ? sum.Latest.filter(v => hit(v)) : [];
+  const list = all.filter(f => !f.Latest && hit(f) && (!S.problems || RANK[f.Sev] >= PROBLEM_MIN)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  // with "Problems only" on, keep only the published threats that affect software on this PC (looks unpatched, or version needs checking)
+  const latest = sum ? sum.Latest.filter(v => hit(v) && (!S.problems || v.State === 'exposed' || v.State === 'check')) : [];
+  const none = sum && S.problems && !latest.length && !S.q.trim();
   return `<div class="note">Attacks recorded in this PC's own logs, and CISA's list of vulnerabilities being exploited in the wild right now, checked against the software on this PC.</div>` + note + list.map(f => card(f)).join('') +
-    (sum ? `<h3>Latest published threats <span class="small">${esc(sum.What)}</span></h3><table><colgroup><col style="width:88px"><col style="width:176px"><col><col style="width:160px"></colgroup><thead><tr><th>Added</th><th>Status here</th><th>Threat</th><th>ID</th></tr></thead><tbody>` +
+    (none ? `<div class="empty">None of the latest published threats affect software on this PC. Turn off <b>Problems only</b> to see the whole list.</div>` : '') +
+    (sum && !none ? `<h3>Latest published threats <span class="small">${esc(sum.What)}</span></h3><table><colgroup><col style="width:88px"><col style="width:176px"><col><col style="width:160px"></colgroup><thead><tr><th>Added</th><th>Status here</th><th>Threat</th><th>ID</th></tr></thead><tbody>` +
       latest.map(v => { const st = THREAT_STATE[v.State]; return `<tr><td>${esc(v.Added)}</td><td><span class="pill ${st[1]}">${st[0]}</span>${v.Match ? `<div class="small">${esc(v.Match)}</div>` : ''}</td><td><span class="title">${esc(v.Name)}</span>${v.Ransomware ? ' <span class="pill p-critical">Ransomware</span>' : ''}<div class="small">${esc(v.Desc)}</div></td><td><a class="link" href="https://nvd.nist.gov/vuln/detail/${encodeURIComponent(v.Cve)}" target="_blank" rel="noopener">${esc(v.Cve)}</a></td></tr>`; }).join('') + '</tbody></table>' : '');
 }
 
@@ -242,14 +420,21 @@ function browsersTab() {
   const rows = tabs.map(t => { const f = tf[t.FindingId];
     return `<tr class="${RANK[t.Sev] >= 2 ? 's-' + t.Sev : ''}"><td>${t.Sev ? pill(t.Sev) : '<span class="pill p-ok">OK</span>'}</td><td><span class="title">${esc(t.Title)}</span><div class="small">${t.Url ? esc(t.Url.slice(0, 180)) : 'Address not in the browser history yet'}</div>${t.Hits.map(h => `<div style="margin-top:3px"><b>${esc(h.Title)}.</b> ${esc(h.Why)}</div>`).join('')}</td><td>${esc(t.Browser)}</td><td>${t.Blocked ? '<span class="pill p-done">Blocked</span>' : f ? actButton(f) : ''}</td></tr>`; });
   const exts = genericTabList('browsers');
+  const bt = D.browserTest, btBad = bt ? bt.Rows.filter(r => r.Ok === false).length : 0, btNa = bt ? bt.Rows.filter(r => r.Ok === null).length : 0;
+  const btBox = `<h3>Browser security self-test <span class="small">${bt ? `${esc(bt.Browser)}, ${time(bt.At)}: ${bt.Rows.length - btBad - btNa} of ${bt.Rows.length} passed${btBad ? `, ${btBad} failed` : ''}${btNa ? `, ${btNa} could not be tested` : ''}` : 'not run yet'}</span></h3>
+  <div class="note">Checks that this browser enforces the web's standard protections: one site cannot read another, cookie safeguards, Content Security Policy, framing and header rules. It is modelled on BrowserAudit and only talks to My Security on this PC. It tests the browser you run it in, so open the dashboard in another browser to test that one.<br>
+  <a class="btn" style="display:inline-block;text-decoration:none;margin-top:6px" href="/browser-test${esc(location.search)}" target="_blank" rel="noopener">${bt ? 'Run the test again' : 'Run the test in this browser'}</a> &nbsp; <a class="link" href="https://browseraudit.com/test" target="_blank" rel="noopener">Open the full BrowserAudit suite (website, about 400 checks) →</a></div>` +
+    (bt ? '<div class="checks">' + bt.Rows.map(r => r.Ok === true ? `<div class="chk ok"><span class="mk">✓</span><span class="nm">${esc(r.Name)}</span><span class="small">${esc(r.Group)}</span><span class="st">OK</span></div>`
+      : r.Ok === false ? `<div class="chk bad"><span class="mk">✗</span><span class="nm">${esc(r.Name)}:</span><span class="st">${esc(r.Detail || 'failed')}</span></div>`
+      : `<div class="chk"><span class="mk">–</span><span class="nm">${esc(r.Name)}</span><span class="small" style="margin-left:auto">${esc(r.Detail || 'Could not be tested')}</span></div>`).join('') + '</div>' : '');
   return `<div class="form"><label class="tog"><input type="checkbox" id="guard" ${D.guard ? 'checked' : ''}> Live browser guard</label><span class="small">${D.tabAt ? 'Checked ' + time(D.tabAt) + ', every 12 seconds' : 'Checking…'}</span></div>
   <div class="note">Checks every open tab for fake sign-in pages (Microsoft 365 and others), lookalike names, missing or bad certificates, tokens in addresses, fake updates and "paste this command" tricks. Critical tabs raise a warning on your screen. Each new site that isn't a major one gets its certificate checked and its page text read once, without your cookies. <b>Limit:</b> without a browser extension, My Security can't see scripts as they run inside a page. Browsers starting command tools are caught in the Processes tab.</div>` +
     (rows.length ? `<table><colgroup><col style="width:82px"><col><col style="width:80px"><col style="width:100px"></colgroup><thead><tr><th>Risk</th><th>Open tab</th><th>Browser</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>` : `<div class="empty">${D.guard ? 'No open browser tabs were found.' : 'Browser guard is off.'}</div>`) +
-    (D.alerts.length ? '<h3>Warnings shown this session</h3>' + D.alerts.map(a => `<div class="small">${time(a.When)} · <b>${esc(a.Site)}</b>: ${esc(a.Title)}</div>`).join('') : '') + '<h3>Extensions</h3>' + exts;
+    (D.alerts.length ? '<h3>Warnings shown this session</h3>' + D.alerts.map(a => `<div class="small">${time(a.When)} · <b>${esc(a.Site)}</b>: ${esc(a.Title)}</div>`).join('') : '') + btBox + '<h3>Extensions</h3>' + exts;
 }
 function genericTabList(tab) {
   const note = scanNote(TABS.find(x => x[0] === tab)[2]);
-  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= 1)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
+  const list = findings(tab).filter(f => hit(f) && (!S.problems || RANK[f.Sev] >= PROBLEM_MIN)).sort((a, b) => RANK[b.Sev] - RANK[a.Sev]);
   return note + list.map(f => card(f)).join('');
 }
 
@@ -352,8 +537,9 @@ function autoTab() {
   const adm = D.admin ? '' : '<div class="note"><b>My Security is not running as Administrator,</b> so some checks and all system fixes are unavailable. MySecurity.exe asks for it by itself.</div>';
   const picked = [...S.chips].filter(k => D.scans[k]), empty = picked.filter(k => !per[k]);
   const pick = picked.length ? `<div class="note">Showing only <b>${picked.map(k => esc(D.scans[k].label)).join('</b>, <b>')}</b> (${((n) => n + (n === 1 ? ' item' : ' items'))(picked.reduce((n, k) => n + (per[k] || 0), 0))}).${empty.length ? ` Nothing to fix from ${empty.map(k => esc(D.scans[k].label)).join(', ')}: minor items and what passed are in each tab.` : ''} Click more checks to add them, click a picked one to remove it, or click the score circle to show everything again.</div>` : '';
+  const cleared = (D.dismissed && D.dismissed.length) ? `<details class="how"><summary>Cleared alerts (${D.dismissed.length})</summary><p class="small">Alerts you chose to hide. They stay out of the score and the lists until you restore them.</p>${D.dismissed.map(a => `<div class="clr"><span>${esc(a.Title)}</span><button class="btn" data-restore="${esc(a.Id)}">Restore</button></div>`).join('')}</details>` : '';
   return hero + how + adm + pick + bucket('Fix now', 'an attacker could use these today', p.filter(x => x.Bucket === 'now')) + bucket('This week', 'important, not an emergency', p.filter(x => x.Bucket === 'week')) + bucket('When you have time', 'worth doing', p.filter(x => x.Bucket === 'later')) +
-    (D.ran ? `<p class="small">${D.counts.low} minor items and everything that passed are in each tab. The score is a rough guide: it can't prove that a PC is clean.</p>` : '');
+    (D.ran ? `<p class="small">${D.counts.low} minor items and everything that passed are in each tab. The score is a rough guide: it can't prove that a PC is clean.</p>` : '') + cleared;
 }
 
 function render() {
@@ -403,15 +589,21 @@ $('#view').onclick = async e => {
   if (go) { e.preventDefault(); S.tab = go.dataset.goto; try { localStorage.setItem('mysec-tab', S.tab); } catch (x) {} render(); scrollTo(0, 0); return; }
   if (t.closest('.how summary')) { S.how = !t.closest('details').open; return; }
   if (t.closest('.howtest summary')) { S.howtest = !t.closest('details').open; return; }
+  if (t.closest('.toolsbox summary')) { S.tools = !t.closest('details').open; return; }
   const chip = t.closest('[data-chip]');
   if (chip) { const k = chip.dataset.chip; S.chips.has(k) ? S.chips.delete(k) : S.chips.add(k); return render(); }
   if (t.closest('#score')) { if (S.chips.size) { S.chips.clear(); render(); } return; }
   if (t.id === 'autopilot') { toast(await post('/autopilot')); return poll(true); }
   if (t.id === 'bbtn') { const port = +$('#bport').value, proto = $('#bproto').value; if (!(port >= 1 && port <= 65535)) return toast({ok: false, message: 'Type a port number from 1 to 65535.'}); if (!confirm(`Block incoming ${proto} port ${port}?\n\nOther devices will not be able to connect to it.`)) return; return toast(await post('/block-port', {port, proto})); }
-  if (t.dataset.act) { const f = lookup(t.dataset.act); if (!f || !f.Action || !confirm(f.Action.confirm)) return; BUSY.add(f.Id); render(); const r = await post('/action', {id: f.Id}); BUSY.delete(f.Id); toast(r); return poll(true); }
+  if (t.dataset.act) { const f = lookup(t.dataset.act), alt = !!t.dataset.alt, a = f && (alt ? f.Alt : f.Action); if (!a || !confirm(a.confirm)) return; BUSY.add(f.Id); render(); const r = await post('/action', {id: f.Id, alt}); BUSY.delete(f.Id); toast(r); return poll(true); }
   if (t.dataset.kill) { const ev = D.events.find(x => x.Id === +t.dataset.kill); if (!confirm(`End ${ev.Name} (PID ${ev.PID})?\n\nUnsaved work in it will be lost.`)) return; toast(await post('/kill', {id: ev.Id})); return poll(true); }
-  if (t.dataset.blockp) { const ev = D.events.find(x => x.Id === +t.dataset.blockp); if (!confirm(`End and block ${ev.Name}?\n\n${ev.Path}\n\nIt will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id})); return poll(true); }
+  const pf = t.closest('[data-proc]');
+  if (pf) { S.proc = pf.dataset.proc; return render(); }
+  if (t.dataset.blockp) { const ev = D.events.find(x => x.Id === +t.dataset.blockp); if (!confirm(`${ev.Running ? 'End and block' : 'Block'} ${ev.Name}?\n\n${ev.Path}\n\nIt will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id})); return poll(true); }
+  if (t.dataset.blockparent) { const ev = D.events.find(x => x.Id === +t.dataset.blockparent); if (!confirm(`Block ${ev.Parent}?\n\n${ev.ParentPath}\n\nThis is the program that started ${ev.Name}. It is ended if it is running, and it will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id, parent: true})); return poll(true); }
   if (t.dataset.unblock) { const k = t.dataset.unblock; if (!confirm(k === 'delete' ? 'Permanently delete this file?\n\nThis cannot be undone.' : k === 'restore' ? 'Put this file back where it was?' : 'Remove this block?')) return; toast(await post('/unblock', {kind: k, key: t.dataset.key})); return poll(true); }
+  if (t.dataset.dismiss) { toast(await post('/dismiss', {id: t.dataset.dismiss})); return poll(true); }
+  if (t.dataset.restore) { toast(await post('/restore-alert', {id: t.dataset.restore})); return poll(true); }
   if (t.dataset.rec) { const on = t.dataset.rec === '1'; if (!confirm(on ? 'Start recording blocked attempts?\n\nWindows Firewall will write down every connection it refuses (up to 16 MB). You can stop it here anytime.' : 'Stop recording blocked attempts?\n\nWindows Firewall goes back to how it was before.')) return; t.disabled = true; toast(await post('/recording', {on})); return poll(true); }
   if (t.dataset.undo) { if (!confirm('Undo this change?')) return; toast(await post('/undo', {id: t.dataset.undo})); return poll(true); }
 };

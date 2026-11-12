@@ -46,10 +46,11 @@ import cleanup   # adds the clean-up check and its two fixes
 import hacktools   # adds hacking tools, Sticky Keys and more backdoors to the Hacker tricks check
 import exposure   # adds the Exposure scan: Wi-Fi, SNMP, local web services, developer ports, the network itself
 import creds   # adds the saved cloud/tool credentials scan
+import browsertest as B   # the browser security self-test (modelled on BrowserAudit)
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.10'
+APP_VERSION = '0.1.11'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -57,6 +58,7 @@ APP_DIR = S.APP_DIR
 WINDIR = S.WINDIR
 user32 = S.system_dll('user32')
 SEV_RANK = S.SEV_RANK
+NO_SCORE_CATS = {'events'}   # Event Viewer reliability errors (crashes, unclean shutdowns) are shown but don't count toward the security score
 BROWSERS = S.BROWSERS
 MB_YESNO, MB_ICONWARNING, MB_SYSTEMMODAL, IDYES = 0x4, 0x30, 0x1000, 6
 
@@ -81,8 +83,12 @@ class App:
         self.url = ''                    # the dashboard's address, to reopen it after a fix closed the browsers
         self.notice = None               # the result of a fix whose dashboard tab was closed while it ran
         self.restore_point = None         # 'ok' / 'failed' once a System Restore point has been tried this session
+        self.browser_test = None          # the last browser self-test: {'At', 'Browser', 'Rows'}
+        self.bt_hits = {}                 # what the test pages saw during a self-test run, by run id
         self.activity_log = os.path.join(APP_DIR, 'activity-log.txt')
+        self.dismissed_file = os.path.join(APP_DIR, 'dismissed.json')
         os.makedirs(APP_DIR, exist_ok=True)
+        self.dismissed = self._load_dismissed()   # alerts the user chose to clear; hidden from the score and lists until restored
         self.prune_log()
         # live watch of new processes
         self.events, self.seen_pids = [], {}
@@ -105,6 +111,42 @@ class App:
     def bump(self):
         with self.lock:
             self.rev += 1
+
+    # ---- cleared alerts: findings the user chose to hide, kept in a small file so they stay hidden across restarts
+    def _load_dismissed(self):
+        try:
+            with open(self.dismissed_file, encoding='utf-8') as f:
+                d = json.load(f)
+            return d if isinstance(d, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _save_dismissed(self):
+        try:
+            with open(self.dismissed_file, 'w', encoding='utf-8') as f:
+                json.dump(self.dismissed, f)
+        except OSError:
+            pass
+
+    def do_dismiss(self, fid):
+        f = self.find_finding(fid)
+        title = (f['Title'] if f else fid)
+        with self.lock:
+            self.dismissed[fid] = {'Title': str(title)[:200], 'When': dt.datetime.now().astimezone().isoformat()}
+            self.rev += 1
+        self._save_dismissed()
+        self.log('CLEARED', f'Alert cleared: {title}')
+        return {'ok': True, 'message': 'Alert cleared. It will not be listed again unless you restore it from Autopilot.'}
+
+    def do_restore_alert(self, fid):
+        with self.lock:
+            gone = self.dismissed.pop(fid, None)
+            if gone:
+                self.rev += 1
+        if gone:
+            self._save_dismissed()
+            self.log('RESTORED', f'Alert restored: {gone.get("Title", fid)}')
+        return {'ok': True, 'message': 'Alert restored.' if gone else 'That alert was not on the cleared list.'}
 
     def log(self, action, what):
         line = f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {action:<9}  {what}\n"
@@ -147,6 +189,8 @@ class App:
 
     def _run_job(self):
         fns = {k: f for k, _l, f in S.SCANS}
+        if self.admin:
+            self.refresh_blocks()   # the first Autopilot at start-up would otherwise run before the blocks have loaded, and call blocked ports open
         self.ctx['blocked_ports'] = {p['Key'] for p in self.blocks.get('ports', [])}
         job = self.job
         for key in list(job['queue']):
@@ -250,7 +294,7 @@ class App:
                         parent = snap.get(ppid, ('', 0))[0]
                         sev, reasons = S.judge_process(name, path, cmd, parent, signs.get(path))
                         if sev:
-                            self._add_event(pid, name, ppid, parent, path, cmd, sev, reasons, signs.get(path, {}), first)
+                            self._add_event(pid, name, ppid, parent, path, cmd, sev, reasons, signs.get(path, {}), first, parent_path=S.process_path(ppid) if ppid > 4 and parent else '', chain=self._ancestry(snap, ppid))
                 with self.lock:
                     changed = False
                     for e in self.events:
@@ -310,11 +354,25 @@ class App:
             r = X.remove_admin(name)
             self.log('REMOVED' if r['ok'] else 'FAILED', f'{name}: {r["message"]}')
 
-    def _add_event(self, pid, name, ppid, parent, path, cmd, sev, reasons, sign, initial):
+    @staticmethod
+    def _ancestry(snap, ppid, limit=6):
+        """The programs above a process, nearest first: [{'Name','PID','Path','Cmd'}]. The command line is what names the script a
+        host such as python or powershell was running, which is what answers 'what app ran this?'."""
+        chain, seen = [], set()
+        while ppid and ppid not in seen and len(chain) < limit and ppid in snap:
+            seen.add(ppid)
+            name, pp = snap[ppid]
+            chain.append({'Name': name, 'PID': ppid, 'Path': S.process_path(ppid) if ppid > 4 else '', 'Cmd': (S.process_cmdline(ppid) or '')[:300] if ppid > 4 else ''})
+            ppid = pp
+        return chain
+
+    def _add_event(self, pid, name, ppid, parent, path, cmd, sev, reasons, sign, initial, parent_path='', chain=None):
         with self.lock:
             self.event_seq += 1
-            self.events.insert(0, {'Id': self.event_seq, 'PID': pid, 'Name': name, 'Parent': parent, 'PPID': ppid, 'Path': path, 'Cmd': cmd[:4000], 'Decoded': S.decode_encoded(cmd)[:4000], 'Sev': sev,
-                                   'Reasons': [{'Title': t, 'Why': w} for t, w in reasons], 'When': dt.datetime.now().astimezone().isoformat(), 'Running': True, 'Publisher': sign.get('Publisher', ''), 'Existing': initial})
+            self.events.insert(0, {'Id': self.event_seq, 'PID': pid, 'Name': name, 'Parent': parent, 'PPID': ppid, 'Path': path, 'ParentPath': parent_path, 'Chain': chain or [], 'Cmd': cmd[:4000], 'Decoded': S.decode_encoded(cmd)[:4000], 'Sev': sev,
+                                   'Reasons': [{'Title': t, 'Why': w} for t, w in reasons], 'When': dt.datetime.now().astimezone().isoformat(), 'Running': True, 'Publisher': sign.get('Publisher', ''), 'Existing': initial,
+                                   # why this program (or the one that started it) can't be blocked by its file; '' means it can. Windows' own and shared tools never can.
+                                   'BlockWhy': X._refuse_process(name, path), 'ParentBlockWhy': X._refuse_process(parent, parent_path) if parent else 'Windows did not report which program started it.'})
             del self.events[300:]
             self.rev += 1
         self.log('DETECTED', f'[{sev}] {name} (PID {pid}): {reasons[0][0]}')
@@ -340,14 +398,17 @@ class App:
         self.log('ENDED', f'{name} (PID {pid}) {e["Path"]}')
         return {'ok': True, 'message': f'Ended {name} (PID {pid}).'}
 
-    def block_event(self, eid):
+    def block_event(self, eid, parent=False):
+        """Block a process's program file, running or already ended. With parent=True, block the program that started it instead
+        (the useful block when the process is a Windows tool such as PowerShell, which can't be blocked itself)."""
         e = self._event(eid)
         if not e:
             return {'ok': False, 'message': 'That entry is no longer in the list.'}
         if not self.admin:
             return {'ok': False, 'message': 'Blocking needs Administrator rights. Start My Security as Administrator.'}
-        r = X.block_process(e['PID'], e['Name'], e['Path'])
-        self.log('BLOCKED' if r['ok'] else 'FAILED', f"{e['Name']} {e['Path']}: {r['message']}")
+        pid, name, path = (e['PPID'], e['Parent'], e.get('ParentPath', '')) if parent else (e['PID'], e['Name'], e['Path'])
+        r = X.block_process(pid, name, path)
+        self.log('BLOCKED' if r['ok'] else 'FAILED', f"{name} {path}: {r['message']}")
         self.refresh_blocks()
         return r
 
@@ -442,11 +503,11 @@ class App:
                         return f
         return None
 
-    def do_action(self, fid):
+    def do_action(self, fid, alt=False):
         f = self.find_finding(fid)
-        if not f or not f.get('Action'):
+        act = f.get('Alt' if alt else 'Action') if f else None
+        if not f or not act:
             return {'ok': False, 'message': 'That item is no longer in the list. Run the scan again.'}
-        act = f['Action']
         if not self.admin and act['fn'] not in X.NO_ADMIN_NEEDED and act['args'].get('hive') != 'HKCU':
             return {'ok': False, 'message': 'This fix needs Administrator rights. Start My Security as Administrator.'}
         rp_note = ''
@@ -481,6 +542,8 @@ class App:
                 self.refresh_blocks()
             if act['fn'] == 'block_port':
                 self._rescan_port_views()
+            if act['fn'] == 'set_fw_option' and not self.job:
+                self.start_scans({'firewall'}, 'scan')   # so the card flips between "turn on" and "turn off"
         return {'ok': bool(r.get('ok')), 'message': r.get('message', '')}
 
     def _rescan_port_views(self):
@@ -539,20 +602,30 @@ class App:
 
     @staticmethod
     def _public(f):
-        out = {k: v for k, v in f.items() if k != 'Action'}
-        a = f.get('Action')
+        out = {k: v for k, v in f.items() if k not in ('Action', 'Alt')}
+        a, alt = f.get('Action'), f.get('Alt')   # Alt is an optional second button (for example "Turn off the server" and "Block the port")
         out['Action'] = {'label': a['label'], 'confirm': a['confirm']} if a else None
+        out['Alt'] = {'label': alt['label'], 'confirm': alt['confirm']} if alt else None
         return out
+
+    def _view(self, f):
+        """A finding as it should be shown right now. A port you have blocked is closed to the network whatever the last scan saw, so it
+        is shown as blocked (low), with no Block button, instead of as an open Medium problem."""
+        if f.get('Port') and f.get('Proto') and f.get('Exposed') and not f.get('Blocked') and f"{f['Proto']}:{f['Port']}" in {p['Key'] for p in self.blocks.get('ports', [])}:
+            return {**f, 'Blocked': True, 'Allowed': False, 'Sev': 'low' if SEV_RANK[f['Sev']] >= 2 else f['Sev'], 'Evidence': 'You blocked this port. Windows Firewall refuses incoming connections to it from other devices.', 'Action': None}
+        return f
 
     def plan(self):
         """Every problem, in the order to fix it: 'now' (critical, or high and already happening), 'week' (high), 'later' (medium)."""
         items = []
         for key, s in self.scans.items():
-            for f in s['findings']:
-                if SEV_RANK[f['Sev']] >= 2 and not f.get('Done'):
+            if key in NO_SCORE_CATS:
+                continue   # Event Viewer reliability errors show in their own tab but are not security problems, so they stay out of the score and plan
+            for f in (self._view(x) for x in s['findings']):
+                if SEV_RANK[f['Sev']] >= 2 and not f.get('Done') and f['Id'] not in self.dismissed:
                     items.append({**self._public(f), 'From': s['label'], 'Scan': key})
         for f in self.tab_findings.values():
-            if SEV_RANK[f['Sev']] >= 2 and not f.get('Done'):
+            if SEV_RANK[f['Sev']] >= 2 and not f.get('Done') and f['Id'] not in self.dismissed:
                 items.append({**self._public(f), 'From': 'Open browser tabs', 'Scan': '_tabs'})
         for e in self.events:
             if e['Running'] and SEV_RANK[e['Sev']] >= 2 and not e['Existing'] or e['Running'] and SEV_RANK[e['Sev']] >= 3:
@@ -566,17 +639,18 @@ class App:
         with self.lock:
             plan = self.plan()
             counts = {s: sum(1 for x in plan if x['Sev'] == s) for s in ('critical', 'high', 'medium')}
-            low = sum(1 for s in self.scans.values() for f in s['findings'] if f['Sev'] == 'low' and not f.get('Done'))
+            low = sum(1 for s in self.scans.values() for f in s['findings'] if f['Sev'] == 'low' and not f.get('Done') and f['Id'] not in self.dismissed)
             ran = sum(1 for s in self.scans.values() if s['status'] in ('done', 'error'))
             # critical and high items count in full; a long tail of small items can't sink the score by itself
             score = max(0, round(100 - counts['critical'] * 18 - counts['high'] * 6 - min(20, counts['medium'] * 1.5) - min(5, low * 0.25))) if ran else None
             return {'generated': dt.datetime.now().astimezone().isoformat(), 'rev': self.rev, 'host': socket.gethostname(), 'admin': self.admin, 'version': APP_VERSION,
-                    'scans': {k: {**{x: s[x] for x in ('label', 'status', 'at', 'secs')}, 'findings': [self._public(f) for f in s['findings']]} for k, s in self.scans.items()},
+                    'scans': {k: {**{x: s[x] for x in ('label', 'status', 'at', 'secs')}, 'findings': [self._public(self._view(f)) for f in s['findings'] if f['Id'] not in self.dismissed]} for k, s in self.scans.items()},
                     'job': {k: self.job[k] for k in ('kind', 'current', 'done', 'total', 'started')} if self.job else None,
                     'autopilotAt': self.autopilot_at, 'plan': plan, 'counts': {**counts, 'low': low}, 'score': score, 'ran': ran,
                     'events': self.events, 'watching': self.watch_started, 'guard': self.guard_on, 'tabs': self.tabs, 'tabAt': self.tab_at, 'alerts': self.alerts[:20],
                     'tabFindings': {k: self._public(v) for k, v in self.tab_findings.items()}, 'blocks': self.blocks, 'quarantineDir': X.QUARANTINE, 'notice': self.notice if self.notice and time.time() - self.notice['At'] < 300 else None, 'attempts': self.attempts,
-                    'undo': [{k: u[k] for k in ('Id', 'Label', 'What')} for u in self.undo]}
+                    'undo': [{k: u[k] for k in ('Id', 'Label', 'What')} for u in self.undo],
+                    'dismissed': [{'Id': k, **v} for k, v in self.dismissed.items()], 'browserTest': self.browser_test}
 
 
 # ---------------------------------------------------------------- local dashboard server (same rules as My Connections)
@@ -635,6 +709,8 @@ def make_handler(app, page_bytes, token, port, launch_key, nonce):
         def do_GET(self):
             if not self.host_ok():
                 return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
+            if self.path.startswith(('/browser-test', '/bt/')):
+                return B.handle_get(self, app, port, token, launch_key, local_origins)
             if self.path == '/' or self.path.startswith('/?'):
                 if secrets.compare_digest(self.path.encode('utf-8', 'replace'), page_path):
                     return self.send(200, 'text/html; charset=utf-8', page_bytes)
@@ -664,6 +740,10 @@ def make_handler(app, page_bytes, token, port, launch_key, nonce):
                     app.tab_closed_at = time.time()
                     return self.send(204, 'text/plain', b'')
                 return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
+            if self.path.startswith('/bt/'):
+                if not self.host_ok():
+                    return self.send_json(403, {'ok': False, 'message': 'Forbidden'})
+                return B.handle_post(self, app)
             if self.path == '/site-stop':
                 origin = self.site_origin()
                 if not self.host_ok() or not origin:
@@ -680,13 +760,17 @@ def make_handler(app, page_bytes, token, port, launch_key, nonce):
                 elif self.path == '/scan':
                     r = app.start_scans(set(str(x) for x in b['keys']), 'scan')
                 elif self.path == '/action':
-                    r = app.do_action(str(b['id']))
+                    r = app.do_action(str(b['id']), bool(b.get('alt')))
                 elif self.path == '/undo':
                     r = app.do_undo(str(b['id']))
+                elif self.path == '/dismiss':
+                    r = app.do_dismiss(str(b['id']))
+                elif self.path == '/restore-alert':
+                    r = app.do_restore_alert(str(b['id']))
                 elif self.path == '/kill':
                     r = app.kill_event(int(b['id']))
                 elif self.path == '/block-process':
-                    r = app.block_event(int(b['id']))
+                    r = app.block_event(int(b['id']), bool(b.get('parent')))
                 elif self.path == '/block-port':
                     r = app.block_port_manual(int(b['port']), str(b['proto']))
                 elif self.path == '/unblock':

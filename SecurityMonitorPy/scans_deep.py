@@ -429,13 +429,20 @@ def scan_firewall(ctx):
         return [F('firewall', 'failed', 'info', 'Firewall rules could not be read', 'Windows did not return its firewall rules.', fix='Run My Security as Administrator.')]
     for p in as_list(d.get('profiles')):
         if isinstance(p, dict) and p.get('Enabled') == 'True':
+            nm = str(p.get('Name'))
             if p.get('Notify') == 'False':
-                out.append(F('firewall', 'notify:' + str(p.get('Name')), 'low', f"The {p.get('Name')} firewall blocks programs silently", 'You are not told when a program is blocked from listening.', 'A blocked backdoor would go unnoticed.', fix='Turn notifications on in Windows Security > Firewall > Notification settings.'))
+                out.append(F('firewall', 'notify:' + nm, 'low', f"The {nm} firewall blocks programs silently", 'You are not told when a program is blocked from listening.', 'A blocked backdoor would go unnoticed.', fix='Turn notifications on. You can turn them off again here.',
+                             action=A('set_fw_option', 'Turn notifications on', f'Turn on notifications for the {nm} firewall?\n\nWindows will tell you when it blocks a program that wants to accept connections. Nothing else changes, and you can turn it off again.', profile=nm, option='notify', on=True)))
             if p.get('LogBlocked') != 'True':
-                out.append(F('firewall', 'log:' + str(p.get('Name')), 'info', f"The {p.get('Name')} firewall does not log blocked connections", 'No record is kept of who tried to connect.', 'Makes an attack harder to investigate.', fix='Optional: turn logging on in wf.msc.'))
+                out.append(F('firewall', 'log:' + nm, 'info', f"The {nm} firewall does not log blocked connections", 'No record is kept of who tried to connect.', 'Makes an attack harder to investigate.', fix='Optional: turn logging on. You can turn it off again here.',
+                             action=A('set_fw_option', 'Turn logging on', f'Turn on logging of blocked connections for the {nm} firewall?\n\nWindows will write down every connection it refuses, up to 16 MB, then start the file over. Nothing else changes, and you can turn it off again.', profile=nm, option='log', on=True)))
+            else:
+                out.append(F('firewall', 'log:' + nm, 'ok', f"The {nm} firewall logs blocked connections", 'Every connection it refuses is written to the firewall log.', fix='Turn it off if you do not need the record. The log file is capped, so it cannot fill the disk.',
+                             action=A('set_fw_option', 'Turn logging off', f'Turn off logging of blocked connections for the {nm} firewall?\n\nThe record of refused connections stops. Nothing else changes, and you can turn it on again.', profile=nm, option='log', on=False)))
     paths = {os.path.expandvars(r['A']) for r in rules if r.get('A') not in (None, '', 'Any', 'System') and not S.in_windows(os.path.expandvars(r['A']))}
     signs = S.sign_info([p for p in paths if os.path.isfile(p)])
-    seen, counted = set(), 0
+    groups = {}   # title -> every rule that raised it. Programs such as Edge leave one rule per version, all with the same name, so they are one card, not one per rule.
+    protected = tuple(p.lower().rstrip('\\') + '\\' for p in (os.environ.get('ProgramFiles', r'C:\Program Files'), os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) if p)
     for r in rules:
         prog = os.path.expandvars(str(r.get('A') or 'Any'))
         remote_any = str(r.get('R') or 'Any') in ('Any', '*')
@@ -461,12 +468,29 @@ def scan_firewall(ctx):
             hit = sorted({SENSITIVE_PORTS[p] for p in ports if p in SENSITIVE_PORTS})
             if hit and is_public and not LOCAL_SCOPE.match(str(r.get('R'))):
                 sev, title, why = 'high', f"{', '.join(hit)} is allowed on public networks", 'On a café or hotel Wi-Fi, anyone can reach this.'
-        if not sev or title in seen:
+        if not sev:
             continue
-        seen.add(title)
-        counted += 1
-        out.append(F('firewall', 'rule:' + str(r.get('Id')), sev, title, 'An inbound rule in Windows Firewall.', why, f"Rule: {name}\nProgram: {prog}\nPorts: {r.get('L')}\nFrom: {r.get('R')}\nNetworks: {r.get('F')}", 'Turn this rule off if you do not recognise it.', A('disable_fw_rules', 'Turn rule off', f'Turn off this firewall rule?\n\n{name}\n\nYou can undo this in the Blocked tab.', names=[r.get('Id')], what=name)))
-    if not counted:
+        groups.setdefault(title, {'sev': sev, 'why': why, 'name': name, 'rows': []})['rows'].append((r, prog))
+    final = []   # severity of each card after any downgrade
+    for title, g in groups.items():
+        rows, name, sev, why = g['rows'], g['name'], g['sev'], g['why']
+        r0, prog0 = rows[0]
+        n = len(rows)
+        ids = [r.get('Id') for r, _p in rows]
+        progs = list(dict.fromkeys(p for _r, p in rows))
+        fix = 'Turn this rule off if you do not recognise it.' if n == 1 else 'Turn these rules off if you do not recognise them.'
+        if title.startswith('Firewall rule for a missing program') and all(p.lower().startswith(protected) for p in progs):
+            # the old program sat in Program Files, which only an administrator can write to, so nothing can be slipped into that path
+            sev, why = 'info', 'The program has been replaced by a newer version, but its old rule is still there. Its folder is one only an administrator can write to, so nothing can use the leftover opening.'
+            fix = 'Harmless clutter from updates. Turning it off is safe; an update may add a new one later.'
+        final.append(sev)
+        shown = progs[:6]
+        where =f'Program: {prog0}' if n == 1 else f'Programs ({len(progs)}):\n' + '\n'.join(shown) + (f'\n… and {len(progs) - len(shown)} more' if len(progs) > len(shown) else '')
+        what = name if n == 1 else f'{name} ({n} rules)'
+        out.append(F('firewall', 'rule:' + str(ids[0]), sev, title + ('' if n == 1 else f' · {n} rules'), 'An inbound rule in Windows Firewall.' if n == 1 else f'{n} inbound rules in Windows Firewall share this name.', why,
+                     f"Rule: {name}\n{where}\nPorts: {r0.get('L')}\nFrom: {r0.get('R')}\nNetworks: {r0.get('F')}", fix,
+                     A('disable_fw_rules', 'Turn rule off' if n == 1 else f'Turn {n} rules off', f'Turn off {"this firewall rule" if n == 1 else f"these {n} firewall rules"}?\n\n{name}\n\nYou can undo this in the Blocked tab.', names=ids, what=what)))
+    if not any(s != 'info' for s in final):
         out.append(F('firewall', 'clean', 'ok', 'No suspicious firewall rules', f'Checked {len(rules)} active inbound rules.'))
     return out
 
@@ -656,8 +680,8 @@ def scan_lateral(ctx):
         add(F('lateral', f'out:{app}:{ra}:{rp}', 'low' if rp == 22 else 'medium', f'{app} is connected to {ra} over {LATERAL_PORTS[rp]}', 'This PC is talking to another device on your network, on a port used to control other computers.', 'Normal for a file share, or a tool you are using. If you do not recognise it, this is what an intruder spreading from this PC looks like.', f'Process ID {pid}', 'If you did not start this, end it from the Processes tab.'))
     for (ra, port), app in comes.items():
         add(F('lateral', f'in:{ra}:{port}', 'high' if port in (135, 5985, 5986) else 'medium', f'{ra} is connected to this PC over {LATERAL_PORTS[port]}', 'Another device on your network is connected to this PC right now.', 'Fine if it is yours. If not, someone may already be moving through your network.', f'Handled by {app}', 'If you do not recognise this device, disconnect the PC from the network.', A('block_ip', 'Block address', f'Block {ra} in Windows Firewall?', ip=ra), Active=port in (135, 5985, 5986)))
-    if d.get('cg') is False:
-        add(F('lateral', 'credguard', 'medium', 'Credential Guard is off', 'Credential Guard keeps sign-in secrets in a protected area that even administrators can\'t read.', 'Without it, an attacker with admin rights can lift password hashes and reuse them on your other PCs. This is how a single infected PC becomes the whole network.', fix='Turn on Memory integrity under Core isolation. Credential Guard itself needs Windows Pro or Enterprise, and is set in Group Policy.', action=A('open_settings', 'Open Core isolation', 'Open Core isolation?', page='windowsdefender://coreisolation')))
+    if d.get('cg') is False and S.credential_guard(False) == 'off':   # only where it can be turned on: Windows Enterprise and Education
+        add(F('lateral', 'credguard', 'medium', 'Credential Guard is off', 'Credential Guard keeps sign-in secrets in a protected area that even administrators can\'t read.', 'Without it, an attacker with admin rights can lift password hashes and reuse them on your other PCs. This is how a single infected PC becomes the whole network.', fix=S.CREDGUARD_FIX))
     srv, wks = r'SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters', r'SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters'
     shares = [str(x) for x in as_list(d.get('shares'))]
     if shares and reg_get(HKLM, srv, 'AutoShareWks', 1) != 0:
@@ -1031,7 +1055,7 @@ def scan_outside(ctx):
     if cat == 'Public':
         add(F('outside', 'cat', 'info', f"{net.get('name')} is set as a Public network", 'Good: Windows treats everyone on it as a stranger.', ''))
     elif cat == 'Private':
-        add(F('outside', 'cat', 'low', f"{net.get('name')} is set as a Private network", 'Windows trusts devices on this network and allows more connections.', 'Fine at home. On any shared Wi-Fi, this exposes the PC to strangers.', fix='Choose Public in network settings if you do not control this network.', action=A('open_settings', 'Open Wi-Fi settings', 'Open network settings?', page='ms-settings:network-status')))
+        add(F('outside', 'cat', 'low', f"{net.get('name')} is set as a Private network", 'Windows trusts devices on this network and allows more connections.', 'Fine at home. On any shared Wi-Fi, this exposes the PC to strangers.', fix='Choose Public in network settings if you do not control this network.', action=A('open_settings', 'Open network settings', 'Open network settings?', page='ms-settings:network-status')))
     if gw and _private(gw):
         with ThreadPoolExecutor(max_workers=8) as pool:
             ports = [p for p in pool.map(lambda p: _open(gw, p), GATEWAY_PORTS) if p]

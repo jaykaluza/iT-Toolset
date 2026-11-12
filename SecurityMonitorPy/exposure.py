@@ -15,9 +15,26 @@ import time
 import urllib.request
 
 import scans_win as S
+from knowledge import NEVER_BLOCK_PORTS
 from scans_win import F, HKLM, as_list, reg_get, reg_values
 
 STATE = os.path.join(S.APP_DIR, 'network-memory.json')   # the router's hardware address last time, to notice a swap
+
+# which Windows service(s) each running program hosts, so a listening server can be turned off at its source
+SVC_MAP_PS = r'''
+$o = @(Get-CimInstance Win32_Service -Filter "ProcessId > 0" | ForEach-Object { [pscustomobject]@{ Pid = [int]$_.ProcessId; Name = [string]$_.Name; Display = [string]$_.DisplayName; StartMode = [string]$_.StartMode } })
+ConvertTo-Json -InputObject @($o) -Compress
+'''
+
+
+def _port_actions(port, app, service, can_block):
+    """(primary, second) buttons for a server listening on a port: turn its service off when it is one dedicated service, and block the port."""
+    block = S.A('block_port', 'Block port', f'Block incoming TCP port {port} ({app})?\n\nWindows Firewall will refuse connections to it from other devices. The program keeps running for this PC.\n\nYou can unblock it any time in the Blocked tab.', port=port, proto='TCP') if can_block and ('TCP', port) not in NEVER_BLOCK_PORTS else None
+    off = None
+    if service and service['Name'].lower() not in S.NO_DISABLE_SERVICES:
+        disp = service['Display'] or service['Name']
+        off = S.A('disable_service', 'Turn off server', f'Stop and disable the service "{disp}" ({service["Name"]})?\n\nThis turns off the server it runs, and it will not start again with Windows. Anything that relies on it stops working.\n\nYou can undo this from the Blocked tab while My Security is open.', name=service['Name'], display=disp, old_start=service.get('StartMode'), was_running=True)
+    return (off, block) if off else (block, None)
 
 
 def _netsh(*args):
@@ -174,6 +191,11 @@ def _http_probe(ip, port):
 def service_checks(out, self_port, lan_ip):
     add = out.append
     names = {p: n[0] for p, n in S.process_snapshot().items()}
+    by_pid = {}
+    for row in S.run_powershell(SVC_MAP_PS, timeout=60):
+        if isinstance(row, dict) and row.get('Name'):
+            by_pid.setdefault(int(row.get('Pid') or 0), []).append(row)
+    one_service = lambda pid: by_pid[pid][0] if len(by_pid.get(pid, [])) == 1 else None   # a shared host such as svchost runs many, so none is picked
     seen = set()
     for st, addr, port, _ra, _rp, pid in S.tcp_rows():
         if st != 2 or port in seen or port in SKIP_PORTS or port == self_port:
@@ -185,9 +207,11 @@ def service_checks(out, self_port, lan_ip):
             sev, what, why = DEV_PORTS[port]
             if not open_to_net:
                 sev = {'critical': 'medium', 'high': 'low'}.get(sev, 'low')
+            first, second = _port_actions(port, app, one_service(pid), open_to_net)
             add(F('exposure', f'dev:{port}', sev, f'{app} offers {what} on port {port}' + ('' if open_to_net else ' (this PC only)'),
                   f'Port {port} is {what}.', why + ('' if open_to_net else ' It only listens on this PC, so other devices can\'t reach it, but any program here can.'),
-                  f'{app} (PID {pid}) listening on {addr}:{port}', 'Turn it off when you are not using it, or set it to listen on 127.0.0.1 only and require a password.', Active=open_to_net))
+                  f'{app} (PID {pid}) listening on {addr}:{port}', 'Turn it off when you are not using it, or set it to listen on 127.0.0.1 only and require a password.',
+                  first, Alt=second, Active=open_to_net))
             continue
         if not open_to_net or port < 80 or not lan_ip:
             continue
@@ -205,10 +229,11 @@ def service_checks(out, self_port, lan_ip):
         if hits or version:
             sev = 'high' if any(h[0] == 'high' for h in hits) else 'medium' if any(h[0] == 'medium' for h in hits) else 'low'
             reasons = [h[1] for h in hits] + (['tells everyone its exact version (' + server + ')'] if version else [])
+            first, second = _port_actions(port, app, one_service(pid), True)
             add(F('exposure', f'web:{port}', sev, f'Web server on port {port} ({app}) ' + reasons[0],
                   f'{app} runs a web server that other devices on your network can open.', 'Pages that list files, show errors or admin screens, or name exact versions give attackers what they need for the next step.',
                   f'http(s)://{lan_ip}:{port}/ answered {status}' + (f'\nServer: {server}' if server else '') + '\n' + '\n'.join('- ' + x for x in reasons),
-                  'If you don\'t use it, close the program or turn the server off. Otherwise set a password and let it listen on 127.0.0.1 only.'))
+                  'If you don\'t use it, turn the server off or block its port. Otherwise set a password and let it listen on 127.0.0.1 only.', first, Alt=second))
 
 
 # ---- the network itself: a fake router, redirected routes

@@ -25,7 +25,7 @@ ICACLS = os.path.join(S.SYSTEM32, 'icacls.exe')
 NO_TOUCH_PROCS = {'system', 'system idle', 'registry', 'secure system', 'memcompression', 'memory compression', 'smss', 'csrss', 'wininit', 'winlogon', 'services', 'lsass', 'lsaiso', 'fontdrvhost', 'dwm', 'svchost',
                   'msmpeng', 'nissrv', 'mpdefendercoreservice', 'securityhealthservice', 'smartscreen', 'csfalconservice', 'csfalconcontainer', 'explorer'}
 SHARED_HOSTS = {'powershell', 'pwsh', 'cmd', 'conhost', 'msedgewebview2', 'dllhost', 'rundll32', 'runtimebroker', 'backgroundtaskhost', 'taskhostw', 'wscript', 'cscript', 'sihost', 'wudfhost', 'searchprotocolhost', 'python', 'pythonw', 'py', 'mshta', 'regsvr32'}
-SETTINGS_PAGES = ('ms-settings:windowsupdate', 'ms-settings:appsfeatures', 'ms-settings:otherusers', 'ms-settings:network-proxy', 'ms-settings:storagesense', 'ms-settings:startupapps', 'ms-settings:network-status', 'windowsdefender://threatsettings', 'windowsdefender://coreisolation')
+SETTINGS_PAGES = ('ms-settings:windowsupdate', 'ms-settings:appsfeatures', 'ms-settings:otherusers', 'ms-settings:network-proxy', 'ms-settings:storagesense', 'ms-settings:startupapps', 'ms-settings:network-status', 'ms-settings:network-wifisettings', 'ms-settings:workplace', 'windowsdefender://threatsettings', 'windowsdefender://coreisolation')
 QUARANTINE = os.path.join(os.environ.get('ProgramData', r'C:\ProgramData'), 'MySecurity', 'Quarantine') if S.is_admin() else os.path.join(S.APP_DIR, 'Quarantine')
 
 
@@ -272,6 +272,39 @@ def firewall_on(profiles):
     return result(ps(ps_try('Set-NetFirewallProfile -Name ($env:MS_P | ConvertFrom-Json) -Enabled True -ErrorAction Stop'), p=profiles), f"Windows Firewall is on: {', '.join(profiles)}.")
 
 
+# One firewall profile setting, on or off: whether it writes down the connections it refuses, or tells you when it blocks a program.
+# It reads the setting first, so the undo puts back exactly what was there.
+FW_OPTION_PS = r'''
+try {
+  $p = Get-NetFirewallProfile -Name $env:MS_N -ErrorAction Stop
+  $on = ($env:MS_V -eq 'true')
+  if ($env:MS_O -eq 'log') {
+    $was = ([string]$p.LogBlocked -eq 'True')
+    if ($on) { Set-NetFirewallProfile -Name $env:MS_N -LogBlocked True -LogMaxSizeKilobytes ([math]::Max([int]$p.LogMaxSizeKilobytes, 16384)) -ErrorAction Stop }
+    else { Set-NetFirewallProfile -Name $env:MS_N -LogBlocked False -ErrorAction Stop }
+  } else {
+    $was = ([string]$p.NotifyOnListen -eq 'True')
+    Set-NetFirewallProfile -Name $env:MS_N -NotifyOnListen $(if ($on) { 'True' } else { 'False' }) -ErrorAction Stop
+  }
+  ConvertTo-Json -InputObject @{ ok = $true; was = $was } -Compress
+} catch { ConvertTo-Json -InputObject @{ ok = $false; error = $_.Exception.Message } -Compress }
+'''
+FW_OPTIONS = {'log': 'logging of blocked connections', 'notify': 'notifications when a program is blocked'}
+
+
+def set_fw_option(profile, option, on):
+    if profile not in ('Domain', 'Private', 'Public') or option not in FW_OPTIONS:
+        return bad('That firewall setting is not one My Security changes.')
+    row = ps(FW_OPTION_PS, n=profile, o=option, v='true' if on else 'false')
+    if not row.get('ok'):
+        return bad(f"Windows refused the change. {row.get('error', '')}".strip())
+    was = bool(row.get('was'))
+    msg = f"The {profile} firewall now has {FW_OPTIONS[option]} {'on' if on else 'off'}."
+    if option == 'log' and on:
+        msg += ' Refused connections are written to the firewall log (by default %systemroot%\\system32\\logfiles\\firewall\\pfirewall.log). The Blocked tab lists the ones that hit something you blocked.'
+    return ok(msg, ['set_fw_option', {'profile': profile, 'option': option, 'on': was}, f"Turn {FW_OPTIONS[option]} {'on' if was else 'off'} again for the {profile} firewall"])
+
+
 def open_settings(page):
     try:
         if page == 'bitlocker':
@@ -345,7 +378,9 @@ def block_port(port, proto):
     return result(row, f'Blocked incoming {proto} port {port}. Other devices can no longer connect to it.')
 
 
-REMOVE_RULES_PS = ps_try("$ids = @($env:MS_I | ConvertFrom-Json); Get-NetFirewallRule -Group 'MySecurity' -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.Name } | Remove-NetFirewallRule -ErrorAction Stop")
+# The ids are assigned before being wrapped: in Windows PowerShell 5.1, @($x | ConvertFrom-Json) nests a JSON list inside another list,
+# so -contains never matched and Unblock reported success while removing nothing. It now also refuses to report success when nothing matched.
+REMOVE_RULES_PS = ps_try("$ids = $env:MS_I | ConvertFrom-Json; $ids = @($ids); $hit = @(Get-NetFirewallRule -Group 'MySecurity' -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.Name }); if ($hit.Count -eq 0) { throw 'That block is no longer in Windows Firewall.' }; $hit | Remove-NetFirewallRule -ErrorAction Stop")
 
 
 def unblock_port(key):
@@ -388,6 +423,8 @@ def unblock_ip(address):
 
 def _refuse_process(name, path):
     low = str(name).lower()
+    if low == 'mysecurity' or os.path.basename(str(path)).lower() == 'mysecurity.exe':
+        return 'That is My Security (this copy or another), so it can\'t be blocked here.'
     if low in NO_TOUCH_PROCS:
         return f'{name} is a core part of Windows or your security software, so My Security won\'t touch it.'
     if low in SHARED_HOSTS:
@@ -761,6 +798,6 @@ def unblock_extension(browser, ext_id, name):
 
 FIXES = {f.__name__: f for f in (disable_fw_rules, remove_portproxy, remove_user_key, lock_path, block_extension, set_reg, set_regs, disable_tls, disable_smb1, smb_signing, smb_signing_off, disable_netbios, enable_netbios, disable_feature, remove_share, disable_account, enable_account, remove_admin, add_admin,
                                  disable_autologon, disable_service, enable_service, quote_service, remove_run, remove_ifeo, disable_task, enable_task, defender_on, defender_update, defender_scan, defender_remove, defender_remove_exclusion,
-                                 firewall_on, open_settings, winget_upgrade, block_port, block_ip, block_process, block_site, remove_hosts_line, quarantine)}
-FIXES_UNDO = {f.__name__: f for f in (enable_fw_rules, restore_acl, unblock_extension, set_reg, set_regs, smb_signing_off, enable_netbios, enable_account, add_admin, enable_service, enable_task)}
+                                 firewall_on, set_fw_option, open_settings, winget_upgrade, block_port, block_ip, block_process, block_site, remove_hosts_line, quarantine)}
+FIXES_UNDO = {f.__name__: f for f in (enable_fw_rules, restore_acl, unblock_extension, set_reg, set_regs, smb_signing_off, enable_netbios, enable_account, add_admin, enable_service, enable_task, set_fw_option)}
 NO_ADMIN_NEEDED = {'open_settings', 'quarantine', 'winget_upgrade', 'remove_user_key'}

@@ -400,18 +400,67 @@ def ntfs_tricks(out):
 
 
 
+# Every check this module adds to the Hacker tricks tab, with the finding-id prefixes it produces when it finds something,
+# so the tab can list each one with a green tick, or what needs fixing.
+_MORE_CHECKS = [
+    ('Sign-in screen tools swapped (Sticky Keys and others)', ['loginswap:']),
+    ('Ease of Access tools redirected', ['at:']),
+    ('Hacking tools running right now', ['tool-run:']),
+    ('Hacking tools saved on disk', ['tool:']),
+    ('Copies of the Windows password store (LSASS dumps)', ['lsassdump:']),
+    ('Browsers started with remote debugging (cookie theft)', ['rdbg:']),
+    ('Browser shortcuts changed to load extras', ['lnk:']),
+    ('COM hijacking (Windows components redirected)', ['com:']),
+    ('Extra time providers and print monitors', ['time provider:', 'print monitor:']),
+    ('Unusual print processors', ['printproc:']),
+    ('Application compatibility shims', ['shim:']),
+    ('Office start-up folders', ['office:']),
+    ('Hidden accounts (names ending in $)', ['dollar:']),
+    ('Hidden file and folder names, and programs hidden in streams', ['name:', 'ads:']),
+    ('Folders secretly redirected into Windows folders (junctions)', ['junction:']),
+]
+
+
+def _checks_from(findings, spec):
+    rows = []
+    for name, prefixes in spec:
+        titles = list(dict.fromkeys(f['Title'] for f in findings if any(f['Id'].startswith('tricks:' + p) for p in prefixes)))
+        rows.append({'Name': name, 'Ok': not titles, 'Detail': '; '.join(titles)})
+    return rows
+
+
+def _tools_list(findings):
+    """One row per hacking tool this scan looks for: not found (ok), or found on disk or running, with where."""
+    hits = {}
+    for f in findings:
+        i = f['Id']
+        if i.startswith('tricks:tool:'):
+            hits.setdefault(i[len('tricks:tool:'):], []).append((f.get('Evidence') or '').split('\n')[0])
+        elif i.startswith('tricks:tool-run:'):
+            hit = _tool(i.split(':')[2])
+            if hit:
+                hits.setdefault(hit[0], []).append('running now')
+    rows = [{'Name': k.removesuffix('.exe'), 'What': what, 'Ok': k not in hits, 'Detail': '; '.join(dict.fromkeys(hits.get(k, [])))[:300]} for k, (what, _sev) in HACK_TOOLS.items()]
+    return sorted(rows, key=lambda r: (r['Ok'], r['Name'].lower()))
+
+
 def _install():
     """Run the extra checks as part of the existing Hacker tricks check."""
     for i, (key, label, fn) in enumerate(S.SCANS):
         if key == 'tricks':
             def combined(ctx, _old=fn):
-                base = [f for f in _old(ctx) if f['Id'] != 'tricks:clean']
+                old = _old(ctx)
+                earlier = next((f for f in old if f['Id'] == 'tricks:clean'), None)   # the persistence checks' own summary, with its checklist
+                base = [f for f in old if f['Id'] != 'tricks:clean']
                 more = scan_more(ctx)
                 have = {f['Id'] for f in base}
                 out = base + [f for f in more if f['Id'] not in have]
-                if not [x for x in out if x['Sev'] in ('critical', 'high')]:
-                    out.append(F('tricks', 'clean', 'ok', 'None of the known hacker tricks or tools were found',
-                                 'Checked the places attackers use to hide or survive a restart, the sign-in screen tools (Sticky Keys and others), well-known hacking tools on disk and running, copies of the password store, browser cookie-theft tricks, and quieter hiding places such as COM hijacking, print and time providers, shims and Office start-up folders.'))
+                checks = list((earlier or {}).get('Checks') or []) + _checks_from(out, _MORE_CHECKS)
+                tools = _tools_list(out)
+                n_ok, t_ok = sum(1 for c in checks if c['Ok']), sum(1 for t in tools if t['Ok'])
+                out.append(F('tricks', 'clean', 'ok', f'Hacker-tricks check: {n_ok} of {len(checks)} checks clear, {t_ok} of {len(tools)} hacking tools not found',
+                             'Checked the places attackers use to hide or survive a restart, the sign-in screen tools (Sticky Keys and others), well-known hacking tools on disk and running, copies of the password store, browser cookie-theft tricks, and quieter hiding places such as COM hijacking, print and time providers, shims and Office start-up folders. Nothing was changed.',
+                             Checks=checks, Tools=tools))
                 return out
             S.SCANS[i] = (key, label, combined)
             return

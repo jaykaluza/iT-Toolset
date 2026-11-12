@@ -555,6 +555,36 @@ def protection_state():
     return ps_one(PROTECTION_PS, timeout=60)
 
 
+def defender_managed_by():
+    """Why Windows Security may show 'This setting is managed by your administrator' for Defender settings: [] when nothing manages them."""
+    why = []
+    base = r'SOFTWARE\Microsoft\Enrollments'
+    for g in reg_subkeys(HKLM, base):   # a real work enrolment has an account and a management service; the built-in records every PC has do not
+        k = base + '\\' + g
+        if reg_get(HKLM, k, 'EnrollmentState', 0) == 1 and reg_get(HKLM, k, 'UPN', '') and reg_get(HKLM, k, 'DiscoveryServiceFullURL', ''):
+            why.append('this PC is enrolled in work device management (for example Microsoft Intune) through a work or school account')
+            break
+    if os.environ.get('USERDNSDOMAIN'):
+        why.append('this PC is joined to a work domain')
+    if reg_values(HKLM, r'SOFTWARE\Policies\Microsoft\Windows Defender'):
+        why.append('a Group Policy sets Microsoft Defender options')
+    return why
+
+
+CREDGUARD_FIX = ('Credential Guard is turned on separately from Memory integrity (they are different switches). In Group Policy (gpedit.msc): Computer Configuration > '
+                 'Administrative Templates > System > Device Guard > Turn On Virtualization Based Security, then set "Credential Guard Configuration" to "Enabled with UEFI lock". Restart afterwards.')
+
+
+def credential_guard(running=False):
+    """'on', 'off', or 'unsupported'. Credential Guard is only supported on Windows Enterprise and Education, so on Home and Pro
+    there is nothing to turn on and it is not worth reporting. 'on' also covers a switch that is set but waiting for a restart."""
+    if running or reg_get(HKLM, r'SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\CredentialGuard', 'Enabled', 0) == 1 \
+            or reg_get(HKLM, r'SYSTEM\CurrentControlSet\Control\Lsa', 'LsaCfgFlags', 0) in (1, 2):
+        return 'on'
+    edition = str(reg_get(HKLM, r'SOFTWARE\Microsoft\Windows NT\CurrentVersion', 'EditionID', '')).lower()
+    return 'off' if any(k in edition for k in ('enterprise', 'education', 'server')) else 'unsupported'
+
+
 def scan_system(ctx):
     p = protection_state()
     admin, out = ctx['admin'], []
@@ -577,7 +607,16 @@ def scan_system(ctx):
         if int(mp.get('SigAge') or 0) > 3:
             out.append(F('system', 'sig', 'high', f"Defender definitions are {mp['SigAge']} days old", 'Defender recognises malware with definitions that are normally updated every day.', 'Recent malware will not be recognised.', fix='Update the definitions.', action=A('defender_update', 'Update now', 'Update Microsoft Defender definitions now?')))
         if not mp.get('Tamper'):
-            out.append(F('system', 'tamper', 'medium', 'Defender Tamper Protection is off', 'Tamper Protection stops programs from switching Defender off.', 'Malware commonly disables antivirus first.', fix='Windows Security > Virus & threat protection > Manage settings > Tamper Protection. Windows only allows this to be changed by hand.', action=A('open_settings', 'Open settings', 'Open Windows Security?', page='windowsdefender://threatsettings')))
+            managed = defender_managed_by()
+            if managed:
+                # Windows Security shows "This setting is managed by your administrator" and greys the switch out, so nothing on this PC can turn it on
+                out.append(F('system', 'tamper', 'low', 'Defender Tamper Protection is off, and it is managed by your organisation', 'Tamper Protection stops programs from switching Defender off.', 'Malware commonly disables antivirus first.',
+                             'Windows Security shows "This setting is managed by your administrator" and the switch is greyed out. Why: ' + '; '.join(managed) + '.',
+                             'It cannot be turned on from this PC. Ask your IT administrator to turn Tamper Protection on in the Microsoft Intune or Microsoft Defender portal. If this is your own PC and should not be managed, remove the work account under Settings > Accounts > Access work or school, then turn it on in Windows Security > Virus & threat protection > Manage settings.',
+                             A('open_settings', 'Open Windows Security', 'Open Windows Security?', page='windowsdefender://threatsettings'),
+                             Alt=A('open_settings', 'Work or school accounts', 'Open the work or school accounts page?', page='ms-settings:workplace')))
+            else:
+                out.append(F('system', 'tamper', 'medium', 'Defender Tamper Protection is off', 'Tamper Protection stops programs from switching Defender off.', 'Malware commonly disables antivirus first.', fix='Windows Security > Virus & threat protection > Manage settings > Tamper Protection. Windows only allows this to be changed by hand. If the switch is greyed out and says "managed by your administrator", an organisation or another security product controls it and only they can change it.', action=A('open_settings', 'Open settings', 'Open Windows Security?', page='windowsdefender://threatsettings')))
     for x in as_list(p.get('exclusions')):
         x = str(x)
         if re.match(r'^[a-z]:\\?$', x, re.I) or USER_WRITABLE.search(x) or x.lower().lstrip('.*') in ('exe', 'dll', 'ps1', 'bat', 'js', 'vbs'):
@@ -623,10 +662,17 @@ def scan_system(ctx):
         out.append(F('system', 'lsa', 'medium', 'Password memory is not protected (LSA protection off)', 'LSA holds your sign-in secrets in memory. LSA protection stops other programs from reading it.', 'Password-stealing tools read those secrets straight out of memory.', fix='Turn it on. A restart is needed. Very old security drivers might fail to load.', action=A('set_reg', 'Turn on', 'Turn on LSA protection? A restart is needed.', hive='HKLM', path=r'SYSTEM\CurrentControlSet\Control\Lsa', name='RunAsPPL', value=1, kind='dword', reboot=True)))
     if reg_get(HKLM, r'SYSTEM\CurrentControlSet\Control\Lsa', 'DisableRestrictedAdmin', 1) == 0:
         out.append(F('system', 'restrictedadmin', 'medium', 'Restricted Admin mode is on (helps pass-the-hash)', 'This lets someone sign in over Remote Desktop with only a stolen password hash, not the real password.', 'If an attacker lifts a password hash from this or another PC, they can log in here over Remote Desktop without ever knowing the password.', fix='Turn it off unless a remote-management tool needs it.', action=A('set_reg', 'Turn off', 'Turn off Restricted Admin mode for Remote Desktop?', hive='HKLM', path=r'SYSTEM\CurrentControlSet\Control\Lsa', name='DisableRestrictedAdmin', value=1, kind='dword')))
-    if p and 2 not in [int(x) for x in as_list(p.get('vbs')) if str(x).isdigit()]:
+    # SecurityServicesRunning shows what is running now; also read what the toggle sets in the registry, so a feature that is
+    # switched on but pending a reboot (or that the CIM query could not read) is not wrongly reported as off.
+    vbs_running = [int(x) for x in as_list(p.get('vbs')) if str(x).isdigit()] if p else []
+    dgs = r'SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios'
+    hvci_on = 2 in vbs_running or reg_get(HKLM, dgs + r'\HypervisorEnforcedCodeIntegrity', 'Enabled', 0) == 1
+    if p and not hvci_on:
         out.append(F('system', 'hvci', 'low', 'Core Isolation (memory integrity) is off', 'Memory integrity uses the processor to stop tampering with Windows itself.', 'Malicious or vulnerable drivers can take over the kernel.', fix='Windows Security > Device security > Core isolation.', action=A('open_settings', 'Open settings', 'Open Core Isolation settings?', page='windowsdefender://coreisolation')))
-    if p and 1 not in [int(x) for x in as_list(p.get('vbs')) if str(x).isdigit()]:
-        out.append(F('system', 'credguard', 'info', 'Credential Guard is off', 'Credential Guard uses the processor to lock your sign-in secrets away, so even an administrator or malware cannot read them from memory.', 'Without it, a program running with high privileges can still lift password hashes and sign-in tickets out of memory. This is normal on home PCs; it is extra hardening, not a flaw.', fix='Optional, mainly for business PCs: turn on Core Isolation / Credential Guard. It needs a 64-bit PC with virtualization enabled.', action=A('open_settings', 'Open settings', 'Open Core Isolation settings?', page='windowsdefender://coreisolation')))
+    # Credential Guard is a different feature from memory integrity, and Windows supports it only on Enterprise and Education, so it is
+    # reported only where it can actually be turned on.
+    if p and credential_guard(1 in vbs_running) == 'off':
+        out.append(F('system', 'credguard', 'info', 'Credential Guard is off', 'Credential Guard uses the processor to lock your sign-in secrets away, so even an administrator or malware cannot read them from memory.', 'Without it, a program running with high privileges can still lift password hashes and sign-in tickets out of memory. It is extra hardening, not a flaw.', fix=CREDGUARD_FIX))
     srp = r'SOFTWARE\Policies\Microsoft\Windows\SrpV2'
     if reg_subkeys(HKLM, srp):
         out.append(F('system', 'applocker', 'ok', 'Application allow-listing is set up (AppLocker)', 'Only approved programs are allowed to run on this PC.'))
@@ -1042,24 +1088,13 @@ def scan_malware(ctx):
         out.append(F('malware', 'defender-full', 'info', 'Full system scan', 'A full scan checks every file on the PC.', fix='It can take hours and slows the PC while it runs.', action=A('defender_scan', 'Full scan', 'Start a Microsoft Defender full scan?\n\nThis can take hours.', kind='full')))
     elif others:
         out.append(F('malware', 'other-av', 'info', f"Malware scanning is handled by {', '.join(others)}", 'Windows lets one antivirus lead. Microsoft Defender is not running here, so My Security can\'t start antivirus scans or read detections.', 'The checks below still run, but they look for warning signs and are not a replacement for an antivirus scan.', fix=f"Use {others[0]}'s own console or your IT team to see detections and run scans."))
-    all_threats = [t for t in as_list(d.get('threats')) if isinstance(t, dict)]
-    for t in all_threats:
+    # only threats Defender has NOT yet dealt with: anything already removed, quarantined or otherwise handled is left out entirely
+    for t in [t for t in as_list(d.get('threats')) if isinstance(t, dict) and t.get('Active')]:
         files = [re.sub(r'^\w+:_?', '', str(r)) for r in as_list(t.get('Resources'))][:6]
-        live = bool(t.get('Active'))
         name = t.get('Name')
-        if live:
-            title, sev = f"Malware detected: {name}", ('critical' if int(t.get('Sev') or 0) >= 4 else 'high')
-            risk, fix = 'It is active right now. Look up the name to see what it does.', 'Clear it with Defender.'
-            act = A('defender_remove', 'Remove threats', 'Have Microsoft Defender remove all active threats?') if defender_on and admin else None
-        else:
-            title, sev = f"Threat Defender already handled: {name}", 'info'   # already removed/quarantined, so not a current threat — shown only for your records
-            risk = 'Microsoft Defender has already removed or quarantined it, so it is not a danger now. Look up the name to see what it does.'
-            fix, act = 'Nothing to do unless it keeps coming back. If it does, run a full Defender scan.', None
-        out.append(F('malware', 'threat:' + str(t.get('Id')), sev, title, 'Microsoft Defender identified this threat on this PC.', risk, '\n'.join(files), fix, act, Active=live, Link='https://www.microsoft.com/en-us/wdsi/threats/malware-encyclopedia-description?Name=' + urllib.parse.quote(str(name))))
-    live_ids = {str(t.get('Id')) for t in all_threats}
-    for det in as_list(d.get('detections'))[:15]:   # already dealt with, but worth knowing about
-        if isinstance(det, dict) and str(det.get('Id')) not in live_ids and str(det.get('When', '')) >= (dt.date.today() - dt.timedelta(days=30)).isoformat():
-            out.append(F('malware', f"detected:{det.get('Id')}:{det.get('When')}", 'info', f"Defender caught something on {det.get('When')}", 'Microsoft Defender detected a threat recently and dealt with it.', 'Worth knowing where it came from.', '\n'.join(str(r) for r in as_list(det.get('Resources'))[:4]), 'Nothing to do unless it keeps coming back.'))
+        sev = 'critical' if int(t.get('Sev') or 0) >= 4 else 'high'
+        act = A('defender_remove', 'Remove threats', 'Have Microsoft Defender remove all active threats?') if defender_on and admin else None
+        out.append(F('malware', 'threat:' + str(t.get('Id')), sev, f"Malware detected: {name}", 'Microsoft Defender identified this threat on this PC.', 'It is active right now. Look up the name to see what it does.', '\n'.join(files), 'Clear it with Defender.', act, Active=True, Link='https://www.microsoft.com/en-us/wdsi/threats/malware-encyclopedia-description?Name=' + urllib.parse.quote(str(name))))
     autostart = 0
     hkeys = [(HKLM, 'HKLM', r'SOFTWARE\Microsoft\Windows\CurrentVersion\Run'), (HKLM, 'HKLM', r'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run'), (HKLM, 'HKLM', r'SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'),
              (HKCU, 'HKCU', r'SOFTWARE\Microsoft\Windows\CurrentVersion\Run'), (HKCU, 'HKCU', r'SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce')]
@@ -1153,11 +1188,13 @@ def _zone(path):
     """(zone number, source URL, referrer) from the mark Windows puts on downloaded files."""
     try:
         with open(path + ':Zone.Identifier', encoding='utf-8', errors='replace') as f:
-            text = f.read()
+            text = f.read(8192)
     except OSError:
         return None, '', ''
+    text = text.replace('\x00', '')   # some programs end the mark with a null, or write it as UTF-16; without this one such file stopped the whole scan
     get = lambda k: (re.search(rf'^{k}=(.*)$', text, re.M | re.I) or [None, ''])[1].strip()
-    return int(get('ZoneId') or 0), get('HostUrl'), get('ReferrerUrl')
+    m = re.match(r'\d+', get('ZoneId'))
+    return (int(m.group()) if m else 0), get('HostUrl'), get('ReferrerUrl')
 
 
 def file_sha256(path):
@@ -1856,6 +1893,9 @@ def browser_extensions():
     return out
 
 
+EXT_BLOCKABLE = {'Chrome', 'Edge', 'Brave'}   # browsers that honour the ExtensionInstallBlocklist policy that block_extension uses; Opera and Vivaldi don't, so those can only be removed by hand
+
+
 def scan_browsers(ctx):
     out = []
     seen = set()
@@ -1869,10 +1909,12 @@ def scan_browsers(ctx):
         danger = sorted(perms & {'cookies', 'webRequest', 'webRequestBlocking', 'debugger', 'nativeMessaging', 'proxy', 'clipboardRead', 'management', 'declarativeNetRequest', 'scripting', 'tabs', 'history'})
         strong = perms & {'cookies', 'debugger', 'nativeMessaging', 'proxy', 'webRequestBlocking', 'clipboardRead'}
         page = {'Chrome': 'chrome://extensions', 'Edge': 'edge://extensions', 'Brave': 'brave://extensions', 'Vivaldi': 'vivaldi://extensions', 'Opera': 'opera://extensions'}.get(e['Browser'], 'the browser\'s extensions page')
+        block = A('block_extension', 'Block extension', f'Block "{e["Name"]}" in {e["Browser"]}?\n\n{e["Browser"]} removes it and will not let it back. It may then show "managed by your organization", which is normal. You can undo this in the Blocked tab.', browser=e['Browser'], ext_id=e['Id'], name=e['Name']) if e['Browser'] in EXT_BLOCKABLE else None
+        byhand = f' {e["Browser"]} extensions can only be removed by hand.' if e['Browser'] not in EXT_BLOCKABLE else ''
         if not e['Store']:
-            out.append(F('browsers', f"ext:{e['Browser']}:{e['Id']}", 'high' if all_sites else 'medium', f"Not from an extension store: {e['Name']}", f"{e['Browser']} has an extension that was installed from outside its store.", 'Malware installs extensions this way to steal sign-in cookies. Developers do this too.', f"Can use: {', '.join(danger) or 'few permissions'}" + ('; every site' if all_sites else ''), f'If you did not add it, remove it at {page}.'))
+            out.append(F('browsers', f"ext:{e['Browser']}:{e['Id']}", 'high' if all_sites else 'medium', f"Not from an extension store: {e['Name']}", f"{e['Browser']} has an extension that was installed from outside its store.", 'Malware installs extensions this way to steal sign-in cookies. Developers do this too.', f"Can use: {', '.join(danger) or 'few permissions'}" + ('; every site' if all_sites else ''), f'If you did not add it, open {page} and remove it.' + byhand, block))
         elif all_sites and strong:
-            out.append(F('browsers', f"ext:{e['Browser']}:{e['Id']}", 'medium', f"Can read every site: {e['Name']}", f"This {e['Browser']} extension can see and change every page and has powerful permissions.", 'A compromised or sold extension can steal sign-in tokens. Keep only those you need.', f"Can use: {', '.join(danger)}; every site", f'Review it at {page}.'))
+            out.append(F('browsers', f"ext:{e['Browser']}:{e['Id']}", 'medium', f"Can read every site: {e['Name']}", f"This {e['Browser']} extension can see and change every page and has powerful permissions.", 'A compromised or sold extension can steal sign-in tokens. Keep only those you need.', f"Can use: {', '.join(danger)}; every site", f'Open {page} and remove it if you do not recognise or need it.' + byhand, block))
     out.append(F('browsers', 'ext-summary', 'ok', f'{len(seen)} browser extensions checked', 'Store-installed extensions without broad permissions are not listed.'))
     return out
 

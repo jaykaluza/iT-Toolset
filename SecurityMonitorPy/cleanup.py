@@ -3,6 +3,7 @@
 Browsing data is what a thief or a malicious extension takes to get into your accounts without a password (sign-in cookies),
 and what tracks you (history, caches). Temporary folders are where downloaded installers and a lot of malware unpack.
 """
+import ctypes
 import glob
 import os
 import sqlite3
@@ -205,8 +206,18 @@ def clear_browsing():
 RECENT = 3600   # anything changed in the last hour may belong to something running right now, such as an installer
 
 
+def _long(p):
+    """Expands 8.3 short names (C:\\Users\\TELEWI~1\\...) to the real path, so one folder reached by two spellings is not counted twice."""
+    try:
+        buf = ctypes.create_unicode_buffer(1024)
+        n = ctypes.windll.kernel32.GetLongPathNameW(p, buf, 1024)
+        return buf.value if 0 < n < 1024 else p
+    except (OSError, AttributeError):
+        return p
+
+
 def temp_folders():
-    folders = {os.path.normcase(os.path.abspath(p)): p for p in (os.environ.get('TEMP', ''), os.environ.get('TMP', ''), os.path.join(LOCAL, 'Temp')) if p and os.path.isdir(p)}
+    folders = {os.path.normcase(_long(os.path.abspath(p))): _long(os.path.abspath(p)) for p in (os.environ.get('TEMP', ''), os.environ.get('TMP', ''), os.path.join(LOCAL, 'Temp')) if p and os.path.isdir(p)}
     win = os.path.join(WINDIR, 'Temp')
     if S.is_admin() and os.path.isdir(win):
         folders[os.path.normcase(win)] = win
@@ -271,11 +282,26 @@ def clear_temp():
 
 # ---- the check that offers both
 
+MIN_BROWSING = 5 * 1048576   # privacy data (cookies, history, form entries, site storage) below this is just what a browser holds the moment it starts
+# Caches refill by themselves as soon as the browser reloads its restored tabs, and hold no sign-ins, so they are still deleted when
+# you clear, but they are not what the scan reports (otherwise a browser that was just cleared would be flagged again within seconds).
+CACHE_NAMES = {'cache', 'code cache', 'gpucache', 'dawncache', 'dawngraphitecache', 'dawnwebgpucache', 'shadercache', 'grshadercache', 'graphitedawncache',
+               'cache2', 'startupcache', 'thumbnails', 'jumplistcache', 'favicons', 'favicons-journal', 'media history', 'media history-journal'}
+
+
+def _is_cache(path):
+    low = path.lower().replace('/', '\\')
+    return os.path.basename(low) in CACHE_NAMES or low.endswith(('\\service worker\\cachestorage', '\\service worker\\scriptcache'))
+
+
 def scan_cleanup(ctx):
     out = []
-    targets = browsing_targets()
-    if targets:
-        size = sum(_size(p) for _n, _proc, paths in targets for p in paths)
+    all_targets = browsing_targets()
+    # only privacy data decides whether to report; the browsers with some are the ones named
+    targets = [(n, pr, [p for p in paths if not _is_cache(p)]) for n, pr, paths in all_targets]
+    targets = [t for t in targets if t[2]]
+    size = sum(_size(p) for _n, _proc, paths in targets for p in paths) if targets else 0
+    if targets and size >= MIN_BROWSING:
         names = ', '.join(n for n, _p, _x in targets)
         cookies = sum(1 for _n, _p, paths in targets for p in paths if os.path.basename(p).lower().startswith('cookies'))
         out.append(F('cleanup', 'browsing', 'medium', f'Browsing data to clear: {_mb(size)} in {names}',
