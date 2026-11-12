@@ -35,6 +35,7 @@ label.tog input{appearance:none;-webkit-appearance:none;flex:none;width:34px;hei
 label.tog input::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
 label.tog input:checked{background:var(--brand)}label.tog input:checked::after{left:18px}label.tog:has(input:checked){color:var(--text)}
 .btn{font:inherit;font-size:11px;font-weight:500;border-radius:980px;padding:1px 9px;cursor:pointer;color:var(--accent);background:transparent;border:1px solid var(--accent);white-space:nowrap}
+.btn2{display:inline-flex;flex-direction:column;gap:2px;align-items:stretch}.btn2 .btn{font-size:10px;line-height:1.25;padding:0 8px;text-align:center;width:72px;padding:0}
 .btn:hover{background:rgba(0,113,227,.1)}.btn.danger{color:#fff;background:#8c1515;border-color:#8c1515}.btn.danger:hover{background:#820000}.btn:disabled{opacity:.4;cursor:not-allowed}
 .btn.big{font-size:13px;padding:7px 22px;font-weight:600}.btn.solid{color:#fff;background:var(--brand);border-color:var(--brand)}.btn.solid:hover{background:#0077ed}
 .wrap{padding:0 16px 30px}
@@ -95,7 +96,7 @@ a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text
 </style>
 </head>
 <body>
-<header><h1><a href="https://jaykaluza.github.io/iT-Toolset/" target="nesiam-landing" title="Go to the Nesiam.com landing page">my_security</a></h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every detection, fix, block and undo from the last 30 days">Activity log</button><button id="quit" title="Stop My Security and close the app">Stop</button></header>
+<header><h1><a href="https://jaykaluza.github.io/iT-Toolset/" target="nesiam-landing" title="Go to the Nesiam.com landing page">my_security</a></h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every detection, fix, block and undo from the last 30 days">Activity log</button><button id="quit" title="Exit My Security and close the app">Exit</button></header>
 <div class="stats" id="stats"></div>
 <div class="bar"><div class="tabs" id="tabs"></div><input type="search" id="q" placeholder="Filter…"><label class="tog" title="Show only Medium, High and Critical items. Low and informational items are hidden."><input type="checkbox" id="problems"> Problems only</label><button class="btn" id="rescan">Scan this tab</button></div>
 <div class="wrap" id="view"></div>
@@ -140,7 +141,8 @@ function actButton(f) {
   const danger = /block|end|remove|turn off|stop|quarantine|disable/i.test(f.Action.label);
   const busy = BUSY.has(f.Id);
   const alt = f.Alt ? `<button class="btn ${/block|end|remove|turn off|stop|quarantine|disable/i.test(f.Alt.label) ? 'danger' : ''}" data-act="${esc(f.Id)}" data-alt="1" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : esc(f.Alt.label)}</button>` : '';
-  return `<button class="btn ${danger ? 'danger' : ''}" data-act="${esc(f.Id)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : esc(f.Action.label)}</button>${alt}`;
+  const main = `<button class="btn ${danger ? 'danger' : ''}" data-act="${esc(f.Id)}" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : esc(f.Action.label)}</button>`;
+  return `<span class="btn2">${main}${alt}</span>`;
 }
 function acts(f) {
   if (f.EventId) return eventButtons(f.EventId);
@@ -197,11 +199,11 @@ const verCell = f => f.Version ? `<div class="ver">${vPill(f.Verdict)}${esc(f.Ve
 const allowText = f => f.Blocked ? '<span class="pill p-ok">You blocked it</span>' : !f.Exposed ? '<span class="pill p-ok">This PC only</span>' : f.Allowed === true ? '<span class="pill p-medium">Open to network</span>' : f.Allowed === false ? '<span class="pill p-low">Firewall closes it</span>' : '<span class="pill p-low">Listening</span>';
 let PTIPS = {};
 function portsTab() {
-  const note = scanNote(['ports']), blocked = new Set((D.blocks.ports || []).map(p => p.Key));
+  const note = scanNote(['ports']), blocked = new Set((D.blocks.ports || []).map(p => p.Key)), blockedApps = new Set((D.blocks.programs || []).map(p => String(p.Path).toLowerCase()));
   PTIPS = {};
   const rows = findings('ports').filter(f => f.Port && hit(f) && (!S.problems || (RANK[f.Sev] >= 2))).sort((a, b) => RANK[b.Sev] - RANK[a.Sev] || a.Port - b.Port).map(f => {
     PTIPS[f.Id] = f; const isB = blocked.has(f.Proto + ':' + f.Port);
-    return `<tr class="${RANK[f.Sev] >= 2 ? 's-' + f.Sev : ''}"><td>${pill(f.Sev)}</td><td><b>${f.Port}</b> <span class="small">${esc(f.Proto)}</span></td><td class="title"><span data-tip="${esc(f.Id)}">${esc(f.Title.split(' · ')[1])}</span></td><td>${verCell(f)}</td><td>${esc(f.App)}<div class="small">PID ${f.PID}</div></td><td>${allowText(f)}</td><td>${isB ? `<button class="btn" data-unblock="port" data-key="${esc(f.Proto + ':' + f.Port)}">Unblock</button>` : actButton(f)}</td></tr>`;
+    return `<tr class="${RANK[f.Sev] >= 2 ? 's-' + f.Sev : ''}"><td>${pill(f.Sev)}</td><td><b>${f.Port}</b> <span class="small">${esc(f.Proto)}</span></td><td class="title"><span data-tip="${esc(f.Id)}">${esc(f.Title.split(' · ')[1])}</span></td><td>${verCell(f)}</td><td>${esc(f.App)}<div class="small">PID ${f.PID}</div></td><td>${allowText(f)}</td><td>${isB ? `<button class="btn" data-unblock="port" data-key="${esc(f.Proto + ':' + f.Port)}">Unblock</button>` : f.Path && blockedApps.has(f.Path.toLowerCase()) ? `<button class="btn" data-unblock="program" data-key="${esc(f.Path)}" title="${esc(f.App)} is blocked, so this port is shut. Unblock it to let ${esc(f.App)} connect again.">Unblock app</button>` : actButton(f)}</td></tr>`;
   });
   return `<div class="note">Everything listening for connections on this PC. <b>Hover over a service name</b> to see how that port works, what can go wrong, which versions are safe and which to block, and what blocking it breaks. Blocks stop other devices reaching the port, and are listed in the Blocked tab.</div>` + note +
     (rows.length ? `<table><colgroup><col style="width:82px"><col style="width:90px"><col><col style="width:22%"><col style="width:19%"><col style="width:130px"><col style="width:100px"></colgroup><thead><tr><th>Risk</th><th>Port</th><th>Service</th><th>Version</th><th>Program</th><th>Reach</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>` : note ? '' : '<div class="empty">Nothing matches.</div>');
@@ -255,8 +257,8 @@ function eventButtons(id) {
   const blocked = new Set((D.blocks.programs || []).map(p => String(p.Path).toLowerCase()));
   const procBlocked = e.Path && blocked.has(e.Path.toLowerCase()), parentBlocked = e.ParentPath && blocked.has(e.ParentPath.toLowerCase());
   const own = procBlocked ? '<span class="pill p-done" title="Blocked. You can unblock it in the Blocked tab.">Blocked</span>'
-    : e.BlockWhy ? `<button class="btn danger" disabled title="${esc(e.BlockWhy)}">${e.Running ? 'End and block' : 'Block'}</button>`
-    : `<button class="btn danger" data-blockp="${e.Id}" title="${e.Running ? 'End it and stop its program from starting or connecting again' : 'Stop its program from starting or connecting again'}">${e.Running ? 'End and block' : 'Block'}</button>`;
+    : e.BlockWhy ? `<button class="btn danger" disabled title="${esc(e.BlockWhy)}">${e.Running ? 'End and block app' : 'Block app'}</button>`
+    : `<button class="btn danger" data-blockp="${e.Id}" title="${e.Running ? 'End it and stop its program from starting or connecting again' : 'Stop its program from starting or connecting again'}">${e.Running ? 'End and block app' : 'Block app'}</button>`;
   const par = !e.Parent || procBlocked ? '' : parentBlocked ? `<span class="pill p-done" title="Blocked. You can unblock it in the Blocked tab.">${esc(e.Parent)} blocked</span>`
     : e.ParentBlockWhy ? '' : `<button class="btn danger" data-blockparent="${e.Id}" title="Block ${esc(e.Parent)}, the program that started this. It is ended if running.">Block ${esc(e.Parent)}</button>`;
   return (e.Running ? `<button class="btn danger" data-kill="${e.Id}">End</button>` : '<span class="small">Ended</span>') + own + par;
@@ -599,7 +601,7 @@ $('#view').onclick = async e => {
   if (t.dataset.kill) { const ev = D.events.find(x => x.Id === +t.dataset.kill); if (!confirm(`End ${ev.Name} (PID ${ev.PID})?\n\nUnsaved work in it will be lost.`)) return; toast(await post('/kill', {id: ev.Id})); return poll(true); }
   const pf = t.closest('[data-proc]');
   if (pf) { S.proc = pf.dataset.proc; return render(); }
-  if (t.dataset.blockp) { const ev = D.events.find(x => x.Id === +t.dataset.blockp); if (!confirm(`${ev.Running ? 'End and block' : 'Block'} ${ev.Name}?\n\n${ev.Path}\n\nIt will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id})); return poll(true); }
+  if (t.dataset.blockp) { const ev = D.events.find(x => x.Id === +t.dataset.blockp); if (!confirm(`${ev.Running ? 'End and block' : 'Block app'} ${ev.Name}?\n\n${ev.Path}\n\nIt will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id})); return poll(true); }
   if (t.dataset.blockparent) { const ev = D.events.find(x => x.Id === +t.dataset.blockparent); if (!confirm(`Block ${ev.Parent}?\n\n${ev.ParentPath}\n\nThis is the program that started ${ev.Name}. It is ended if it is running, and it will not be able to connect or start again until you unblock it in the Blocked tab.`)) return; toast(await post('/block-process', {id: ev.Id, parent: true})); return poll(true); }
   if (t.dataset.unblock) { const k = t.dataset.unblock; if (!confirm(k === 'delete' ? 'Permanently delete this file?\n\nThis cannot be undone.' : k === 'restore' ? 'Put this file back where it was?' : 'Remove this block?')) return; toast(await post('/unblock', {kind: k, key: t.dataset.key})); return poll(true); }
   if (t.dataset.dismiss) { toast(await post('/dismiss', {id: t.dataset.dismiss})); return poll(true); }
@@ -609,7 +611,7 @@ $('#view').onclick = async e => {
 };
 let stopped = false;
 function closed() { stopped = true; window.close(); setTimeout(() => { document.body.innerHTML = '<header><h1>my_security</h1></header><div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.</div>'; }, 300); }
-$('#quit').onclick = async () => { if (!confirm('Stop My Security?\n\nLive watching of programs and browser tabs stops too.')) return; try { await fetch('/quit', {method: 'POST', headers: {'X-MySec-Token': TOKEN}}); } catch(e) {} closed(); };
+$('#quit').onclick = async () => { if (!confirm('Exit My Security?\n\nLive watching of programs and browser tabs stops too.')) return; try { await fetch('/quit', {method: 'POST', headers: {'X-MySec-Token': TOKEN}}); } catch(e) {} closed(); };
 addEventListener('pagehide', e => { if (!e.persisted && !stopped) navigator.sendBeacon('/tab-closed', TOKEN); });
 let timer = null;
 async function poll(once) {

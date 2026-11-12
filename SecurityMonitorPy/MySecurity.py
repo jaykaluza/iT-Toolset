@@ -50,7 +50,7 @@ import browsertest as B   # the browser security self-test (modelled on BrowserA
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.11'
+APP_VERSION = '0.1.12'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -69,7 +69,7 @@ class App:
         self.admin = S.is_admin()
         self.lock = threading.RLock()
         self.scans = {key: {'label': label, 'status': 'never', 'findings': [], 'at': '', 'secs': 0} for key, label, _fn in S.SCANS}
-        self.ctx = {'admin': self.admin, 'self_pid': os.getpid()}
+        self.ctx = {'admin': self.admin, 'self_pid': os.getpid(), 'refuse_program': X._refuse_process}   # refuse_program: why a program must not be blocked ('' if it can be)
         self.job = None                  # {'kind', 'queue', 'current', 'done', 'total', 'started'}
         self.autopilot_at = ''
         self.rev = 1
@@ -192,6 +192,7 @@ class App:
         if self.admin:
             self.refresh_blocks()   # the first Autopilot at start-up would otherwise run before the blocks have loaded, and call blocked ports open
         self.ctx['blocked_ports'] = {p['Key'] for p in self.blocks.get('ports', [])}
+        self.ctx['blocked_programs'] = {str(p.get('Path', '')).lower() for p in self.blocks.get('programs', []) if p.get('Path')}
         job = self.job
         for key in list(job['queue']):
             with self.lock:
@@ -540,7 +541,7 @@ class App:
                 self.rev += 1
             if act['fn'] in ('block_port', 'block_ip', 'block_process', 'block_site', 'quarantine'):
                 self.refresh_blocks()
-            if act['fn'] == 'block_port':
+            if act['fn'] in ('block_port', 'block_process') and f.get('Cat') in ('ports', 'pentest', 'exposure'):
                 self._rescan_port_views()
             if act['fn'] == 'set_fw_option' and not self.job:
                 self.start_scans({'firewall'}, 'scan')   # so the card flips between "turn on" and "turn off"
@@ -611,8 +612,12 @@ class App:
     def _view(self, f):
         """A finding as it should be shown right now. A port you have blocked is closed to the network whatever the last scan saw, so it
         is shown as blocked (low), with no Block button, instead of as an open Medium problem."""
-        if f.get('Port') and f.get('Proto') and f.get('Exposed') and not f.get('Blocked') and f"{f['Proto']}:{f['Port']}" in {p['Key'] for p in self.blocks.get('ports', [])}:
-            return {**f, 'Blocked': True, 'Allowed': False, 'Sev': 'low' if SEV_RANK[f['Sev']] >= 2 else f['Sev'], 'Evidence': 'You blocked this port. Windows Firewall refuses incoming connections to it from other devices.', 'Action': None}
+        if f.get('Port') and f.get('Proto') and f.get('Exposed') and not f.get('Blocked'):
+            port_blocked = f"{f['Proto']}:{f['Port']}" in {p['Key'] for p in self.blocks.get('ports', [])}
+            prog_blocked = bool(f.get('Path')) and str(f['Path']).lower() in {str(p.get('Path', '')).lower() for p in self.blocks.get('programs', [])}
+            if port_blocked or prog_blocked:
+                why = 'You blocked this port. Windows Firewall refuses incoming connections to it from other devices.' if port_blocked else f"You blocked {f.get('App')}. It cannot connect in or out, so this port is shut."
+                return {**f, 'Blocked': True, 'Allowed': False, 'Sev': 'low' if SEV_RANK[f['Sev']] >= 2 else f['Sev'], 'Evidence': why, 'Action': None, 'Alt': None}
         return f
 
     def plan(self):

@@ -28,7 +28,7 @@ import winreg
 from concurrent.futures import ThreadPoolExecutor
 
 from knowledge import (BACKDOOR_PORTS, FREE_HOSTING, LOGIN_BRANDS, LOOKALIKE_TARGETS, NEVER_BLOCK_PORTS, REMOTE_CONTROL_PORTS, REMOTE_TOOLS,
-                       RISKY_SERVICES, RISKY_TLDS, SPYWARE_NAMES, TRUSTED_SITES, port_info)
+                       RISKY_SERVICES, RISKY_TLDS, SPYWARE_NAMES, TRUSTED_SITES, PORTS, port_info)
 
 LOAD_FROM_SYSTEM32 = 0x800
 CREATE_NO_WINDOW = 0x08000000
@@ -484,7 +484,9 @@ def scan_ports(ctx):
                 if prog in ('any', '') or prog == lower or (pid == 4 and prog == 'system'):
                     allowed = True
                     break
-        blocked_by_app = exposed and f'{proto}:{port}' in ctx.get('blocked_ports', ())
+        port_blocked = exposed and f'{proto}:{port}' in ctx.get('blocked_ports', ())
+        prog_blocked = bool(exposed and path and path.lower() in ctx.get('blocked_programs', ()))   # the whole program is blocked, so its ports are shut too
+        blocked_by_app = port_blocked or prog_blocked
         if blocked_by_app:
             allowed = False   # the app added a firewall block rule, which overrides any allow rule
         info = signs.get(path, {})
@@ -510,15 +512,24 @@ def scan_ports(ctx):
             elif allowed is False:
                 sev, why = 'low', 'Something is listening, but Windows Firewall has no rule letting the network reach it.'
             if blocked_by_app:
-                sev, why = 'low', 'You blocked this port. Windows Firewall refuses incoming connections to it from other devices.'
+                sev, why = 'low', (f'You blocked this port. Windows Firewall refuses incoming connections to it from other devices.' if port_blocked else f'You blocked {app}. It cannot connect in or out, so this port is shut.')
         ver = vers.get((proto, port), {})
         bad_ver = [i for i in ver.get('Versions', []) if i['Verdict'] == 'block' and versions.measured(i)]   # general protocol advice is reported by the Protocols tab
         if exposed and bad_ver and SEV_RANK[sev] < SEV_RANK['high'] and allowed is not False:
             sev, why = 'high', f"{bad_ver[0]['Name']}: {bad_ver[0]['Why']}"
         blockable = exposed and (proto, port) not in NEVER_BLOCK_PORTS and pid != ctx.get('self_pid')
-        action = A('block_port', 'Block', f'Block incoming {proto} port {port} ({name})?\n\nWindows Firewall will refuse connections to it from other devices.\n\nThis may break: {breaks}\n\nYou can unblock it anytime in the Blocked tab.', port=port, proto=proto) if blockable else None
+        port_action = A('block_port', 'Block port', f'Block incoming {proto} port {port} ({name})?\n\nWindows Firewall will refuse connections to it from other devices.\n\nThis may break: {breaks}\n\nYou can unblock it anytime in the Blocked tab.', port=port, proto=proto) if blockable else None
+        # A port that is not a standard service is just a number the program picked, and it can pick another next time. For those, block the
+        # program instead, when it is one that can be blocked. Windows' own shared hosts (svchost, System) cannot, so they keep Block port.
+        refuse = ctx.get('refuse_program')
+        app_blockable = bool(blockable and path and refuse and not refuse(app, path))
+        if app_blockable and port not in PORTS:
+            action = A('block_process', 'Block app', f'Block {app}?\n\n{path}\n\nIt is ended if it is running, it cannot connect in or out, and Windows will refuse to start it. That also closes port {port}, which it chose for itself.\n\nThis may break: {breaks}\n\nYou can unblock it anytime in the Blocked tab.', pid=pid, name=app, path=path)
+            alt_action = port_action
+        else:
+            action, alt_action = port_action, None
         out.append(F('ports', f'{proto}:{port}', sev, f'{proto} {port} · {name}', how, risk, why, f'Blocking will break: {breaks}', action,
-                     Port=port, Proto=proto, Addr=', '.join(sorted(v['addrs'])), App=app, PID=pid, Path=path, Exposed=exposed, Allowed=allowed, Blocked=blocked_by_app,
+                     Alt=alt_action, Port=port, Proto=proto, Addr=', '.join(sorted(v['addrs'])), App=app, PID=pid, Path=path, Exposed=exposed, Allowed=allowed, Blocked=blocked_by_app,
                      Publisher=info.get('Publisher', ''), Breaks=breaks, Version=ver.get('Version', ''), Verdict=ver.get('Verdict', ''), Versions=ver.get('Versions', []), ProgVersion=ver.get('Program', '')))
     if not rules:
         out.append(F('ports', 'fw-unknown', 'info', 'Firewall rules could not be read', 'My Security could not read Windows Firewall rules, so it can\'t say which ports the firewall lets through.', fix='Run My Security as Administrator.'))
