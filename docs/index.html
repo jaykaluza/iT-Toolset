@@ -266,7 +266,7 @@ function show(user) {
 
 // Email-code sign-in. provider 'mock' shows the code on screen (demo). For real email, deploy AuthWorker/ and use
 // {type: 'worker', url: 'https://nesiam-auth.<you>.workers.dev'}
-const auth = NesiamAuth.mount($('#authBox'), {provider: {type: 'worker', url: 'https://nesiam-auth.nesiam.workers.dev'}, onSignedIn: email => { store.set(email); show(email); watchKnown(); }});
+const auth = NesiamAuth.mount($('#authBox'), {provider: {type: 'worker', url: 'https://nesiam-auth.nesiam.workers.dev', turnstileSiteKey: '0x4AAAAAAGA_cqStFEJJrxYG'}, onSignedIn: email => { store.set(email); show(email); watchKnown(); }});
 $('#signout').onclick = () => { store.set(''); show(''); auth.reset(); };
 // Browsers won't tell a page which apps are installed, so this browser remembers whether
 // each app has been set up on this PC (set when it's seen running, cleared by the remove link).

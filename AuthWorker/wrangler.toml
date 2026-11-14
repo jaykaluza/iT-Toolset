@@ -9,16 +9,25 @@ preview_urls = false
 FROM = "Nesiam <login@mail.nesiam.com>"
 # only these websites may call the worker (comma separated)
 ALLOWED_ORIGINS = "https://jaykaluza.github.io,https://nesiam.com,https://www.nesiam.com"
+# most emails the worker will send in one day, across everyone (Resend's free plan allows 100)
+DAILY_CAP = "90"
 
-# stops people from spamming codes or guessing them: at most 3 codes and 5 tries per minute per email and per address
-[[unsafe.bindings]]
+# one tiny object per email address: one code at a time, a wait between codes, 5 tries per code, each code works once
+[[durable_objects.bindings]]
+name = "GUARD"
+class_name = "Guard"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Guard"]
+
+# extra per-address limits (3 codes and 5 tries a minute). If these ever break, the worker refuses requests instead of allowing them.
+[[ratelimits]]
 name = "SEND_LIMIT"
-type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 3, period = 60 }
 
-[[unsafe.bindings]]
+[[ratelimits]]
 name = "VERIFY_LIMIT"
-type = "ratelimit"
 namespace_id = "1002"
 simple = { limit = 5, period = 60 }

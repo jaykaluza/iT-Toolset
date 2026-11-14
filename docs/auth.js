@@ -35,6 +35,33 @@
     };
   }
 
+  // Cloudflare Turnstile: a check that stops scripts from asking for codes in bulk. It is invisible unless it needs the person's help.
+  let turnstileScript = null;
+  function loadTurnstile() {
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (!turnstileScript) turnstileScript = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true;
+      s.onload = () => resolve(window.turnstile); s.onerror = () => { turnstileScript = null; reject(new Error('The robot check could not load. Check your connection and try again.')); };
+      document.head.appendChild(s);
+    });
+    return turnstileScript;
+  }
+  async function turnstileToken(siteKey) {
+    const ts = await loadTurnstile();
+    return new Promise((resolve, reject) => {
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;left:50%;top:35%;transform:translateX(-50%);z-index:9999';
+      document.body.appendChild(box);
+      let done = false, id = null, timer = null;
+      const finish = (fn, v) => { if (done) return; done = true; clearTimeout(timer); try { ts.remove(id); } catch (e) {} box.remove(); fn(v); };
+      timer = setTimeout(() => finish(reject, new Error('The robot check took too long. Try again.')), 45000);
+      id = ts.render(box, {sitekey: siteKey, appearance: 'interaction-only', callback: t => finish(resolve, t),
+        'error-callback': () => finish(reject, new Error('The robot check did not pass. Reload the page and try again.')),
+        'timeout-callback': () => finish(reject, new Error('The robot check expired. Try again.'))});
+    });
+  }
+
   function workerProvider(cfg) {
     const base = String(cfg.url || '').replace(/\/+$/, '');
     let challenge = '';
@@ -46,7 +73,8 @@
     return {
       name: 'worker',
       async send(email) {
-        let r; try { r = await post('/send', {email}); } catch (e) { throw new Error('Could not reach the sign-in service. Check your connection and try again.'); }
+        const turnstile = await turnstileToken(cfg.turnstileSiteKey);   // a fresh check for every code, including "send again"
+        let r; try { r = await post('/send', {email, turnstile}); } catch (e) { throw new Error('Could not reach the sign-in service. Check your connection and try again.'); }
         if (!r.ok || !r.body.challenge) throw new Error(r.body && r.body.error || 'The code could not be sent. Try again.');
         challenge = r.body.challenge;
         return {};
@@ -84,7 +112,7 @@
   }
 
   function makeProvider(cfg) {
-    if (cfg && cfg.type === 'worker') { if (!/^https:\/\//.test(cfg.url || '') && !/^http:\/\/localhost/.test(cfg.url || '')) throw new Error('NesiamAuth: the worker provider needs an https url.'); return workerProvider(cfg); }
+    if (cfg && cfg.type === 'worker') { if (!cfg.turnstileSiteKey) throw new Error('NesiamAuth: the worker provider needs turnstileSiteKey.'); if (!/^https:\/\//.test(cfg.url || '') && !/^http:\/\/localhost/.test(cfg.url || '')) throw new Error('NesiamAuth: the worker provider needs an https url.'); return workerProvider(cfg); }
     if (cfg && cfg.type === 'supabase') { if (!cfg.url || !cfg.anonKey) throw new Error('NesiamAuth: the supabase provider needs url and anonKey.'); return supabaseProvider(cfg); }
     return mockProvider();
   }
