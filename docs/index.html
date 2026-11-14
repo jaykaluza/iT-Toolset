@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0c12">
 <meta name="color-scheme" content="only light">
 <title>Nesiam.com</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cdefs%3E%3CradialGradient id=%22r%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%23ff8a80%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%23ff1400%22/%3E%3Cstop offset=%221%22 stop-color=%22%23f00000%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22b%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%236fc3ff%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%230090ff%22/%3E%3Cstop offset=%221%22 stop-color=%22%230060ff%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22g%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%237dffa8%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%2300ff55%22/%3E%3Cstop offset=%221%22 stop-color=%22%2300d13f%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23161617%22/%3E%3Ccircle cx=%2219.5%22 cy=%2224%22 r=%224%22 fill=%22url%28%23r%29%22/%3E%3Cpath d=%22M7.5 27V12.5M7.5 18c0-4 2.6-6.2 6-6.2s6 2.2 6 6.2V27%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%224%22/%3E%3Ccircle cx=%2219%22 cy=%226.5%22 r=%224%22 fill=%22url%28%23b%29%22/%3E%3Ccircle cx=%2227%22 cy=%2224%22 r=%223.6%22 fill=%22url%28%23g%29%22/%3E%3C/svg%3E">
@@ -15,7 +16,7 @@
   /* older names that the script and auth.js still use */
   --red:#111114;--red-dark:#33333a;--bg:#fff;--page:#fff;--text:var(--ink);--accent:var(--ink);--head:#0b0c12;--head-text:#f4f4f8;--head-muted:#a0a0aa;--warn:#7a5a1c;--warn-bg:rgba(255,200,80,.2)}
 *{box-sizing:border-box}
-body{margin:0;height:100vh;min-height:100vh;color:var(--ink);font:400 14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;
+body{margin:0;height:100vh;height:100dvh;min-height:100vh;min-height:100dvh;color:var(--ink);font:400 14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;
   background:linear-gradient(180deg,#fff 0%,#f4f2fc 45%,var(--lav2) 100%) fixed}
 main{flex:none;width:100%}
 .hidden{display:none!important}
@@ -24,7 +25,7 @@ a:hover{color:#5b4bff}
 :focus-visible{outline:2px solid #5b4bff;outline-offset:3px}
 
 /* same size as the My Security header */
-header{background:var(--head);color:var(--head-text);padding:7px 16px;display:flex;align-items:center;gap:4px 14px;flex-wrap:wrap}
+header{background:var(--head);color:var(--head-text);padding:max(7px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 7px max(16px,env(safe-area-inset-left));display:flex;align-items:center;gap:4px 14px;flex-wrap:wrap}
 header h1{font:600 17.3px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;color:#fff}
 header h1 .lt{display:inline-block;position:relative}
 header h1 .gap{color:transparent;margin:0 .02em}
@@ -136,7 +137,19 @@ footer{max-width:1080px;margin:0 auto;padding:0 40px 10px;font-size:12px;color:v
 .dots button[aria-current=true]{background:#111114;width:20px;border-radius:999px}
 .dots button:focus-visible{outline:2px solid #5b4bff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.stage .card{transition:none}}
-@media (max-height:400px),(max-width:900px){.showcase{display:none}}
+@media (max-height:400px){.showcase{display:none}}
+
+/* phones and small windows: a smaller stack, turned by swiping */
+@media (max-width:900px){
+  .showcase{--cw:min(62vw,300px);flex-basis:230px}
+  .stage{top:10px}
+  .nav{top:56px;width:32px;height:32px;line-height:32px}
+  .dots{bottom:6px}
+  .stage .card .wb{touch-action:pan-y}
+}
+.stage{touch-action:pan-y}
+/* narrow screens: the menu bar stays one line high */
+@media (max-width:600px){header{flex-wrap:nowrap}header h1{flex:none}header .who{min-width:0;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}header button{flex:none;white-space:nowrap}}
 footer{display:none}
 .hero-side{display:none!important}
 .hero{display:block!important}
@@ -203,7 +216,7 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
   .tool-actions .run{flex:none;padding:7px 16px}
   .more-btn{width:32px;height:32px}
   .more-menu{bottom:auto;top:calc(100% + 8px)}
-  .lede{display:none}
+  .lede{font-size:15px;margin-bottom:14px}
   .display{font-size:26px;margin-bottom:14px}
   main{padding:26px 16px 12px}
   #authBox p.muted:last-child{display:none}
@@ -601,7 +614,7 @@ if (store.get()) watchKnown();
   const ring = document.getElementById('ring'), cards = [...ring.querySelectorAll('.card')], n = cards.length;
   const dots = [...document.querySelectorAll('#dots button')], dlg = document.getElementById('zoom'), img = document.getElementById('zoomImg');
   const showcase = document.querySelector('.showcase');
-  let a = 0, timer = null, userTouched = false;
+  let a = 0, timer = null, userTouched = false, suppress = false;
   const active = () => ((a % n) + n) % n;
   // the offset of card i from the front one, the short way round: 0 is the front, -1 the left neighbour, +1 the right
   const off = i => ((i - active() + n + n / 2) % n) - n / 2;
@@ -626,7 +639,7 @@ if (store.get()) watchKnown();
     document.getElementById('zoomNote').textContent = b.dataset.note;
     dlg.showModal();
   }
-  cards.forEach((c, i) => c.querySelector('.wb').addEventListener('click', e => { stop(); if (i === active()) enlarge(e.currentTarget); else go(i); }));
+  cards.forEach((c, i) => c.querySelector('.wb').addEventListener('click', e => { if (suppress) return; stop(); if (i === active()) enlarge(e.currentTarget); else go(i); }));
   document.getElementById('prev').addEventListener('click', () => { stop(); a -= 1; draw(); });
   document.getElementById('next').addEventListener('click', () => { stop(); a += 1; draw(); });
   dots.forEach((d, i) => d.addEventListener('click', () => { stop(); go(i); }));
@@ -634,6 +647,14 @@ if (store.get()) watchKnown();
     if (dlg.open || /input|textarea|select/i.test(document.activeElement.tagName) || getComputedStyle(showcase).display === 'none') return;
     if (e.key === 'ArrowLeft') { stop(); a -= 1; draw(); } else if (e.key === 'ArrowRight') { stop(); a += 1; draw(); }
   });
+  let sx = null;   // swipe: a quick drag left or right turns the stack
+  const stage = document.getElementById('ring');
+  stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive: true});
+  stage.addEventListener('touchend', e => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 40) { stop(); a += dx < 0 ? 1 : -1; draw(); suppress = true; setTimeout(() => { suppress = false; }, 350); }
+  }, {passive: true});
   document.getElementById('zoomClose').addEventListener('click', () => dlg.close());
   dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });   // the dim area around the picture
   dlg.addEventListener('close', () => { img.removeAttribute('src'); });
