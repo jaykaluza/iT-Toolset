@@ -46,6 +46,7 @@ async function sendMail(env, to, code) {
       text: `Your Nesiam sign-in code is ${code}\n\nIt works for 10 minutes. If you did not ask for it, ignore this email: nobody can sign in without the code.`,
       html: `<p>Your Nesiam sign-in code is</p><p style="font-size:28px;font-weight:600;letter-spacing:4px">${code}</p><p>It works for 10 minutes. If you did not ask for it, ignore this email: nobody can sign in without the code.</p>`})
   });
+  if (!r.ok) console.log('Resend refused the email:', r.status, (await r.text()).slice(0, 300));   // visible with `wrangler tail`; never sent to the browser
   return r.ok;
 }
 
