@@ -50,13 +50,20 @@
   async function turnstileToken(siteKey) {
     const ts = await loadTurnstile();
     return new Promise((resolve, reject) => {
+      // The check is invisible unless Cloudflare needs a click. Only then does this centered card (with a dimmed background) appear.
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.4)';
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#fff;color:#1d1d1f;border-radius:14px;padding:20px 24px;box-shadow:0 12px 40px rgba(0,0,0,.35);text-align:center;font:600 14px/1.4 Inter,system-ui,sans-serif;max-width:calc(100vw - 32px)';
+      const label = document.createElement('div'); label.textContent = 'Quick check before we email your code'; label.style.marginBottom = '12px';
       const box = document.createElement('div');
-      box.style.cssText = 'position:fixed;left:50%;top:35%;transform:translateX(-50%);z-index:9999';
-      document.body.appendChild(box);
+      card.append(label, box); overlay.appendChild(card); document.body.appendChild(overlay);
       let done = false, id = null, timer = null;
-      const finish = (fn, v) => { if (done) return; done = true; clearTimeout(timer); try { ts.remove(id); } catch (e) {} box.remove(); fn(v); };
+      const finish = (fn, v) => { if (done) return; done = true; clearTimeout(timer); try { ts.remove(id); } catch (e) {} overlay.remove(); fn(v); };
       timer = setTimeout(() => finish(reject, new Error('The robot check took too long. Try again.')), 45000);
       id = ts.render(box, {sitekey: siteKey, appearance: 'interaction-only', callback: t => finish(resolve, t),
+        'before-interactive-callback': () => { overlay.style.display = 'flex'; },
+        'after-interactive-callback': () => { overlay.style.display = 'none'; },
         'error-callback': () => finish(reject, new Error('The robot check did not pass. Reload the page and try again.')),
         'timeout-callback': () => finish(reject, new Error('The robot check expired. Try again.'))});
     });
@@ -130,7 +137,7 @@
           <input id="nsAuthEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(email)}" maxlength="254" required>
           <p class="muted" data-r="err" style="color:#8c1515;min-height:1.2em">${esc(state.error)}</p>
           <p><button class="btn" type="submit"${busy ? ' disabled' : ''}>${busy ? 'Sending…' : 'Send me a code'}</button></p>
-          <p class="muted">No password. We email a ${CODE_LENGTH}-digit code to open the page.</p></form>`;
+          <p class="muted">No password. We email you a ${CODE_LENGTH}-digit code.</p></form>`;
         const f = root.querySelector('form'), input = root.querySelector('input');
         input.focus();
         f.onsubmit = async e => {

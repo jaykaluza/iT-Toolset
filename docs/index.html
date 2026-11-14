@@ -8,17 +8,24 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cdefs%3E%3CradialGradient id=%22r%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%23ff8a80%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%23ff1400%22/%3E%3Cstop offset=%221%22 stop-color=%22%23f00000%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22b%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%236fc3ff%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%230090ff%22/%3E%3Cstop offset=%221%22 stop-color=%22%230060ff%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22g%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%237dffa8%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%2300ff55%22/%3E%3Cstop offset=%221%22 stop-color=%22%2300d13f%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23161617%22/%3E%3Ccircle cx=%2219.5%22 cy=%2224%22 r=%224%22 fill=%22url%28%23r%29%22/%3E%3Cpath d=%22M7.5 27V12.5M7.5 18c0-4 2.6-6.2 6-6.2s6 2.2 6 6.2V27%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%224%22/%3E%3Ccircle cx=%2219%22 cy=%226.5%22 r=%224%22 fill=%22url%28%23b%29%22/%3E%3Ccircle cx=%2227%22 cy=%2224%22 r=%223.6%22 fill=%22url%28%23g%29%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
-/* same look as the My Connections dashboard: light grey page, white cards, black header bar */
-:root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--line:#d2d2d7;--accent:#0066cc;
-  --red:#8c1515;--red-dark:#820000;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;--warn:#a05a00;--warn-bg:rgba(255,204,0,.16)}
+/* Light and airy: white fading into soft lavender, a large left-aligned headline, black pill buttons, one clean product panel. */
+:root{color-scheme:only light;--ink:#111114;--muted:#55555f;--faint:#8a8a96;--line:#e4e2f0;--lav:#efedfb;--lav2:#e6e3f7;--panel:#fff;
+  /* older names that the script and auth.js still use */
+  --red:#111114;--red-dark:#33333a;--bg:#fff;--page:#fff;--text:var(--ink);--accent:var(--ink);--head:#0b0c12;--head-text:#f4f4f8;--head-muted:#a0a0aa;--warn:#7a5a1c;--warn-bg:rgba(255,200,80,.2)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-header{background:var(--head);color:var(--head-text);padding:10px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-header h1{font:600 26px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;
-  color:#fff}
-/* the name's three 3D balls: the dot of the i (blue), the dot before com (green), behind the right leg of the n (red) */
+body{margin:0;height:100vh;min-height:100vh;color:var(--ink);font:400 14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#fff 0%,#f4f2fc 45%,var(--lav2) 100%) fixed}
+main{flex:none;width:100%}
+.hidden{display:none!important}
+a{color:var(--ink);font-weight:500;text-decoration:underline;text-underline-offset:3px}
+a:hover{color:#5b4bff}
+:focus-visible{outline:2px solid #5b4bff;outline-offset:3px}
+
+/* same size as the My Security header */
+header{background:var(--head);color:var(--head-text);padding:7px 16px;display:flex;align-items:center;gap:4px 14px;flex-wrap:wrap}
+header h1{font:600 17.3px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;color:#fff}
 header h1 .lt{display:inline-block;position:relative}
 header h1 .gap{color:transparent;margin:0 .02em}
 header h1 i{position:absolute;left:50%;width:.26em;height:.26em;margin-left:-.13em;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.6)}
@@ -27,95 +34,221 @@ header h1 .green{top:.77em;background:radial-gradient(circle at 32% 28%,#fff 0,#
 header h1{isolation:isolate}
 header h1 .red{top:.75em;left:-.037em;z-index:-1;background:radial-gradient(circle at 32% 28%,#fff 0,#ff8a80 10%,#ff1400 42%,#f00000 100%)}
 header .who{margin-left:auto;font-size:12px;color:var(--head-muted)}
-header button{font:inherit;font-size:11.5px;font-weight:500;color:var(--head-text);background:transparent;border:1px solid var(--head-muted);border-radius:980px;padding:2px 12px;cursor:pointer}
-header button:hover{border-color:var(--head-text)}
-.demo{background:var(--warn-bg);color:var(--warn);text-align:center;font-size:11.5px;padding:5px 16px}
-main{max-width:1040px;margin:28px auto;padding:0 16px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin-bottom:18px}
-h2{font:600 16px/1.3 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;letter-spacing:-.011em;margin:0 0 8px}
-label{display:block;font-weight:600;font-size:12px;margin:14px 0 4px}
-input{font:inherit;width:100%;max-width:340px;padding:6px 14px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:980px}
-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,102,204,.15)}
-.btn{font:inherit;font-size:12px;font-weight:500;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:5px 16px;cursor:pointer}
-.btn:hover{background:var(--red-dark);border-color:var(--red-dark)}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.muted{color:var(--muted);font-size:12px}
-/* compact tool list */
-#tools{padding:10px 14px}
-#tools h2{font-size:12.5px;margin-bottom:0}
-#tools .tool{gap:10px;padding:5px 0}
-.tool .icon{width:28px;height:28px;border-radius:7px}
-.tool .icon svg{width:18px;height:18px}
-#tools .tool h3{font-size:12px}
-.tool .muted{font-size:10.5px}
-.tool .run{font-size:10.5px;padding:2px 14px}
-.tool .more-btn{width:22px;height:22px;font-size:12px}
-/* each tool's RUN button and its ⋯ menu of extra options */
-.tool-actions{display:flex;align-items:center;gap:6px;flex:none}
+header button{font:inherit;font-size:11px;font-weight:500;color:#111;background:#fff;border:0;border-radius:999px;padding:2px 12px;cursor:pointer}
+header button:hover{background:#e6e3f7}
+
+main{max-width:1080px;margin:0 auto;padding:46px 40px 12px}
+.display{font:400 clamp(30px,3.6vw,46px)/1.08 Inter,sans-serif;letter-spacing:-.035em;margin:0 0 14px;max-width:none;color:var(--ink)}
+.display .bar{font-weight:300;color:#b9b6cf;margin:0 .3em 0 .2em}
+.display span{font-style:normal;font-weight:400}
+.rule{display:none}
+.lede{font-size:17.3px;line-height:1.5;color:var(--muted);max-width:30em;margin:0 0 24px}
+/* signed in: just the headline and the tools */
+body:has(#signin.hidden) .lede,body:has(#signin.hidden) .hero-side{display:none}
+body:has(#signin.hidden) .hero{display:block}
+body:has(#signin.hidden) .display{margin-bottom:26px}
+body:has(#signin.hidden) #tools{margin-top:0!important}
+
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center}
+/* sign-in: no box, just the field and a black pill */
+#signin{position:fixed;top:42px;right:16px;z-index:60;width:300px;max-width:calc(100vw - 24px);background:#fff;border-radius:16px;box-shadow:0 30px 70px -20px rgba(30,20,90,.5),0 0 0 1px rgba(30,20,90,.1);animation:pop .2s cubic-bezier(.2,.8,.2,1)}
+#signin:not(.pop-open){display:none}
+#signin::before{content:"";position:absolute;top:-6px;right:34px;width:12px;height:12px;background:#fff;transform:rotate(45deg);box-shadow:-1px -1px 0 rgba(30,20,90,.08)}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0;font:600 15px/1.2 Inter,sans-serif}
+.pop-x{all:unset;cursor:pointer;font:400 22px/1 Inter,sans-serif;color:#8a8a96;padding:0 4px}
+.pop-x:hover{color:#111}
+.pop-x:focus-visible{outline:2px solid #5b4bff;outline-offset:2px}
+.card-body{padding:0 16px 16px}
+.signin-btn{margin-left:auto}
+body:has(#signin.hidden) .signin-btn,body:has(#signin.hidden) #heroSignin{display:none}
+#heroSignin{margin-top:4px}
+@media (prefers-reduced-motion:reduce){#signin{animation:none}}
+label{display:block;font-weight:500;font-size:12px;color:var(--muted);margin:8px 0 5px}
+input{font:inherit;font-size:14px;width:100%;max-width:400px;padding:9px 16px;color:var(--ink);background:#fff;border:1px solid #d3d0e6;border-radius:999px}
+input:focus{outline:none;border-color:#111;box-shadow:0 0 0 3px rgba(91,75,255,.18)}
+input::placeholder{color:#a3a1b6}
+.muted{color:var(--muted);font-size:13px}
+
+.btn,.run,.launch-close{font:inherit;font-weight:500;font-size:14px;color:#fff;background:#111114;border:1px solid #111114;border-radius:999px;padding:9px 22px;cursor:pointer;transition:background .15s}
+.btn:hover,.run:hover{background:#33333a;border-color:#33333a}
+.btn:disabled,.run:disabled{opacity:.4;cursor:not-allowed}
+.btn[style*="transparent"]{color:#111!important;background:#ebe9f6!important;border:0;padding:8px 16px}
+.run.stop{background:#ebe9f6;color:#111;border-color:#ebe9f6}
+.launch-close{color:#111;background:#ebe9f6;border-color:#ebe9f6}
+.launch-close:hover{background:#dedbf0}
+#authBox p{margin:6px 0!important}
+#authBox label{margin:8px 0 5px!important}
+#authBox [data-r=err]{min-height:0!important;margin:6px 0!important}
+
+/* before sign-in: one clean product panel listing the tools */
+.hero-side{background:#fff;border-radius:20px;padding:10px 24px;box-shadow:0 30px 60px -30px rgba(50,40,140,.35),0 2px 6px rgba(20,20,40,.05)}
+.peek{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid #eeecf7}
+.peek:last-child{border-bottom:0}
+.peek .n{flex:none;font-size:0;width:10px;height:10px;border-radius:50%;margin-top:7px}
+.hero-side .peek:nth-child(1) .n{background:#00b8f0}
+.hero-side .peek:nth-child(2) .n{background:#18c76f}
+.hero-side .peek:nth-child(3) .n{background:#8a4dff}
+.peek b{display:block;font:500 16px/1.3 Inter,sans-serif;letter-spacing:-.01em}
+.peek span.t{display:block;font-size:13px;color:var(--muted);line-height:1.5}
+
+/* signed in: the tools */
+.section-title{display:none}
+.tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.tool{display:flex;flex-direction:column;background:#fff;border-radius:18px;padding:20px 20px 18px;box-shadow:0 20px 40px -26px rgba(50,40,140,.4),0 1px 3px rgba(20,20,40,.05)}
+.tool .icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--lav);margin-bottom:14px}
+.tool .icon svg{width:20px;height:20px;stroke:#111114;stroke-width:1.7}
+.tool .info{flex:1}
+.tool h3{margin:0 0 6px;font:500 18px/1.2 Inter,sans-serif;letter-spacing:-.02em}
+.tool .muted{font-size:13px;line-height:1.55}
+.tool-actions{display:flex;align-items:center;gap:8px;margin-top:16px}
+.tool-actions .run{flex:1}
 .more{position:relative}
-.more-btn{display:grid;place-items:center;width:30px;height:30px;padding:0;font:inherit;font-size:16px;line-height:1;color:var(--muted);background:none;border:1px solid var(--line);border-radius:50%;cursor:pointer}
-.more-btn:hover,.more-btn[aria-expanded="true"]{color:var(--text);border-color:var(--muted)}
-.more-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:170px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
-.more-item{display:block;width:100%;padding:6px 10px;font:inherit;font-size:12px;text-align:left;white-space:nowrap;color:var(--text);background:none;border:0;border-radius:6px;cursor:pointer}
-.more-item:hover,.more-item:focus-visible{background:var(--bg);outline:none}
-.tool{display:flex;align-items:center;gap:18px;padding:14px 0;border-top:1px solid var(--line)}
-.tool:first-of-type{border-top:0}
-.icon{flex:none;width:52px;height:52px;border-radius:12px;background:var(--head);display:grid;place-items:center}
-.tool .info{flex:1;min-width:0}
-.tool h3{margin:0;font-size:14px;font-weight:600;letter-spacing:-.006em}
-.run{font:inherit;font-size:12px;font-weight:600;letter-spacing:.04em;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:6px 24px;cursor:pointer}
-.run:hover{background:var(--red-dark);border-color:var(--red-dark)}
-.run:disabled{opacity:.4;cursor:not-allowed}
-.run.stop{background:var(--head);border-color:var(--head)}
-#launchSteps ol{margin:8px 0 0;padding-left:20px}
-#launchSteps li{margin:4px 0}
-code{font:11.5px Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px;word-break:break-all}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-.hidden{display:none}
-/* the dialog shown while the app is launching */
-#launch{overflow-y:auto;overscroll-behavior:contain;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);width:min(480px,calc(100vw - 32px));padding:24px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
-#launch::backdrop{background:rgba(0,0,0,.45)}
-#launch p{margin:16px 0 0}
+.more-btn{display:grid;place-items:center;width:36px;height:36px;padding:0;font:600 15px/1 Inter,sans-serif;color:#55555f;background:#ebe9f6;border:0;border-radius:50%;cursor:pointer}
+.more-btn:hover,.more-btn[aria-expanded="true"]{background:#dedbf0;color:#111}
+.more-menu{position:absolute;right:0;bottom:calc(100% + 8px);z-index:5;min-width:190px;padding:4px;background:#fff;border-radius:12px;box-shadow:0 20px 44px -10px rgba(30,20,90,.35)}
+.more-item{display:block;width:100%;padding:9px 12px;font:inherit;font-size:13px;text-align:left;white-space:nowrap;color:#111;background:none;border:0;border-radius:8px;cursor:pointer}
+.more-item:hover,.more-item:focus-visible{background:var(--lav);outline:none}
+
+footer{max-width:1080px;margin:0 auto;padding:0 40px 10px;font-size:12px;color:var(--faint)}
+
+
+/* the apps as a rotating ring of screenshots (like a Rolodex) along the bottom; the window's bottom edge crops it */
+.showcase{position:relative;flex:0 1 250px;min-height:0;overflow:hidden;max-width:1080px;width:100%;margin:auto auto 0;--cw:clamp(250px,32vw,380px)}
+.stage{position:absolute;left:50%;top:14px;width:var(--cw);aspect-ratio:1360/820;margin-left:calc(var(--cw)/-2);perspective:1400px;perspective-origin:50% 25%}
+.stage .card{position:absolute;inset:0;margin:0;border-radius:10px 10px 0 0;overflow:hidden;background:#fff;will-change:transform;
+  box-shadow:0 24px 50px -18px rgba(40,30,120,.5),0 0 0 1px rgba(30,20,90,.12);transition:transform .75s cubic-bezier(.2,.8,.2,1),opacity .5s,filter .5s}
+.stage .card .wb{all:unset;display:block;width:100%;height:100%;cursor:pointer}
+.stage .card .wb:focus-visible{outline:3px solid #5b4bff;outline-offset:-3px}
+.stage .card img{display:block;width:100%;height:100%;object-fit:cover;object-position:top left}
+.stage .card:not(.on){filter:brightness(.86)}
+.stage .card.on .wb{cursor:zoom-in}
+.stage .tag{position:absolute;left:10px;top:8px;z-index:3;background:rgba(17,17,20,.86);color:#fff;font:500 10.5px/1 Inter,sans-serif;padding:5px 9px;border-radius:999px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.stage .card.on .tag{opacity:1}
+.stage .card.on:hover .tag::after{content:" · click to enlarge";opacity:.75}
+.nav{all:unset;position:absolute;top:92px;z-index:5;box-sizing:border-box;width:34px;height:34px;border-radius:50%;background:#fff;color:#111;font:600 16px/34px Inter,sans-serif;text-align:center;cursor:pointer;box-shadow:0 8px 20px -6px rgba(40,30,120,.45);transition:transform .15s}
+.nav:hover{transform:scale(1.08)}
+.nav:focus-visible{outline:3px solid #5b4bff;outline-offset:2px}
+.nav.prev{left:max(8px,calc(50% - var(--cw)*1.45))}
+.nav.next{right:max(8px,calc(50% - var(--cw)*1.45))}
+.dots{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;z-index:5;display:flex;gap:7px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 6px 16px -6px rgba(40,30,120,.4)}
+.dots button{all:unset;width:8px;height:8px;border-radius:50%;background:rgba(17,17,20,.25);cursor:pointer}
+.dots button[aria-current=true]{background:#111114;width:20px;border-radius:999px}
+.dots button:focus-visible{outline:2px solid #5b4bff;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.stage .card{transition:none}}
+@media (max-height:400px),(max-width:900px){.showcase{display:none}}
+footer{display:none}
+.hero-side{display:none!important}
+.hero{display:block!important}
+@media (max-height:520px){.stage{top:8px}.nav{top:60px}.dots{display:none}}
+
+/* the enlarged view */
+#zoom{border:0;padding:0;background:transparent;max-width:94vw;max-height:94vh;overflow:visible;color:#fff}
+#zoom::backdrop{background:rgba(14,12,30,.72);backdrop-filter:blur(3px)}
+#zoom[open]{animation:grow .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes grow{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+#zoom img{display:block;max-width:92vw;max-height:calc(94vh - 44px);width:auto;height:auto;border-radius:12px;background:#fff;box-shadow:0 40px 100px -20px rgba(0,0,0,.7)}
+#zoom .cap{display:flex;align-items:center;gap:12px;margin-top:10px;font:500 13px/1.3 Inter,sans-serif}
+#zoom .cap small{opacity:.7;font-weight:400}
+#zoom .zx{all:unset;margin-left:auto;cursor:pointer;font:400 26px/1 Inter,sans-serif;padding:0 6px;opacity:.85}
+#zoom .zx:hover{opacity:1}
+#zoom .zx:focus-visible{outline:2px solid #fff;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){#zoom[open]{animation:none}}
+
+/* the setup dialog */
+#launchSteps ol{margin:8px 0 0;padding-left:22px}
+#launchSteps li{margin:6px 0}
+code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;padding:1px 6px;word-break:break-all}
+#launch{overflow-y:auto;overscroll-behavior:contain;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);width:min(430px,calc(100vw - 32px));padding:0;background:#fff;color:#111;border:0;border-radius:20px;font-size:13px;box-shadow:0 40px 90px -20px rgba(30,20,90,.55)}
+#launch::backdrop{background:rgba(20,18,40,.5)}
+#launch p{margin:12px 0 0}
+#launch .launch-head,#launch p,#launch ol,#launch .launch-foot{margin-left:24px;margin-right:24px}
+.launch-head{display:flex;align-items:center;gap:12px;margin:0!important;padding:22px 24px 2px}
+.launch-head h2{margin:0;font:500 20px/1.2 Inter,sans-serif;letter-spacing:-.02em}
+#launchIcon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#111114}
+#launchIcon svg{width:20px;height:20px;stroke:#fff;stroke-width:1.8}
+.launch-x{margin-left:auto;align-self:flex-start;font:400 28px/1 Inter,sans-serif;color:#8a8a96;background:none;border:0;padding:0 4px;cursor:pointer}
+.launch-x:hover{color:#111}
 .launch-note{display:block;margin-top:10px}
-.launch-head{display:flex;align-items:center;gap:14px}
-.launch-head h2{margin:0;font-size:18px}
-.launch-x{margin-left:auto;align-self:flex-start;font:inherit;font-size:22px;line-height:1;color:var(--muted);background:none;border:0;padding:0 4px;cursor:pointer}
-.launch-x:hover{color:var(--text)}
-.launch-foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:20px}
-.launch-close{font:inherit;font-size:12px;font-weight:500;color:var(--accent);background:none;border:1px solid var(--line);border-radius:980px;padding:5px 18px;cursor:pointer}
-.launch-close:hover{border-color:var(--accent)}
+.launch-foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px!important;margin-bottom:22px!important}
+#launchSteps > p:first-child{margin-top:16px}
+
 /* step-by-step popup shown on hover (or keyboard focus or tap) */
 .hint{position:relative;display:inline-block;cursor:help;outline:none}
-.hint:focus-visible code{outline:2px solid var(--accent)}
-.hint .pop{display:none;position:absolute;z-index:10;top:100%;left:0;width:500px;padding:12px 14px;background:var(--head);color:var(--head-text);border-radius:12px;font-size:12px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.28);cursor:auto}
+.hint:focus-visible code{outline:2px solid #5b4bff}
+.hint .pop{display:none;position:absolute;z-index:10;top:100%;left:0;width:440px;padding:12px 14px;background:#111114;color:#f4f4f8;border-radius:12px;font-size:12.5px;line-height:1.5;box-shadow:0 18px 40px -8px rgba(0,0,0,.45);cursor:auto}
 .hint:hover .pop,.hint:focus .pop,.hint:focus-within .pop{display:block}
 .hint .pop span{display:block;margin-top:5px;padding-left:18px;text-indent:-18px}
-.hint .pop code{color:inherit;background:rgba(255,255,255,.14);border-color:transparent;word-break:normal;overflow-wrap:anywhere}
+.hint .pop code{color:inherit;background:rgba(255,255,255,.14)}
 .hint .pop b{color:#fff}
 #launch .hint{position:static}#launch .hint .pop{left:16px;right:16px;width:auto;top:auto}
+
 @media (max-width:800px){.hint{position:static}.hint .pop{left:8px;right:8px;width:auto;top:auto}}
-@media (max-width:560px){.tool{flex-wrap:wrap}.tool-actions{width:100%}.run{flex:1}}
+@media (max-width:900px){.hero{display:block}.hero-side{display:none}}
+/* short windows: the panel on the right goes first, the intro text only when there is really no room */
+@media (max-height:700px){.hero{display:block}.hero-side{display:none}main{padding-top:28px}.display{margin-bottom:10px}.lede{margin-bottom:16px}}
+/* short windows: drop the intro line so the three screenshots keep their room */
+@media (max-height:660px){main{padding-top:20px}.display{margin-bottom:8px;font-size:clamp(26px,3vw,36px)}}
+@media (max-height:460px){.lede{display:none}}
+/* small windows: compact rows instead of cards */
+@media (max-width:900px){
+  .tool-grid{grid-template-columns:1fr;gap:10px}
+  .tool{flex-direction:row;align-items:center;gap:12px;padding:10px 14px;border-radius:16px}
+  .tool .icon{width:34px;height:34px;margin:0;flex:none}
+  .tool .icon svg{width:17px;height:17px}
+  .tool .info{min-width:0}
+  .tool h3{font-size:15px;margin:0}
+  .tool .muted{display:none}
+  .tool-actions{margin:0}
+  .tool-actions .run{flex:none;padding:7px 16px}
+  .more-btn{width:32px;height:32px}
+  .more-menu{bottom:auto;top:calc(100% + 8px)}
+  .lede{display:none}
+  .display{font-size:26px;margin-bottom:14px}
+  main{padding:26px 16px 12px}
+  #authBox p.muted:last-child{display:none}
+  footer{padding:0 16px 10px}
+}
 </style>
 </head>
 <body>
 <header>
   <h1 aria-label="nesiam.com"><span aria-hidden="true"><span class="lt">n<i class="red"></i></span>es<span class="lt">ı<i class="blue"></i></span>am<span class="lt gap">.<i class="green"></i></span>com</span></h1>
+  <button type="button" class="signin-btn" id="signinBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="signin">Sign in</button>
   <span class="who hidden" id="who"></span>
   <button class="hidden" id="signout">Sign out</button>
 </header>
 
 <main>
-  <!-- sign-in: email address, then a 6-digit code (auth.js); no passwords -->
-  <section class="card" id="signin">
-    <h2>Sign in</h2>
-    <p class="muted">Enter your email address and we send you a 6-digit code. No password needed.</p>
-    <div id="authBox"></div>
+  <h2 class="display">My Computer <b class="bar" aria-hidden="true">|</b> Maintenance <span>Toolkit</span></h2>
+  <div class="rule" aria-hidden="true"></div>
+  <section class="hero">
+    <div class="hero-main">
+      <p class="lede">A collection of tools to keep your computer healthy and secure. Pick the ones you need, or run them all. Everything runs on your PC, and your scan results stay there.</p>
+
+      <button type="button" class="btn" id="heroSignin">Sign in to get started</button>
+
+      <!-- sign-in popup (opened from the menu bar): email address, then a 6-digit code (auth.js); no passwords -->
+      <section class="card" id="signin" role="dialog" aria-label="Sign in">
+        <div class="card-head"><span>Sign in</span><button type="button" class="pop-x" id="signinClose" aria-label="Close">&times;</button></div>
+        <div class="card-body">
+          <div id="authBox"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- the three tools as colour tiles, shown before sign-in (wide, tall windows only) -->
+    <div class="hero-side" aria-hidden="true">
+      <div class="peek"><span class="n">i.</span><div><b>My Connections</b><span class="t">Every connection your PC makes, as it happens.</span></div></div>
+      <div class="peek"><span class="n">ii.</span><div><b>My Security</b><span class="t">What to fix first, in plain words.</span></div></div>
+      <div class="peek"><span class="n">iii.</span><div><b>My Network</b><span class="t">Every device around you, in three dimensions.</span></div></div>
+    </div>
   </section>
 
   <!-- tools (shown after sign-in) -->
-  <section class="card hidden" id="tools">
-    <h2>Your tools</h2>
+  <section id="tools" class="hidden" style="margin-top:0">
+    <h2 class="section-title">Your tools</h2>
+    <div class="tool-grid">
     <div class="tool">
       <div class="icon" aria-hidden="true">
         <!-- monitor with a traffic pulse; outlines only, so browsers' automatic dark mode can't strip parts of it -->
@@ -181,8 +314,30 @@ a:hover{text-decoration:underline}
         </div>
       </div>
     </div>
+    </div>
   </section>
 </main>
+
+<div class="showcase" role="region" aria-roledescription="carousel" aria-label="The three apps. Use the arrows, or click a screenshot to bring it to the front; click the front one to enlarge it.">
+  <div class="stage" id="ring">
+      <figure class="card" style="--i:0" data-i="0"><button type="button" class="wb" data-app="My Security" data-view="Autopilot" data-note="A security score and what to fix first (made-up demo findings)" data-src="shots/security.png" aria-label="My Security: Autopilot"><img src="shots/security.png" alt="My Security, Autopilot: A security score and what to fix first (made-up demo findings)" decoding="async"></button><span class="tag">My Security · Autopilot</span></figure>
+      <figure class="card" style="--i:1" data-i="1"><button type="button" class="wb" data-app="My Connections" data-view="Connections" data-note="Every connection this PC makes, with the app behind each one" data-src="shots/connections.png" aria-label="My Connections: Connections"><img src="shots/connections.png" alt="My Connections, Connections: Every connection this PC makes, with the app behind each one" decoding="async"></button><span class="tag">My Connections · Connections</span></figure>
+      <figure class="card" style="--i:2" data-i="2"><button type="button" class="wb" data-app="My Network" data-view="Live map" data-note="The devices around this PC and the traffic between them (made-up demo devices)" data-src="shots/network.png" aria-label="My Network: Live map"><img src="shots/network.png" alt="My Network, Live map: The devices around this PC and the traffic between them (made-up demo devices)" decoding="async"></button><span class="tag">My Network · Live map</span></figure>
+      <figure class="card" style="--i:3" data-i="3"><button type="button" class="wb" data-app="My Security" data-view="System protection" data-note="The main protections checked: antivirus, firewall, UAC and more (made-up demo findings)" data-src="shots/security-system.png" aria-label="My Security: System protection"><img src="shots/security-system.png" alt="My Security, System protection: The main protections checked: antivirus, firewall, UAC and more (made-up demo findings)" decoding="async"></button><span class="tag">My Security · System protection</span></figure>
+      <figure class="card" style="--i:4" data-i="4"><button type="button" class="wb" data-app="My Connections" data-view="Apps" data-note="Every app that talks to the internet, and who it talks to" data-src="shots/connections-apps.png" aria-label="My Connections: Apps"><img src="shots/connections-apps.png" alt="My Connections, Apps: Every app that talks to the internet, and who it talks to" decoding="async"></button><span class="tag">My Connections · Apps</span></figure>
+      <figure class="card" style="--i:5" data-i="5"><button type="button" class="wb" data-app="My Connections" data-view="Blocked" data-note="Apps and addresses you blocked, and the attempts the firewall stopped" data-src="shots/connections-blocked.png" aria-label="My Connections: Blocked"><img src="shots/connections-blocked.png" alt="My Connections, Blocked: Apps and addresses you blocked, and the attempts the firewall stopped" decoding="async"></button><span class="tag">My Connections · Blocked</span></figure>
+  </div>
+  <button type="button" class="nav prev" id="prev" aria-label="Previous screenshot">&#8249;</button>
+  <button type="button" class="nav next" id="next" aria-label="Next screenshot">&#8250;</button>
+  <div class="dots" id="dots"><button type="button" data-d="0" aria-label="Screenshot 1"></button><button type="button" data-d="1" aria-label="Screenshot 2"></button><button type="button" data-d="2" aria-label="Screenshot 3"></button><button type="button" data-d="3" aria-label="Screenshot 4"></button><button type="button" data-d="4" aria-label="Screenshot 5"></button><button type="button" data-d="5" aria-label="Screenshot 6"></button></div>
+</div>
+
+<dialog id="zoom" aria-label="Enlarged screenshot">
+  <img id="zoomImg" alt="">
+  <div class="cap"><b id="zoomApp"></b><small id="zoomNote"></small><button type="button" class="zx" id="zoomClose" aria-label="Close">×</button></div>
+</dialog>
+
+<footer>Nesiam.com</footer>
 
 <!-- shown while the browser asks to open the app; closes by itself once the app is seen running -->
 <dialog id="launch" aria-labelledby="launchTitle">
@@ -438,6 +593,76 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus()
 const watchKnown = () => { if (isWindows) for (const t of TOOLS) if (setup.done(t)) watchApp(t); };
 show(store.get());
 if (store.get()) watchKnown();
+</script>
+<script>
+// The ring: click a side screenshot (or an arrow, a dot, or the left/right keys) to rotate it to the front.
+// Click the front one to see it large. It turns by itself every few seconds until you touch it.
+(() => {
+  const ring = document.getElementById('ring'), cards = [...ring.querySelectorAll('.card')], n = cards.length;
+  const dots = [...document.querySelectorAll('#dots button')], dlg = document.getElementById('zoom'), img = document.getElementById('zoomImg');
+  const showcase = document.querySelector('.showcase');
+  let a = 0, timer = null, userTouched = false;
+  const active = () => ((a % n) + n) % n;
+  // the offset of card i from the front one, the short way round: 0 is the front, -1 the left neighbour, +1 the right
+  const off = i => ((i - active() + n + n / 2) % n) - n / 2;
+  const POSE = {0: ['0', '0', '0', 1, 5], 1: ['.64', '-90px', '-36deg', 1, 4], 2: ['.98', '-190px', '-48deg', .9, 3]};
+  function draw() {
+    cards.forEach((c, i) => {
+      const o = off(i), k = Math.abs(o), sg = o < 0 ? -1 : 1, P = POSE[Math.min(k, 3)] || ['1.2', '-260px', '-55deg', 0, 1];
+      // left neighbours turn to face the right, right neighbours face the left, and both sit a little further back
+      c.style.transform = `translateX(calc(var(--cw) * ${sg * parseFloat(P[0])})) translateZ(${P[1]}) rotateY(${-sg * Math.abs(parseFloat(P[2]))}deg)`;
+      c.style.opacity = P[3];
+      c.style.zIndex = P[4];
+      c.style.pointerEvents = k > 2 ? 'none' : '';
+      c.classList.toggle('on', o === 0);
+    });
+    dots.forEach((d, i) => d.setAttribute('aria-current', String(i === active())));
+  }
+  const stop = () => { userTouched = true; clearInterval(timer); };
+  function go(i) { const d = ((i - active() + n + n / 2) % n) - n / 2; a += d; draw(); }   // the shortest way round
+  function enlarge(b) {
+    img.src = b.dataset.src; img.alt = b.querySelector('img').alt;
+    document.getElementById('zoomApp').textContent = b.dataset.app + ' · ' + b.dataset.view;
+    document.getElementById('zoomNote').textContent = b.dataset.note;
+    dlg.showModal();
+  }
+  cards.forEach((c, i) => c.querySelector('.wb').addEventListener('click', e => { stop(); if (i === active()) enlarge(e.currentTarget); else go(i); }));
+  document.getElementById('prev').addEventListener('click', () => { stop(); a -= 1; draw(); });
+  document.getElementById('next').addEventListener('click', () => { stop(); a += 1; draw(); });
+  dots.forEach((d, i) => d.addEventListener('click', () => { stop(); go(i); }));
+  document.addEventListener('keydown', e => {
+    if (dlg.open || /input|textarea|select/i.test(document.activeElement.tagName) || getComputedStyle(showcase).display === 'none') return;
+    if (e.key === 'ArrowLeft') { stop(); a -= 1; draw(); } else if (e.key === 'ArrowRight') { stop(); a += 1; draw(); }
+  });
+  document.getElementById('zoomClose').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });   // the dim area around the picture
+  dlg.addEventListener('close', () => { img.removeAttribute('src'); });
+  showcase.addEventListener('mouseenter', () => clearInterval(timer));
+  showcase.addEventListener('mouseleave', () => { if (!userTouched) start(); });
+  function start() {
+    clearInterval(timer);
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    timer = setInterval(() => { if (!document.hidden && !dlg.open) { a += 1; draw(); } }, 4500);
+  }
+  draw(); start();
+})();
+</script>
+<script>
+// The sign-in popup: opened by the Sign in buttons, closed by x, Esc, or a click outside it.
+(() => {
+  const box = document.getElementById('signin'), btn = document.getElementById('signinBtn'), hero = document.getElementById('heroSignin');
+  const setOpen = on => {
+    box.classList.toggle('pop-open', on);
+    btn.setAttribute('aria-expanded', String(on));
+    if (on) setTimeout(() => { const f = document.getElementById('nsAuthEmail') || document.getElementById('nsAuthCode'); if (f) f.focus(); }, 30);
+  };
+  btn.addEventListener('click', e => { e.stopPropagation(); setOpen(!box.classList.contains('pop-open')); });
+  hero.addEventListener('click', e => { e.stopPropagation(); setOpen(true); });
+  document.getElementById('signinClose').addEventListener('click', () => { setOpen(false); btn.focus(); });
+  document.addEventListener('click', e => { if (box.classList.contains('pop-open') && !box.contains(e.target) && !document.querySelector('body > div[style*="z-index: 9999"]')) setOpen(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && box.classList.contains('pop-open') && !document.getElementById('launch').open) { setOpen(false); btn.focus(); } });
+  new MutationObserver(() => { if (box.classList.contains('hidden')) setOpen(false); }).observe(box, {attributes: true, attributeFilter: ['class']});   // signed in: the popup goes away by itself
+})();
 </script>
 </body>
 </html>
