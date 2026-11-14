@@ -11,8 +11,6 @@ ConnectionMonitorPy/build/
 ConnectionMonitorPy/dist/
 SecurityMonitorPy/build/
 SecurityMonitorPy/dist/
-SecurityHelperPy/dist/
-SecurityHelperPy/build/
 
 # Activity log (Block / Unblock / End process), written next to the app or script
 activity-log.txt

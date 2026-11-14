@@ -156,13 +156,12 @@ a:hover{text-decoration:underline}
         <div class="muted">Check this PC for open ports, malware signs, missing patches and live threats, and test it from inside and outside. Autopilot tells you what to fix first.</div>
       </div>
       <div class="tool-actions">
-        <button class="run ghost" id="onlineSecurity" title="Checks your browser and a few Windows settings, with a small read-only helper">ONLINE SCAN</button>
+        <a class="run ghost" id="onlineSecurity" href="online-scan.html" title="Checks your browser in this page, nothing to download">ONLINE SCAN</a>
         <button class="run" id="runSecurity" title="Starts the My Security Windows app for the deep scan">FULL SCAN</button>
         <div class="more">
           <button class="more-btn" aria-label="More options for My Security" aria-haspopup="true" aria-expanded="false" title="More options">⋯</button>
           <div class="more-menu hidden">
             <button class="more-item" id="removeSecurityLink">Remove the RUN link</button>
-            <button class="more-item" id="removeHelperLink">Remove the Online scan helper link</button>
           </div>
         </div>
       </div>
@@ -227,8 +226,6 @@ const TOOLS = [
    download: `${REPO}/releases/latest/download/MyConnections.exe`, release: `${REPO}/releases/latest`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/latest', events: true},
   {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink', runLabel: 'FULL SCAN',
    download: `${REPO}/releases/download/security-v0.1/MySecurity.exe`, release: `${REPO}/releases/tag/security-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/security-v0.1', events: false},
-  {name: 'My Security Helper', exe: 'MySecurityHelper.exe', scheme: 'mysecurityhelper', ports: [8781, 8782, 8783], apps: ['My Security Helper'], key: 'mysecurityhelper-setup', run: '#onlineSecurity', remove: '#removeHelperLink', runLabel: 'ONLINE SCAN', openPage: 'online-scan.html',
-   download: `${REPO}/releases/download/helper-v0.1/MySecurityHelper.exe`, release: `${REPO}/releases/tag/helper-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/helper-v0.1', events: false},
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
    download: `${REPO}/releases/download/network-v0.4/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.4', events: false}
 ];
@@ -270,7 +267,7 @@ function show(user) {
   $('#who').classList.toggle('hidden', !user);
   $('#signout').classList.toggle('hidden', !user);
   $('#who').textContent = user ? `Signed in as ${user}` : '';
-  if (user && !isWindows) for (const t of TOOLS.filter(x => !x.openPage)) { $(t.run).disabled = true; $(t.run).title = 'This tool runs on Windows PCs only'; }
+  if (user && !isWindows) for (const t of TOOLS) { $(t.run).disabled = true; $(t.run).title = 'This tool runs on Windows PCs only'; }
 }
 
 $('#signinForm').onsubmit = e => { e.preventDefault(); const n = $('#name').value.trim(); if (n) { store.set(n); show(n); } };
@@ -377,8 +374,8 @@ async function findApp(t) {
 function updateRunButton(t) {
   if (!isWindows) return;
   const b = $(t.run);
-  b.classList.toggle('stop', !!t.appPort && !t.stopRequested && !t.openPage);
-  b.textContent = t.stopRequested ? 'STOPPING…' : t.appPort && !t.openPage ? 'STOP' : (t.runLabel || 'RUN');
+  b.classList.toggle('stop', !!t.appPort && !t.stopRequested);
+  b.textContent = t.stopRequested ? 'STOPPING…' : t.appPort ? 'STOP' : (t.runLabel || 'RUN');
   b.disabled = t.stopRequested;
 }
 
@@ -387,7 +384,7 @@ async function checkApp(t) {
   t.checking = true;
   t.appPort = await findApp(t);
   t.checking = false;
-  if (t.appPort) { setup.set(t, true); if (t === current) closeLinkTab(); closeLaunch(t); if (t.openPage && t.openAfter) { t.openAfter = false; location.href = t.openPage; return; } }   // Online scan: once the helper is seen running, go to the scan page   // seeing it run proves setup worked
+  if (t.appPort) { setup.set(t, true); if (t === current) closeLinkTab(); closeLaunch(t); }   // seeing it run proves setup worked
   else t.stopRequested = false;
   // while My Connections runs, it knows this page is open and can ask it to refresh (the dashboard's title link)
   if (t.events && t.appPort && !t.siteEvents) {
@@ -418,9 +415,7 @@ async function stopApp(t) {
 // RUN: start the app if this PC is set up, otherwise show the one-time setup steps; STOP: stop it
 for (const t of TOOLS) {
   $(t.run).onclick = () => {
-    if (t.openPage && (!isWindows || t.appPort)) { location.href = t.openPage; return; }   // Online scan: the helper is already running (or this is not Windows, so the browser checks are all there is)
     if (t.appPort) return stopApp(t);
-    if (t.openPage) t.openAfter = true;
     if (!setup.done(t)) return showSetup(t);
     startApp(t);
     watchApp(t);

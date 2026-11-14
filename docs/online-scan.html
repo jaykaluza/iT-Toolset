@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="only light">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src 'self' https://api.ipify.org http://localhost:8781 http://localhost:8782 http://localhost:8783 http://127.0.0.1:8781 http://127.0.0.1:8782 http://127.0.0.1:8783;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src 'self' https://api.ipify.org;">
 <title>My Security: Online scan</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <style>
@@ -41,9 +41,8 @@ p{margin:0 0 8px}.muted{color:var(--muted);font-size:12px}
 <main>
   <section class="card">
     <h1>Online scan</h1>
-    <p>Checks the browser you are using right now. If the small <b>My Security Helper</b> is running on this PC, it also reads a few Windows settings (Defender, firewall, updates, open services). Results stay on this page: nothing is sent anywhere and nothing on your PC is changed. The only optional network request is the public-address check, which asks you first.</p>
-    <p class="muted" id="helperState">Looking for the helper…</p>
-    <div class="actions"><button class="btn" id="go">Run online scan</button><a class="btn ghost" href="index.html" id="toFull">Full scan (the Windows app)</a></div>
+    <p>Checks the browser you are using right now, with nothing to download. Everything runs inside this page: no results are sent anywhere, and nothing on your PC is changed. The only optional network request is the public-address check, which asks you first.</p>
+    <div class="actions"><button class="btn" id="go">Run online scan</button><a class="btn ghost" href="index.html">Full scan (installs the Windows app)</a></div>
   </section>
 
   <section class="card" id="summary" hidden>
@@ -146,33 +145,14 @@ const CHECKS = [
   }
 ];
 
-let helperPort = null;
-async function findHelper() {
-  for (const p of [8781, 8782, 8783]) {
-    try {
-      const r = await fetch(`http://localhost:${p}/status`, {cache: 'no-store', signal: AbortSignal.timeout(1500)});
-      if (r.ok && (await r.json()).app === 'My Security Helper') return p;
-    } catch (e) { /* not running on this port, or the browser did not allow the check */ }
-  }
-  return null;
-}
-async function helperRows() {
-  if (!helperPort) return [{status: 'info', title: 'Windows checks', what: 'Defender, firewall, updates and open services are read by the small My Security Helper.', value: 'Helper not running. Go back to the main page and press Online scan to set it up.'}];
-  try {
-    const r = await fetch(`http://localhost:${helperPort}/checks`, {cache: 'no-store', signal: AbortSignal.timeout(100000)});
-    const j = await r.json();
-    return j.rows || [];
-  } catch (e) { return [{status: 'info', title: 'Windows checks', what: 'The helper did not answer.', value: String(e && e.message || e)}]; }
-}
 async function run() {
   $('go').disabled = true; $('go').textContent = 'Scanning…';
-  const box = $('results'); box.hidden = false; box.innerHTML = '<p class="muted">Running checks…' + (helperPort ? ' The Windows checks take about 15 seconds.' : '') + '</p>';
+  const box = $('results'); box.hidden = false; box.innerHTML = '<p class="muted">Running checks…</p>';
   const out = [];
   for (const c of CHECKS) {
     try { out.push(await c()); }
     catch (e) { out.push({status: 'info', title: c.name, what: 'This check could not run in this browser.', value: String(e && e.message || e)}); }
   }
-  out.push(...await helperRows());
   box.innerHTML = out.map(r => `<div class="row"><span class="pill p-${r.status}">${LABEL[r.status]}</span><div><b>${esc(r.title)}</b><div class="d">${esc(r.what)}</div><div class="v">${esc(r.value)}</div></div></div>`).join('');
   const n = s => out.filter(r => r.status === s).length;
   $('nAttn').textContent = n('warn') + n('bad'); $('nOk').textContent = n('ok'); $('nInfo').textContent = n('info');
@@ -180,11 +160,6 @@ async function run() {
   $('go').disabled = false; $('go').textContent = 'Run again';
 }
 $('go').onclick = run;
-(async () => {
-  helperPort = await findHelper();
-  $('helperState').textContent = helperPort ? 'My Security Helper is running, so the Windows checks are included.' : 'My Security Helper is not running. Only the browser checks will run. To add the Windows checks, press Online scan on the main page.';
-  if (helperPort) run();   // same as the Windows app: once it is running, the scan starts
-})();
 $('ipbtn').onclick = async () => {
   $('ipbtn').disabled = true; $('ipout').textContent = 'Asking api.ipify.org…';
   try { const j = await (await fetch('https://api.ipify.org?format=json', {cache: 'no-store', referrerPolicy: 'no-referrer'})).json(); $('ipout').textContent = 'Websites see you as ' + j.ip + '. A VPN would change this.'; }
