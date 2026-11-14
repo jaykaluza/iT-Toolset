@@ -66,7 +66,6 @@ input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,
 .run{font:inherit;font-size:12px;font-weight:600;letter-spacing:.04em;color:#fff;background:var(--red);border:1px solid var(--red);border-radius:980px;padding:6px 24px;cursor:pointer}
 .run:hover{background:var(--red-dark);border-color:var(--red-dark)}
 .run:disabled{opacity:.4;cursor:not-allowed}
-a.run{text-decoration:none;display:inline-block;line-height:1.5}.run.ghost{color:var(--red);background:transparent}.run.ghost:hover{background:rgba(140,21,21,.08)}
 .run.stop{background:var(--head);border-color:var(--head)}
 #launchSteps ol{margin:8px 0 0;padding-left:20px}
 #launchSteps li{margin:4px 0}
@@ -156,8 +155,7 @@ a:hover{text-decoration:underline}
         <div class="muted">Check this PC for open ports, malware signs, missing patches and live threats, and test it from inside and outside. Autopilot tells you what to fix first.</div>
       </div>
       <div class="tool-actions">
-        <a class="run ghost" id="onlineSecurity" href="online-scan.html" title="Checks your browser in this page, nothing to download">ONLINE SCAN</a>
-        <button class="run" id="runSecurity" title="Starts the My Security Windows app for the deep scan">FULL SCAN</button>
+        <button class="run" id="runSecurity">RUN</button>
         <div class="more">
           <button class="more-btn" aria-label="More options for My Security" aria-haspopup="true" aria-expanded="false" title="More options">⋯</button>
           <div class="more-menu hidden">
@@ -224,7 +222,7 @@ const REPO = 'https://github.com/jaykaluza/iT-Toolset';
 const TOOLS = [
   {name: 'My Connections', exe: 'MyConnections.exe', scheme: 'myconnections', ports: [8765, 8766, 8767], apps: ['MyConnections', 'WhatsMyPCConnectingTo', 'NetMonitor'], key: 'myconnections-setup', run: '#run', remove: '#removeLink',
    download: `${REPO}/releases/latest/download/MyConnections.exe`, release: `${REPO}/releases/latest`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/latest', events: true},
-  {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink', runLabel: 'FULL SCAN',
+  {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink',
    download: `${REPO}/releases/download/security-v0.1/MySecurity.exe`, release: `${REPO}/releases/tag/security-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/security-v0.1', events: false},
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
    download: `${REPO}/releases/download/network-v0.4/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.4', events: false}
@@ -375,7 +373,7 @@ function updateRunButton(t) {
   if (!isWindows) return;
   const b = $(t.run);
   b.classList.toggle('stop', !!t.appPort && !t.stopRequested);
-  b.textContent = t.stopRequested ? 'STOPPING…' : t.appPort ? 'STOP' : (t.runLabel || 'RUN');
+  b.textContent = t.stopRequested ? 'STOPPING…' : t.appPort ? 'STOP' : 'RUN';
   b.disabled = t.stopRequested;
 }
 
