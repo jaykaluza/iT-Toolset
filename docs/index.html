@@ -104,18 +104,13 @@ a:hover{text-decoration:underline}
   <span class="who hidden" id="who"></span>
   <button class="hidden" id="signout">Sign out</button>
 </header>
-<div class="demo">Proof of concept: demo sign-in only, no real accounts or passwords.</div>
 
 <main>
-  <!-- demo sign-in -->
+  <!-- sign-in: email address, then a 6-digit code (auth.js); no passwords -->
   <section class="card" id="signin">
     <h2>Sign in</h2>
-    <p class="muted">On the real website this would be your account login. For the demo, just enter a name.</p>
-    <form id="signinForm">
-      <label for="name">Name</label>
-      <input id="name" autocomplete="off" placeholder="e.g. Jay" required>
-      <p><button class="btn" type="submit">Sign in (demo)</button></p>
-    </form>
+    <p class="muted">Enter your email address and we send you a 6-digit code. No password needed.</p>
+    <div id="authBox"></div>
   </section>
 
   <!-- tools (shown after sign-in) -->
@@ -215,6 +210,7 @@ a:hover{text-decoration:underline}
   </form>
 </dialog>
 
+<script src="auth.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const REPO = 'https://github.com/jaykaluza/iT-Toolset';
@@ -268,8 +264,10 @@ function show(user) {
   if (user && !isWindows) for (const t of TOOLS) { $(t.run).disabled = true; $(t.run).title = 'This tool runs on Windows PCs only'; }
 }
 
-$('#signinForm').onsubmit = e => { e.preventDefault(); const n = $('#name').value.trim(); if (n) { store.set(n); show(n); } };
-$('#signout').onclick = () => { store.set(''); show(''); };
+// Email-code sign-in. provider 'mock' shows the code on screen (demo). For real email, deploy AuthWorker/ and use
+// {type: 'worker', url: 'https://nesiam-auth.<you>.workers.dev'}
+const auth = NesiamAuth.mount($('#authBox'), {provider: {type: 'worker', url: 'https://nesiam-auth.nesiam.workers.dev'}, onSignedIn: email => { store.set(email); show(email); watchKnown(); }});
+$('#signout').onclick = () => { store.set(''); show(''); auth.reset(); };
 // Browsers won't tell a page which apps are installed, so this browser remembers whether
 // each app has been set up on this PC (set when it's seen running, cleared by the remove link).
 const setup = {
@@ -440,7 +438,6 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus()
 const watchKnown = () => { if (isWindows) for (const t of TOOLS) if (setup.done(t)) watchApp(t); };
 show(store.get());
 if (store.get()) watchKnown();
-$('#signinForm').addEventListener('submit', watchKnown);
 </script>
 </body>
 </html>
