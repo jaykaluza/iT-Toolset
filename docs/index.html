@@ -106,6 +106,10 @@ input::placeholder{color:#a3a1b6}
 .tool-actions{grid-column:1/-1;display:flex;align-items:center;gap:6px;margin-top:10px}
 .tool-actions .run{flex:1;font-size:12.5px;padding:5px 14px}
 .tool-actions .more-btn{width:28px;height:28px;font-size:13px}
+/* each app's icon in its own bright colour: blue, red, green, yellow */
+.tool:nth-child(1) .icon{background:#4285f4}.tool:nth-child(2) .icon{background:#ea4335}
+.tool:nth-child(3) .icon{background:#34a853}.tool:nth-child(4) .icon{background:#fbbc05}
+.tool .icon svg{stroke:#fff}.tool:nth-child(4) .icon svg{stroke:#202124}
 /* RUN buttons in Stanford red with white text; the cards stay white */
 .tool .run{background:#8c1515;color:#fff;border-color:#8c1515;font-weight:600}
 .tool .run:hover{background:#a51c1c;border-color:#a51c1c}
