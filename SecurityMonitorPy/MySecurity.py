@@ -50,7 +50,7 @@ import browsertest as B   # the browser security self-test (modelled on BrowserA
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.14'
+APP_VERSION = '0.1.15'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -100,7 +100,7 @@ class App:
         self.tabs, self.tab_at = [], ''
         self.tab_findings = {}
         self.cert_cache, self.page_cache = {}, {}
-        self.alerted = self._load_dismissed()   # (site, warning) pairs already asked about; a No is kept across restarts
+        self.alerted = self._load_warned()   # (site, warning) pairs already asked about; a No is kept across restarts
         self.owner_cache = {}
         self.alerts = []
         self.net_pool = ThreadPoolExecutor(max_workers=6)
@@ -439,17 +439,17 @@ class App:
             self.owner_cache[host] = c = (S.cert_owner(host), time.time())
         return c[0]
 
-    def _load_dismissed(self):
+    def _load_warned(self):
         try:
             with open(DISMISSED_FILE, encoding='utf-8') as f:
                 return {tuple(x) for x in json.load(f) if isinstance(x, list) and len(x) == 2 and all(isinstance(v, str) for v in x)}
         except (OSError, ValueError, TypeError):
             return set()
 
-    def _save_dismissed(self, key):
+    def _save_warned(self, key):
         """Answering No to a tab warning keeps that warning from coming back for that site."""
         try:
-            items = self._load_dismissed() | {key}
+            items = self._load_warned() | {key}
             if is_redirected(APP_DIR):
                 return
             os.makedirs(APP_DIR, exist_ok=True)
@@ -518,7 +518,7 @@ class App:
         top = r['Hits'][0]
         answer = user32.MessageBoxW(None, f"This open tab looks dangerous.\n\n{r['Browser']}: {r['Title'][:120]}\nSite: {r['Site']}\n\n{top['Title']}\n{top['Why']}\n\nBlock this site on this PC now?", APP_NAME, MB_YESNO | MB_ICONWARNING | MB_SYSTEMMODAL)
         if answer != IDYES:
-            self._save_dismissed((r['Site'], top['Title']))
+            self._save_warned((r['Site'], top['Title']))
         if answer == IDYES and self.admin:
             result = X.block_site(r['Site'])
             self.log('BLOCKED' if result['ok'] else 'FAILED', f"{r['Site']}: {result['message']}")
