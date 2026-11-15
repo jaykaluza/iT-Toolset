@@ -137,6 +137,27 @@ tr[data-menu]:hover td{background:var(--lav)}
 #rzBody code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;padding:1px 6px}
 #rz{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;padding:0;background:#fff;color:var(--ink);border:0;border-radius:20px;font-size:13px;box-shadow:0 40px 90px -20px rgba(30,20,90,.55)}
 #rz::backdrop{background:rgba(20,18,40,.5)}
+#log{width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;padding:0;background:#fff;color:var(--ink);border:0;border-radius:20px;font-size:13px;box-shadow:0 40px 90px -20px rgba(30,20,90,.55)}
+#log::backdrop{background:rgba(20,18,40,.5)}
+#logBody{padding:2px 22px 4px}
+.log-note{margin:6px 0 0;color:var(--faint);font-size:12px}
+.log-empty{color:var(--muted);padding:14px 0 4px;margin:0}
+.log-day{margin:16px 0 4px;font:600 11px/1 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.log-row{border-bottom:1px solid var(--line2)}
+.log-row summary{list-style:none;display:flex;gap:10px;align-items:flex-start;padding:8px 2px;cursor:pointer;border-radius:8px}
+.log-row summary::-webkit-details-marker{display:none}
+.log-row summary:hover{background:var(--lav)}
+.log-time{flex:none;width:42px;color:var(--faint);font-variant-numeric:tabular-nums;line-height:1.45}
+.log-dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--good)}
+.lv-watch .log-dot{background:#c98a00}.lv-bad .log-dot{background:var(--bad)}
+.log-text{flex:1;min-width:0;line-height:1.45}
+.log-what{display:block}.log-what b{font-weight:600}
+.log-sum{display:block;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-row[open] .log-sum{white-space:normal}
+.log-more{padding:0 2px 10px 62px;color:var(--muted)}
+.log-more ul{margin:0;padding-left:16px}.log-more li{margin:2px 0}
+.log-more li.f-bad{color:var(--bad)}.log-more li.f-watch{color:#8a5a00}.log-more li.f-good{color:var(--good)}
+.log-more p{margin:4px 0 0;font-size:12px;color:var(--faint)}
 .rz-head{display:flex;align-items:center;gap:12px;padding:20px 22px 4px}
 .rz-head h2{margin:0;font:500 19px/1.2 Inter,sans-serif;letter-spacing:-.02em;flex:1;min-width:0;overflow-wrap:anywhere}
 .rz-x{font:400 26px/1 Inter,sans-serif;color:var(--faint);background:none;border:0;padding:0 4px;cursor:pointer}
@@ -247,6 +268,7 @@ footer{font-size:12px;color:var(--faint);text-align:center;margin-top:8px}
   <span class="sub" id="meta">Reading your disks…</span>
   <span class="right">
     <button class="pbtn outline jobbtn hidden" id="jobBtn" title="Open this task's window"></button>
+    <button class="pbtn outline" id="logBtn" title="Every check, scan, resize and fix My Disk has run, and how each ended">Activity log</button>
     <button class="pbtn outline" id="refresh" title="Read every disk again now (it also happens by itself every minute)">Refresh</button>
     <button class="pbtn danger" id="quit" title="Stop My Disk and close the app">Exit</button>
   </span>
@@ -292,6 +314,12 @@ footer{font-size:12px;color:var(--faint);text-align:center;margin-top:8px}
   <div class="rz-head"><div class="dicon" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="4" y="10" width="24" height="12" rx="2.5"/><path d="M17 16h7M21.5 13.5L24 16l-2.5 2.5M8 13v6"/></svg></div><h2 id="rzTitle">Resize</h2><button class="rz-x" id="rzX" aria-label="Close">×</button></div>
   <div id="rzBody"></div>
   <div class="rz-foot" id="rzFoot"></div>
+</dialog>
+
+<dialog id="log" aria-labelledby="logTitle">
+  <div class="rz-head"><div class="dicon" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="7" y="4" width="18" height="24" rx="2.5"/><path d="M11 11h10M11 16h10M11 21h6"/></svg></div><h2 id="logTitle">Activity log</h2><button class="rz-x" id="logX" aria-label="Close">×</button></div>
+  <div id="logBody"></div>
+  <div class="rz-foot"><button class="pbtn outline stop" id="logClear" style="margin-right:auto">Clear the log</button><button class="bigbtn" id="logClose">Close</button></div>
 </dialog>
 
 <script>
@@ -967,6 +995,7 @@ function runningButtons(kind) {
 }
 function drawJob() {
   const b = $('#jobBtn'), job = S.data && S.data.job;
+  if (job && job.ended && job.ended !== S.logEnded) { const fresh = S.logEnded !== undefined; S.logEnded = job.ended; if (fresh && $('#log').open) openLog(); }
   if (!job || S.gone || (job.status !== 'running' && seenJob() === job.started)) { b.classList.add('hidden'); return; }
   b.classList.remove('hidden', 'jb-done', 'jb-fail');
   if (job.status === 'running') {
@@ -989,6 +1018,41 @@ function openJob() {   // the top-bar button: the running task's window, or its 
   resizeTick();
 }
 $('#jobBtn').onclick = openJob;
+
+// ---- the activity log: every task My Disk ran, newest first, kept on this PC
+async function openLog() {
+  if (!$('#log').open) { $('#logBody').innerHTML = '<p class="log-empty"><span class="spin"></span>Reading the log…</p>'; $('#log').showModal(); }
+  let res;
+  try { res = await fetch('/activity', {headers: {'X-Disk-Token': TOKEN}, cache: 'no-store'}).then(r => r.json()); } catch (e) { res = {ok: false}; }
+  drawLog(res.ok ? res.entries : null);
+}
+function drawLog(list) {
+  $('#logClear').disabled = !list || !list.length;
+  if (!list) { $('#logBody').innerHTML = '<p class="log-empty">My Disk did not answer.</p>'; return; }
+  let html = `<p class="log-note">${S.data && S.data.mode === 'demo' ? 'Demo: this log is kept only until the demo closes.' : 'Kept on this PC only.'} Newest first; click a line for details.</p>`, day = '';
+  if (!list.length) html += '<p class="log-empty">Nothing yet. Every check, scan, resize and fix you run is listed here, with how it ended and what it found.</p>';
+  for (const e of list) {
+    const t = new Date(e.started * 1000), d = t.toLocaleDateString([], {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+    if (d !== day) { html += `<h3 class="log-day">${esc(d)}</h3>`; day = d; }
+    const level = ['good', 'watch', 'bad'].includes(e.level) ? e.level : 'watch';
+    const mins = e.ended ? Math.max(0, Math.round((e.ended - e.started) / 60)) : null;
+    const took = mins == null ? '' : mins < 1 ? ' in under a minute' : ` after ${mins} minute${mins === 1 ? '' : 's'}`;
+    const drive = e.letter ? `${e.letter}: ${e.label || ''}`.trim() : (e.label || 'a drive');
+    const ended = {done: 'Finished', failed: "Didn't finish", stopped: 'Stopped'}[e.status] || 'Ended';
+    html += `<details class="log-row lv-${level}"><summary><span class="log-time">${esc(t.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}))}</span><i class="log-dot"></i>
+      <span class="log-text"><span class="log-what"><b>${esc(JOB_TITLE[e.kind] || 'Task')}</b> · ${esc(drive)}</span><span class="log-sum">${esc(e.summary || '')}</span></span></summary>
+      <div class="log-more">${(e.findings || []).length ? `<ul>${e.findings.map(f => `<li class="f-${['good', 'watch', 'bad'].includes(f.level) ? f.level : 'watch'}">${esc(f.title)}</li>`).join('')}</ul>` : ''}
+      <p>${ended}${took}, at ${esc(t.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}))}.</p></div></details>`;
+  }
+  $('#logBody').innerHTML = html;
+}
+$('#logBtn').onclick = openLog;
+$('#logX').onclick = $('#logClose').onclick = () => $('#log').close();
+$('#logClear').onclick = async () => {
+  if (!confirm('Clear the activity log?\n\nThe list of what My Disk ran is deleted. Nothing on your drives changes.')) return;
+  let res; try { res = await post('/activity-clear', {}); } catch (e) { res = {ok: false}; }
+  if (res.ok) drawLog([]);
+};
 async function stopJob() {
   const job = S.data.job; if (!job || job.status !== 'running') return;
   if (!confirm(`Stop ${JOB_TITLE[job.kind] || 'this task'}?\n\nWhat it has checked so far is lost. Nothing on the drive is changed.`)) return;

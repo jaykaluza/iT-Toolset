@@ -32,7 +32,7 @@ import webbrowser
 import winreg
 
 APP_NAME = 'My Disk'
-APP_VERSION = '0.1'
+APP_VERSION = '0.2'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)       # running as MyDisk.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -214,7 +214,8 @@ class Disks:
         self.last_raw = {}
         self.live = {}        # disk number -> list of {t, read, write, active, queue, ms}
         self.free = {}        # drive letter -> free bytes, live
-        self.job = None       # the one resize that may be running, and how it ended
+        self.job = None       # the one task that may be running, and how it ended
+        self.demo_log = []    # the activity log while trying the demo (never saved)
         self.last_client = time.time()
 
     def refresh(self):
@@ -371,6 +372,16 @@ class Disks:
             return demo_health(job, action, d, p) if self.mode == 'demo' else run_health(job, action, d, p, av)
         return self._start_job(action, d, p, work)
 
+    def activity(self):
+        return list(reversed(self.demo_log if self.mode == 'demo' else read_log()))
+
+    def clear_activity(self):
+        if self.mode == 'demo':
+            self.demo_log.clear()
+        else:
+            write_log([])
+        return {'ok': True}
+
     def stop_job(self):
         """Ends a running check. Changes (resize, repairs, fixes) are never stopped part-way."""
         with self.lock:
@@ -411,6 +422,11 @@ class Disks:
                     job['result'] = worst(job['findings'])
                 job['again'] = HEALTH_AGAIN.get(kind, '')
                 job['ended'] = time.time()
+                entry = log_entry(job)
+                if self.mode == 'demo':
+                    self.demo_log.append(entry)
+                else:
+                    write_log(read_log() + [entry])
             self.refresh()
         threading.Thread(target=run, daemon=True, name=kind).start()
         return {'ok': True}
@@ -481,6 +497,60 @@ VOLUME_PATH = re.compile(r'^\\\\\?\\Volume\{[0-9a-fA-F-]{36}\}\\$')
 SFC_RESULTS = (('did not find any integrity violations', 'clean'), ('successfully repaired', 'repaired'), ('unable to fix', 'unfixed'),
                ('could not perform', 'failed'), ('pending', 'restart'))
 
+
+# ---------------- activity log: every task My Disk ran, kept on this PC (%LOCALAPPDATA%\MyDisk\activity.json)
+LOG_FILE = os.path.join(APP_DIR, 'activity.json')
+LOG_KEEP = 500
+
+
+RESULT_WORDS = {'NoErrorsFound': 'No errors found', 'SpotFixNeeded': 'Small problems found, quick to fix', 'FullRepairNeeded': 'Problems found that need a full repair',
+                'ScanNeeded': 'Needs a deeper check', 'ScheduledAtRestart': 'Repair set for the next restart', 'clean': 'No problems found',
+                'repaired': 'Damaged files found and repaired', 'unfixed': 'Some damaged files could not be repaired', 'restart': 'A repair is waiting for a restart',
+                'scheduled': 'Deep scan set for the next restart', 'removed': 'Threats removed'}
+
+
+def log_entry(job):
+    """One line per finished task: what, where, when, how it ended and what it found."""
+    found = job.get('findings') or []
+    threats = job.get('threats')
+    if job['status'] in ('failed', 'stopped'):
+        summary = job['message'] or ('Stopped before it finished.' if job['status'] == 'stopped' else 'It did not finish.')
+    elif found:
+        summary = '; '.join(f['title'] for f in found if f['level'] != 'good') or found[0]['title']
+    elif threats is not None:
+        summary = f"{len(threats)} threat{'s' if len(threats) != 1 else ''} found" if threats else 'Nothing found'
+    elif job['kind'] == 'resize':
+        summary = f"{job.get('from', 0) / 2 ** 30:.1f} GB to {(job.get('size') or job.get('to') or 0) / 2 ** 30:.1f} GB"
+    else:
+        summary = RESULT_WORDS.get(job['result']) or job['result'] or job['detail'] or 'Done'
+    level = job['result'] if job['result'] in LEVELS else 'bad' if job['status'] == 'failed' or (threats and any(t.get('active') for t in threats)) else \
+        'watch' if job['status'] == 'stopped' or job['result'] in ('SpotFixNeeded', 'FullRepairNeeded', 'ScanNeeded', 'unfixed', 'restart', 'threats') else 'good'
+    return {'kind': job['kind'], 'letter': job['letter'], 'label': job['label'], 'disk': job['disk'], 'part': job['part'], 'started': job['started'],
+            'ended': job['ended'], 'status': job['status'], 'level': level, 'summary': clean(summary, 400),
+            'findings': [{'level': f['level'], 'title': f['title']} for f in found][:12]}
+
+
+def read_log():
+    try:
+        with open(LOG_FILE, encoding='utf-8') as f:
+            items = json.load(f)
+        return [x for x in items if isinstance(x, dict)][-LOG_KEEP:] if isinstance(items, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def write_log(items):
+    """Written only to the app's own folder, and never through a link that points elsewhere."""
+    try:
+        os.makedirs(APP_DIR, exist_ok=True)
+        if is_redirected(APP_DIR):
+            return
+        tmp = LOG_FILE + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(items[-LOG_KEEP:], f)
+        os.replace(tmp, LOG_FILE)
+    except OSError:
+        pass
 
 # ---------------- the running task's process, so Stop can end it (only one task runs at a time)
 TASK = {'proc': None, 'stop': False}
@@ -1080,6 +1150,8 @@ def make_handler(disks, page, token, port, launch_key, nonce):
             disks.last_client = time.time()
             if url.path == '/state':
                 return self.send_json(200, disks.state())
+            if url.path == '/activity':
+                return self.send_json(200, {'ok': True, 'entries': disks.activity()})
             self.send_json(404, {'ok': False})
 
         def read_numbers(self, names):
@@ -1109,6 +1181,8 @@ def make_handler(disks, page, token, port, launch_key, nonce):
             if self.path == '/quit':
                 self.send_json(200, {'ok': True})
                 disks.stop.set()
+            elif self.path == '/activity-clear':
+                self.send_json(200, disks.clear_activity())
             elif self.path == '/stop':
                 self.send_json(200, disks.stop_job())
             elif self.path == '/refresh':
@@ -1300,7 +1374,8 @@ def main():
         if FROZEN:
             ctypes.windll.user32.MessageBoxW(None, 'The RUN button link was removed. Running MyDisk.exe again sets it up again.', APP_NAME, 0x40)
         return
-    if FROZEN and args.app and (not link_target() or not os.path.isfile(link_target())):
+    # the copy you run takes over the RUN link, so the website starts this exe and not an older or moved one
+    if FROZEN and args.app and os.path.normcase(os.path.abspath(link_target() or '')) != os.path.normcase(os.path.abspath(exe)):
         try:
             register_link(exe)
         except OSError:
