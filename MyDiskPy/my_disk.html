@@ -718,6 +718,12 @@ async function poll() {
   }
   setTimeout(poll, 2000);
 }
+// closing this tab stops the app within seconds (after a running task has finished), so the website's RUN button is right again
+// A hidden tab says so too (browsers deliver that more reliably than a closing one); while it is only hidden it keeps
+// asking every few seconds, which cancels the stop.
+const saidClosed = () => { if (!S.gone) navigator.sendBeacon('/tab-closed', TOKEN); };
+addEventListener('pagehide', saidClosed);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saidClosed(); });
 function closeTab(title) {
   S.gone = true;
   try { window.close(); } catch (e) {}

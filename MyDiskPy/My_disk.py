@@ -32,7 +32,7 @@ import webbrowser
 import winreg
 
 APP_NAME = 'My Disk'
-APP_VERSION = '0.4'
+APP_VERSION = '0.5'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)       # running as MyDisk.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -41,6 +41,7 @@ POWERSHELL = os.path.join(WINDIR, 'System32', 'WindowsPowerShell', 'v1.0', 'powe
 APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'MyDisk')
 SITE_ORIGINS = ('https://nesiam.com', 'https://www.nesiam.com', 'https://jaykaluza.github.io')
 LINK_SCHEME = 'mydisk'
+CLOSED_GRACE_S = 10   # seconds after the page's tab closes or hides before the app stops; a hidden tab's next check cancels it
 HANDOFF_S = 12   # seconds the website's RUN tab has to open the view before the app opens it itself
 LINK_PATTERN = re.compile(r'^mydisk:(//)?(run|unregister)?/?$', re.I)
 DASHBOARD_URL = re.compile(r'^http://localhost:\d{1,5}/\?k=[\w-]{20,}$')
@@ -220,6 +221,8 @@ class Disks:
         self.quit_after = False   # Exit was clicked during a task: stop once it has finished
         self.closing = False      # about to stop: the open page sees this and closes its tab
         self.handoff = None       # started by the website's RUN: (one-time code, expiry) so that browser's tab opens the view
+        self.last_client = time.time()
+        self.tab_closed_at = 0.0   # when the page's tab last said it was closing
 
     def close_soon(self):
         """Stop in a few seconds, so the page (it asks every 2 seconds) sees it is closing and closes its tab."""
@@ -234,7 +237,6 @@ class Disks:
         if not busy:
             self.close_soon()
         return {'ok': True, 'waiting': busy}
-        self.last_client = time.time()
 
     def refresh(self):
         self.wake.set()
@@ -1199,6 +1201,19 @@ def make_handler(disks, page, token, port, launch_key, nonce):
             return values
 
         def do_POST(self):
+            if self.path == '/tab-closed':
+                # the page's tab is closing or reloading (a browser can't add the usual header here, so the key is the body)
+                origin = self.headers.get('Origin')
+                try:
+                    length = int(self.headers.get('Content-Length') or 0)
+                except ValueError:
+                    length = 0
+                body = self.rfile.read(length) if 0 < length <= 200 else b''
+                if (self.host_ok() and secrets.compare_digest(body, token.encode())
+                        and (not origin or origin in (f'http://localhost:{port}', f'http://127.0.0.1:{port}'))):
+                    disks.tab_closed_at = time.time()
+                    return self.send(204, 'text/plain', b'')
+                return self.send_json(403, {'ok': False})
             if self.path == '/site-stop':   # the website's STOP button
                 headers = self.site_headers()
                 if not self.host_ok() or not headers:
@@ -1457,6 +1472,12 @@ def main():
     disks.last_client = time.time()
     try:
         while not disks.stop.wait(1):
+            busy = bool(disks.job and disks.job['status'] == 'running')
+            if args.idle_exit and not busy and disks.tab_closed_at > disks.last_client and time.time() - disks.tab_closed_at > CLOSED_GRACE_S:
+                # the tab was closed: stop within seconds. A reload says so too, but the reloaded page asks again
+                # straight away, which cancels it. A running task finishes first.
+                print('The page was closed, stopping.')
+                break
             if args.idle_exit and time.time() - disks.last_client > args.idle_exit * 60:
                 print('The page has been closed for a while, stopping.')
                 break
