@@ -58,7 +58,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.15'
+APP_VERSION = '1.16'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -1824,7 +1824,7 @@ class Monitor:
 # token that is embedded in the page, so other websites can't read the data or end processes.
 
 CSP = "default-src 'none'; script-src 'nonce-{}'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
-EXPIRED_PAGE = (b'<!doctype html><meta charset=utf-8><title>my_connections</title><body style="font:16px sans-serif;padding:40px">'
+EXPIRED_PAGE = (b'<!doctype html><meta charset=utf-8><title>My Connections</title><body style="font:16px sans-serif;padding:40px">'
                 b'This dashboard address has expired or is incomplete. Start My Connections again to open it.')
 # The Nesiam.com website may ask "is the app running?" (/status) and stop it (/site-stop), so its RUN
 # button can switch to STOP. Browsers only let these origins read the answer or send the stop.
