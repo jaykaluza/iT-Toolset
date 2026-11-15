@@ -41,7 +41,7 @@ import webbrowser
 import winreg
 
 APP_NAME = 'My Network'
-APP_VERSION = '0.4'
+APP_VERSION = '0.5'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)       # running as MyNetwork.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -1005,6 +1005,7 @@ class Network:
         self.scapy_install = {'state': 'idle', 'message': ''}
         self.last_client = 0.0
         self.stop = threading.Event()
+        self.stopping = False   # STOP on the website: the open page sees this and closes its tab
         self.rdns = cf.ThreadPoolExecutor(8, thread_name_prefix='rdns')
         self.blocklists = Blocklists()
         self.vendors = Vendors()
@@ -1289,7 +1290,7 @@ class Network:
             setup = {'npcap': npcap_installed(), 'scapy': scapy_installed(), 'install': dict(self.scapy_install), 'error': self.npcap_error, 'frozen': bool(FROZEN)}
             return {'mode': self.mode, 'engine': self.engine, 'setup': setup, 'admin': is_admin(), 'note': self.note, 'ip': self.ip, 'mask': self.mask, 'gateway': self.gateway, 'scanning': self.scanning,
                     'version': APP_VERSION, 'total': self.total, 'rate': self.rate, 'nodes': nodes, 'flows': flow_views,
-                    'devices': sum(1 for n in nodes if n['kind'] in ('me', 'gateway', 'lan'))}
+                    'devices': sum(1 for n in nodes if n['kind'] in ('me', 'gateway', 'lan')), 'stopping': self.stopping}
 
     def _node_view(self, n, now):
         info = dict(n['info'])
@@ -1874,7 +1875,8 @@ def make_handler(net, page, token, port, launch_key, nonce):
                 if not self.host_ok() or not headers:
                     return self.send_json(403, {'ok': False})
                 self.send_json(200, {'ok': True}, headers)
-                net.stop.set()
+                net.stopping = True   # a few seconds for the page (it asks every 2 seconds) to see it and close its tab
+                threading.Timer(4, net.stop.set).start()
                 return
             if not (self.host_ok() and self.token_ok()):
                 return self.send_json(403, {'ok': False})
@@ -1925,7 +1927,8 @@ def open_view(url):
     try:
         handle, path = tempfile.mkstemp(prefix='my_network_', suffix='.html')
         with os.fdopen(handle, 'w', encoding='utf-8') as f:
-            f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open My Network</a>')
+            f.write(f'<!doctype html><meta charset=utf-8><script>location.replace({json.dumps(url)})</script>'
+                    f'<meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open My Network</a>')
         subprocess.Popen([os.path.join(WINDIR, 'explorer.exe'), path])
     except OSError:
         return False
@@ -2017,7 +2020,8 @@ def main():
         if FROZEN:
             ctypes.windll.user32.MessageBoxW(None, 'The RUN button link was removed. Running MyNetwork.exe again sets it up again.', APP_NAME, 0x40)
         return
-    if FROZEN and args.app and (not link_target() or not os.path.isfile(link_target())):
+    # the copy you run takes over the RUN link, so the website starts this exe and not an older or moved one
+    if FROZEN and args.app and os.path.normcase(os.path.abspath(link_target() or '')) != os.path.normcase(os.path.abspath(exe)):
         try:
             register_link(exe)
         except OSError:

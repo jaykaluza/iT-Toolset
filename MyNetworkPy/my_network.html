@@ -231,8 +231,8 @@ function renderSetup() {
   na.replaceChildren(t.npcap ? done('✓ Installed') : button('Open download page', () => post('/open-npcap-page'), 'primary', demo));
   $('afterinfo').textContent = demo ? 'Installing is switched off in the demo.' : t.error ? t.error : t.scapy && t.npcap ? 'Everything is installed. Capture moves over by itself within a few seconds.' : 'Capture moves over by itself after installing. No restart needed.';
 }
-function refresh() { lastRefresh = performance.now(); return get('/state').then(applyState).catch(() => { failures++; }); }
-async function pollState() { await refresh(); if (failures > 4) return stopped(); setTimeout(pollState, 2000); }
+function refresh() { lastRefresh = performance.now(); return get('/state').then(s => { if (s.stopping) stopped(); else applyState(s); }).catch(() => { failures++; }); }
+async function pollState() { if (gone) return; await refresh(); if (gone) return; if (failures > 4) return stopped(); setTimeout(pollState, 2000); }
 async function pollEvents() {
   try {
     const r = await get('/events?since=' + since);
@@ -245,7 +245,10 @@ async function pollEvents() {
   } catch { failures++; }
   setTimeout(pollEvents, 200);
 }
-function stopped() { $('notice').hidden = false; $('notice').textContent = 'My Network has stopped. You can close this tab.'; $('stats').textContent = 'Stopped'; }
+// the app has stopped (Exit here, or STOP on the Nesiam.com website): close this tab; browsers allow it for the tab the app opened,
+// otherwise the notice stays
+let gone = false;
+function stopped() { gone = true; try { window.close(); } catch (e) {} $('notice').hidden = false; $('notice').textContent = 'My Network has stopped. You can close this tab.'; $('stats').textContent = 'Stopped'; }
 
 // ---- animating packets
 function portFor(n, label) {
@@ -522,7 +525,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape') { if (!$('modal').hid
 $('zoomout').onclick = clearSelection;
 $('upgrade').onclick = () => { $('modal').hidden = false; renderSetup(); };
 $('mclose').onclick = () => { $('modal').hidden = true; };
-$('quit').onclick = async () => { await post('/quit').catch(() => {}); stopped(); window.close(); };
+$('quit').onclick = async () => { await post('/quit').catch(() => {}); stopped(); };
 
 // ---- details panel
 let packetPin = null, flowTimer = 0, lastDetail = null;
