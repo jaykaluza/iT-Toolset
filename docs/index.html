@@ -90,12 +90,13 @@ input::placeholder{color:#a3a1b6}
 .hero-side .peek:nth-child(1) .n{background:#00b8f0}
 .hero-side .peek:nth-child(2) .n{background:#18c76f}
 .hero-side .peek:nth-child(3) .n{background:#8a4dff}
+.hero-side .peek:nth-child(4) .n{background:#ff8a1f}
 .peek b{display:block;font:500 16px/1.3 Inter,sans-serif;letter-spacing:-.01em}
 .peek span.t{display:block;font-size:13px;color:var(--muted);line-height:1.5}
 
 /* signed in: the tools */
 .section-title{display:none}
-.tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
 .tool{display:flex;flex-direction:column;background:#fff;border-radius:18px;padding:20px 20px 18px;box-shadow:0 20px 40px -26px rgba(50,40,140,.4),0 1px 3px rgba(20,20,40,.05)}
 .tool .icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--lav);margin-bottom:14px}
 .tool .icon svg{width:20px;height:20px;stroke:#111114;stroke-width:1.7}
@@ -200,7 +201,7 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
 @media (max-width:900px){.hero{display:block}.hero-side{display:none}}
 /* short windows: the panel on the right goes first, the intro text only when there is really no room */
 @media (max-height:700px){.hero{display:block}.hero-side{display:none}main{padding-top:28px}.display{margin-bottom:10px}.lede{margin-bottom:16px}}
-/* short windows: drop the intro line so the three screenshots keep their room */
+/* short windows: drop the intro line so the screenshots keep their room */
 @media (max-height:660px){main{padding-top:20px}.display{margin-bottom:8px;font-size:clamp(26px,3vw,36px)}}
 @media (max-height:460px){.lede{display:none}}
 /* small windows: compact rows instead of cards */
@@ -250,11 +251,12 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
       </section>
     </div>
 
-    <!-- the three tools as colour tiles, shown before sign-in (wide, tall windows only) -->
+    <!-- the tools as colour tiles, shown before sign-in (wide, tall windows only) -->
     <div class="hero-side" aria-hidden="true">
       <div class="peek"><span class="n">i.</span><div><b>My Connections</b><span class="t">Every connection your PC makes, as it happens.</span></div></div>
       <div class="peek"><span class="n">ii.</span><div><b>My Security</b><span class="t">What to fix first, in plain words.</span></div></div>
       <div class="peek"><span class="n">iii.</span><div><b>My Network</b><span class="t">Every device around you, in three dimensions.</span></div></div>
+      <div class="peek"><span class="n">iv.</span><div><b>My Disk</b><span class="t">Every disk, how full and how healthy, and how to fix it.</span></div></div>
     </div>
   </section>
 
@@ -327,22 +329,46 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
         </div>
       </div>
     </div>
+    <div class="tool">
+      <div class="icon" aria-hidden="true">
+        <!-- a disk drive with its activity light; outlines only, like the icons above -->
+        <svg width="34" height="34" viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="8" width="24" height="16" rx="3"/>
+          <path d="M4 18.5h24"/>
+          <circle cx="23" cy="21.3" r=".9"/>
+          <path d="M8.5 21.3h7"/></svg>
+      </div>
+      <div class="info">
+        <h3>My Disk</h3>
+        <div class="muted">See every disk and drive: how full, how healthy, what's on it. Click a drive to resize it, check it for errors, ransomware and viruses, or repair Windows.</div>
+      </div>
+      <div class="tool-actions">
+        <button class="run" id="runDisk">RUN</button>
+        <div class="more">
+          <button class="more-btn" aria-label="More options for My Disk" aria-haspopup="true" aria-expanded="false" title="More options">⋯</button>
+          <div class="more-menu hidden">
+            <button class="more-item" id="removeDiskLink">Remove the RUN link</button>
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
   </section>
 </main>
 
-<div class="showcase" role="region" aria-roledescription="carousel" aria-label="The three apps. Use the arrows, or click a screenshot to bring it to the front; click the front one to enlarge it.">
+<div class="showcase" role="region" aria-roledescription="carousel" aria-label="The apps. Use the arrows, or click a screenshot to bring it to the front; click the front one to enlarge it.">
   <div class="stage" id="ring">
       <figure class="card" style="--i:0" data-i="0"><button type="button" class="wb" data-app="My Security" data-view="Autopilot" data-note="A security score and what to fix first (made-up demo findings)" data-src="shots/security.png" aria-label="My Security: Autopilot"><img src="shots/security.png" alt="My Security, Autopilot: A security score and what to fix first (made-up demo findings)" decoding="async"></button><span class="tag">My Security · Autopilot</span></figure>
       <figure class="card" style="--i:1" data-i="1"><button type="button" class="wb" data-app="My Connections" data-view="Connections" data-note="Every connection this PC makes, with the app behind each one" data-src="shots/connections.png" aria-label="My Connections: Connections"><img src="shots/connections.png" alt="My Connections, Connections: Every connection this PC makes, with the app behind each one" decoding="async"></button><span class="tag">My Connections · Connections</span></figure>
       <figure class="card" style="--i:2" data-i="2"><button type="button" class="wb" data-app="My Network" data-view="Live map" data-note="The devices around this PC and the traffic between them (made-up demo devices)" data-src="shots/network.png" aria-label="My Network: Live map"><img src="shots/network.png" alt="My Network, Live map: The devices around this PC and the traffic between them (made-up demo devices)" decoding="async"></button><span class="tag">My Network · Live map</span></figure>
-      <figure class="card" style="--i:3" data-i="3"><button type="button" class="wb" data-app="My Security" data-view="System protection" data-note="The main protections checked: antivirus, firewall, UAC and more (made-up demo findings)" data-src="shots/security-system.png" aria-label="My Security: System protection"><img src="shots/security-system.png" alt="My Security, System protection: The main protections checked: antivirus, firewall, UAC and more (made-up demo findings)" decoding="async"></button><span class="tag">My Security · System protection</span></figure>
-      <figure class="card" style="--i:4" data-i="4"><button type="button" class="wb" data-app="My Connections" data-view="Apps" data-note="Every app that talks to the internet, and who it talks to" data-src="shots/connections-apps.png" aria-label="My Connections: Apps"><img src="shots/connections-apps.png" alt="My Connections, Apps: Every app that talks to the internet, and who it talks to" decoding="async"></button><span class="tag">My Connections · Apps</span></figure>
-      <figure class="card" style="--i:5" data-i="5"><button type="button" class="wb" data-app="My Connections" data-view="Blocked" data-note="Apps and addresses you blocked, and the attempts the firewall stopped" data-src="shots/connections-blocked.png" aria-label="My Connections: Blocked"><img src="shots/connections-blocked.png" alt="My Connections, Blocked: Apps and addresses you blocked, and the attempts the firewall stopped" decoding="async"></button><span class="tag">My Connections · Blocked</span></figure>
+      <figure class="card" style="--i:3" data-i="3"><button type="button" class="wb" data-app="My Disk" data-view="All disks" data-note="Every disk, how full and how healthy it is, and what you can do with each drive (made-up demo disks)" data-src="shots/disk.png" aria-label="My Disk: All disks"><img src="shots/disk.png" alt="My Disk, All disks: Every disk, how full and how healthy it is, and what you can do with each drive (made-up demo disks)" decoding="async"></button><span class="tag">My Disk · All disks</span></figure>
+      <figure class="card" style="--i:4" data-i="4"><button type="button" class="wb" data-app="My Security" data-view="System protection" data-note="The main protections checked: antivirus, firewall, UAC and more (made-up demo findings)" data-src="shots/security-system.png" aria-label="My Security: System protection"><img src="shots/security-system.png" alt="My Security, System protection: The main protections checked: antivirus, firewall, UAC and more (made-up demo findings)" decoding="async"></button><span class="tag">My Security · System protection</span></figure>
+      <figure class="card" style="--i:5" data-i="5"><button type="button" class="wb" data-app="My Connections" data-view="Apps" data-note="Every app that talks to the internet, and who it talks to" data-src="shots/connections-apps.png" aria-label="My Connections: Apps"><img src="shots/connections-apps.png" alt="My Connections, Apps: Every app that talks to the internet, and who it talks to" decoding="async"></button><span class="tag">My Connections · Apps</span></figure>
+      <figure class="card" style="--i:6" data-i="6"><button type="button" class="wb" data-app="My Connections" data-view="Blocked" data-note="Apps and addresses you blocked, and the attempts the firewall stopped" data-src="shots/connections-blocked.png" aria-label="My Connections: Blocked"><img src="shots/connections-blocked.png" alt="My Connections, Blocked: Apps and addresses you blocked, and the attempts the firewall stopped" decoding="async"></button><span class="tag">My Connections · Blocked</span></figure>
   </div>
   <button type="button" class="nav prev" id="prev" aria-label="Previous screenshot">&#8249;</button>
   <button type="button" class="nav next" id="next" aria-label="Next screenshot">&#8250;</button>
-  <div class="dots" id="dots"><button type="button" data-d="0" aria-label="Screenshot 1"></button><button type="button" data-d="1" aria-label="Screenshot 2"></button><button type="button" data-d="2" aria-label="Screenshot 3"></button><button type="button" data-d="3" aria-label="Screenshot 4"></button><button type="button" data-d="4" aria-label="Screenshot 5"></button><button type="button" data-d="5" aria-label="Screenshot 6"></button></div>
+  <div class="dots" id="dots"><button type="button" data-d="0" aria-label="Screenshot 1"></button><button type="button" data-d="1" aria-label="Screenshot 2"></button><button type="button" data-d="2" aria-label="Screenshot 3"></button><button type="button" data-d="3" aria-label="Screenshot 4"></button><button type="button" data-d="4" aria-label="Screenshot 5"></button><button type="button" data-d="5" aria-label="Screenshot 6"></button><button type="button" data-d="6" aria-label="Screenshot 7"></button></div>
 </div>
 
 <dialog id="zoom" aria-label="Enlarged screenshot">
@@ -389,7 +415,9 @@ const TOOLS = [
   {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink',
    download: `${REPO}/releases/download/security-v0.1/MySecurity.exe`, release: `${REPO}/releases/tag/security-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/security-v0.1', events: false},
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
-   download: `${REPO}/releases/download/network-v0.4/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.4', events: false}
+   download: `${REPO}/releases/download/network-v0.4/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.4', events: false},
+  {name: 'My Disk', exe: 'MyDisk.exe', scheme: 'mydisk', ports: [8811, 8812, 8813], apps: ['My Disk'], key: 'mydisk-setup', run: '#runDisk', remove: '#removeDiskLink',
+   download: `${REPO}/releases/download/disk-v0.1/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.1', events: false}
 ];
 for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
 let current = TOOLS[0];   // the tool the popup is showing
