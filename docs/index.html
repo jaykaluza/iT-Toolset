@@ -426,7 +426,7 @@ const TOOLS = [
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
    download: `${REPO}/releases/download/network-v0.4/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.4', events: false},
   {name: 'My Disk', exe: 'MyDisk.exe', scheme: 'mydisk', ports: [8811, 8812, 8813], apps: ['My Disk'], key: 'mydisk-setup', run: '#runDisk', remove: '#removeDiskLink',
-   download: `${REPO}/releases/download/disk-v0.2/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.2`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.2', events: false}
+   download: `${REPO}/releases/download/disk-v0.3/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.3`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.3', events: false}
 ];
 for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
 let current = TOOLS[0];   // the tool the popup is showing
