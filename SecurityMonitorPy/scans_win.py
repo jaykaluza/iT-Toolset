@@ -295,6 +295,41 @@ def reg_subkeys(hive, path):
 HKLM, HKCU = winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER
 
 
+NESIAM_APPS = ('My Connections', 'My Security', 'My Network', 'My Disk')
+
+
+def file_company_product(path):
+    """(CompanyName, ProductName) from a program file's version details, or ('', '')."""
+    try:
+        ver = ctypes.windll.version
+        size = ver.GetFileVersionInfoSizeW(path, None)
+        if not size:
+            return '', ''
+        buf = ctypes.create_string_buffer(size)
+        if not ver.GetFileVersionInfoW(path, 0, size, buf):
+            return '', ''
+        ptr, n = ctypes.c_void_p(), wt.UINT()
+        if not ver.VerQueryValueW(buf, '\\VarFileInfo\\Translation', ctypes.byref(ptr), ctypes.byref(n)) or n.value < 4:
+            return '', ''
+        lang, cp = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_uint16 * 2)).contents
+
+        def value(name):
+            if ver.VerQueryValueW(buf, f'\\StringFileInfo\\{lang:04x}{cp:04x}\\{name}', ctypes.byref(ptr), ctypes.byref(n)) and n.value:
+                return ctypes.wstring_at(ptr.value, n.value).rstrip('\0')
+            return ''
+        return value('CompanyName'), value('ProductName')
+    except (OSError, AttributeError, ValueError):
+        return '', ''
+
+
+def nesiam_app(path):
+    """The app's name when this path is one of the Nesiam tools (My Connections, My Security, ...), else ''."""
+    if not path.lower().endswith('.exe') or not os.path.isfile(path):
+        return ''
+    company, product = file_company_product(path)
+    return product if company == 'Nesiam.com' and product in NESIAM_APPS else ''
+
+
 def F(cat, key, sev, title, what, risk='', evidence='', fix='', action=None, **extra):
     """One thing the scan found. sev is critical/high/medium/low/info/ok; action is what its Fix button does (see A)."""
     return {'Id': f'{cat}:{key}', 'Cat': cat, 'Sev': sev, 'Title': title, 'What': what, 'Risk': risk, 'Evidence': str(evidence or ''), 'Fix': fix, 'Action': action, **extra}
@@ -630,7 +665,14 @@ def scan_system(ctx):
                 out.append(F('system', 'tamper', 'medium', 'Defender Tamper Protection is off', 'Tamper Protection stops programs from switching Defender off.', 'Malware commonly disables antivirus first.', fix='Windows Security > Virus & threat protection > Manage settings > Tamper Protection. Windows only allows this to be changed by hand. If the switch is greyed out and says "managed by your administrator", an organisation or another security product controls it and only they can change it.', action=A('open_settings', 'Open settings', 'Open Windows Security?', page='windowsdefender://threatsettings')))
     for x in as_list(p.get('exclusions')):
         x = str(x)
-        if re.match(r'^[a-z]:\\?$', x, re.I) or USER_WRITABLE.search(x) or x.lower().lstrip('.*') in ('exe', 'dll', 'ps1', 'bat', 'js', 'vbs'):
+        app = nesiam_app(x)
+        if app:
+            # one of these tools, which Defender's guesswork sometimes removes: expected, not an attacker hiding
+            out.append(F('system', 'excl:' + x, 'low', f'Defender skips {app}: {x}', f'You told Defender not to check {app}, most likely because it kept removing it.',
+                         'Anything saved under this exact name is skipped too, so keep only the file from nesiam.com there.', x,
+                         f"Keep it while Defender flags {app}. Check the file's fingerprint (Get-FileHash) against its release page, and remove the exclusion once Defender stops flagging it.",
+                         A('defender_remove_exclusion', 'Remove', f'Remove this Defender exclusion?\n\n{x}', value=x)))
+        elif re.match(r'^[a-z]:\\?$', x, re.I) or USER_WRITABLE.search(x) or x.lower().lstrip('.*') in ('exe', 'dll', 'ps1', 'bat', 'js', 'vbs'):
             out.append(F('system', 'excl:' + x, 'high', f'Defender is told to ignore: {x}', 'Exclusions tell antivirus not to look somewhere.', 'Malware adds exclusions like this so that it can hide.', x, 'Remove it unless you added it for a specific reason.', A('defender_remove_exclusion', 'Remove', f'Remove this Defender exclusion?\n\n{x}', value=x), Active=True))
     active = {str(a).replace('DomainAuthenticated', 'Domain') for a in as_list(p.get('active'))}
     profiles = [x for x in as_list(p.get('profiles')) if isinstance(x, dict)]
