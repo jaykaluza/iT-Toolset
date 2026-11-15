@@ -50,11 +50,12 @@ import browsertest as B   # the browser security self-test (modelled on BrowserA
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.12'
+APP_VERSION = '0.1.13'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
 APP_DIR = S.APP_DIR
+DISMISSED_FILE = os.path.join(APP_DIR, 'dismissed-warnings.json')
 WINDIR = S.WINDIR
 user32 = S.system_dll('user32')
 SEV_RANK = S.SEV_RANK
@@ -99,7 +100,8 @@ class App:
         self.tabs, self.tab_at = [], ''
         self.tab_findings = {}
         self.cert_cache, self.page_cache = {}, {}
-        self.alerted = set()
+        self.alerted = self._load_dismissed()   # (site, warning) pairs already asked about; a No is kept across restarts
+        self.owner_cache = {}
         self.alerts = []
         self.net_pool = ThreadPoolExecutor(max_workers=6)
         self.last_client = time.time()
@@ -431,6 +433,33 @@ class App:
             self.cert_cache[host] = c = (result, time.time())
         return c[0]
 
+    def _owner(self, host):
+        c = self.owner_cache.get(host)
+        if c is None or time.time() - c[1] > 3600:
+            self.owner_cache[host] = c = (S.cert_owner(host), time.time())
+        return c[0]
+
+    def _load_dismissed(self):
+        try:
+            with open(DISMISSED_FILE, encoding='utf-8') as f:
+                return {tuple(x) for x in json.load(f) if isinstance(x, list) and len(x) == 2 and all(isinstance(v, str) for v in x)}
+        except (OSError, ValueError, TypeError):
+            return set()
+
+    def _save_dismissed(self, key):
+        """Answering No to a tab warning keeps that warning from coming back for that site."""
+        try:
+            items = self._load_dismissed() | {key}
+            if is_redirected(APP_DIR):
+                return
+            os.makedirs(APP_DIR, exist_ok=True)
+            tmp = DISMISSED_FILE + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(sorted(list(x) for x in items)[-500:], f)
+            os.replace(tmp, DISMISSED_FILE)
+        except OSError:
+            pass
+
     def _page(self, url):
         key = url.split('?')[0].split('#')[0]
         c = self.page_cache.get(key)
@@ -444,12 +473,13 @@ class App:
         parts = urllib.parse.urlsplit(url) if url else None
         host = (parts.hostname or '').lower() if parts else ''
         site = S.base_site(host) if host and S.SITE_RE.match(host) else ''
-        cert, page = None, []
+        cert, page, owner = None, [], ''
         if host and site and not S._on(host, S.TRUSTED_SITES) and not host.endswith(('.local', '.lan', '.internal')) and host != 'localhost':
             if parts.scheme == 'https':
                 cert = self._cert(host)
+                owner = self._owner(host)   # a valid Microsoft or Apple certificate: the site is theirs, not a lookalike
             page = self._page(url)
-        hits = S.check_url(url, title, cert, page) if url else []
+        hits = S.check_url(url, title, cert, page, owner) if url else []
         sev = hits[0][0] if hits else ''
         return {**tab, 'Host': host, 'Site': site, 'Sev': sev, 'Hits': [{'Sev': s, 'Title': t, 'Why': w} for s, t, w in hits]}
 
@@ -487,6 +517,8 @@ class App:
     def _warn_site(self, r):
         top = r['Hits'][0]
         answer = user32.MessageBoxW(None, f"This open tab looks dangerous.\n\n{r['Browser']}: {r['Title'][:120]}\nSite: {r['Site']}\n\n{top['Title']}\n{top['Why']}\n\nBlock this site on this PC now?", APP_NAME, MB_YESNO | MB_ICONWARNING | MB_SYSTEMMODAL)
+        if answer != IDYES:
+            self._save_dismissed((r['Site'], top['Title']))
         if answer == IDYES and self.admin:
             result = X.block_site(r['Site'])
             self.log('BLOCKED' if result['ok'] else 'FAILED', f"{r['Site']}: {result['message']}")

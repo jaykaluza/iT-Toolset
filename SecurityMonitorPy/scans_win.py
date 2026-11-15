@@ -1719,7 +1719,30 @@ TOKEN_URL = re.compile(r'[?#&](access_token|id_token|refresh_token|sessionid|ses
 SSO_HOSTS = ('microsoftonline.com', 'live.com', 'google.com', 'okta.com', 'auth0.com', 'github.com', 'apple.com', 'facebook.com')
 
 
-def check_url(url, title, cert=None, page=None):
+# Endings only the brand itself can register (cloud.microsoft, www.apple), so a site under them is that company's own
+BRAND_TLDS = ('microsoft', 'apple', 'google', 'azure', 'office', 'windows', 'xbox', 'bing', 'youtube', 'gmail', 'amazon', 'aws')
+# A certificate that checks out and names one of these companies, as its issuer or its owner, means the site is theirs
+CERT_OWNERS = {'Microsoft Corporation': 'Microsoft', 'Apple Inc.': 'Apple'}
+
+
+def cert_owner(host):
+    """'Microsoft' or 'Apple' when the site's certificate is valid for it and was issued by, or to, that company; else ''.
+    Connects like a browser would and sends nothing. A forged certificate fails the check, so it can't claim a company."""
+    ctx = ssl.create_default_context()
+    try:
+        with socket.create_connection((host, 443), timeout=6) as sock, ctx.wrap_socket(sock, server_hostname=host) as tls:
+            cert = tls.getpeercert()
+    except (OSError, ValueError):
+        return ''
+    for field in ('issuer', 'subject'):
+        for rdn in cert.get(field, ()):
+            for key, value in rdn:
+                if key == 'organizationName' and value in CERT_OWNERS:
+                    return CERT_OWNERS[value]
+    return ''
+
+
+def check_url(url, title, cert=None, page=None, owner=''):
     """[(severity, title, explanation)] for one open tab. Looks only at the address, the tab title and these two optional extras."""
     hits = []
     parts = urllib.parse.urlsplit(url)
@@ -1740,7 +1763,7 @@ def check_url(url, title, cert=None, page=None):
     if 'xn--' in host:
         hits.append(('high', 'International lookalike letters in the name', 'The name uses characters from other alphabets, which can make it look like a real site.'))
     m365 = ('microsoft', 'office', 'outlook', 'onedrive', 'sharepoint')
-    trusted = _on(host, TRUSTED_SITES)
+    trusted = _on(host, TRUSTED_SITES) or bool(owner) or host.rsplit('.', 1)[-1] in BRAND_TLDS
     if MS_LOGIN_TITLE.match(title.strip()) and not _on(host, LOGIN_BRANDS['microsoft']) and not trusted:
         hits.append(('critical', 'Fake Microsoft 365 sign-in page', f'The tab says "{title[:80]}", which is the title of Microsoft\'s own sign-in page, but the site is {site}. Do not enter your password. If you did, change it now from another device and sign out of all sessions.'))
     else:
@@ -1753,7 +1776,7 @@ def check_url(url, title, cert=None, page=None):
                 break
     stem = site.split('.')[0]
     for target in LOOKALIKE_TARGETS:
-        if site != target and _edit1(stem, target.split('.')[0]) and len(stem) > 4:
+        if not trusted and site != target and _edit1(stem, target.split('.')[0]) and len(stem) > 4:
             hits.append(('critical', f'Lookalike of {target}', f'{site} is one letter away from {target}. This is called typo-squatting.'))
             break
     for brand, domains in LOGIN_BRANDS.items():
