@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<title>My Disk</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cdefs%3E%3CradialGradient id=%22r%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%23ff8a80%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%23ff1400%22/%3E%3Cstop offset=%221%22 stop-color=%22%23f00000%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22b%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%236fc3ff%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%230090ff%22/%3E%3Cstop offset=%221%22 stop-color=%22%230060ff%22/%3E%3C/radialGradient%3E%3CradialGradient id=%22g%22 cx=%22.32%22 cy=%22.28%22 r=%22.85%22%3E%3Cstop offset=%220%22 stop-color=%22%23fff%22/%3E%3Cstop offset=%22.1%22 stop-color=%22%237dffa8%22/%3E%3Cstop offset=%22.42%22 stop-color=%22%2300ff55%22/%3E%3Cstop offset=%221%22 stop-color=%22%2300d13f%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23161617%22/%3E%3Ccircle cx=%2219.5%22 cy=%2224%22 r=%224%22 fill=%22url%28%23r%29%22/%3E%3Cpath d=%22M7.5 27V12.5M7.5 18c0-4 2.6-6.2 6-6.2s6 2.2 6 6.2V27%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%224%22/%3E%3Ccircle cx=%2219%22 cy=%226.5%22 r=%224%22 fill=%22url%28%23b%29%22/%3E%3Ccircle cx=%2227%22 cy=%2224%22 r=%223.6%22 fill=%22url%28%23g%29%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* The look of nesiam.com (white fading into lavender, Inter, white cards with a soft violet shadow, black menu bar)
+   with My Connections' buttons (small pills, blue for actions and tabs, red for Exit, slide toggles). */
+:root{color-scheme:only light;--ink:#111114;--muted:#55555f;--faint:#8a8a96;--line:#e4e2f0;--line2:#eeecf7;--lav:#efedfb;--lav2:#e6e3f7;--panel:#fff;--head:#0b0c12;--head-text:#f4f4f8;--head-muted:#a0a0aa;
+  --brand:#0071e3;--brand-dark:#0077ed;--accent:#0066cc;--violet:#5b4bff;--red:#8c1515;--red-dark:#820000;
+  --good:#118a4a;--good-bg:rgba(24,199,111,.13);--watch:#a05a00;--watch-bg:rgba(255,204,0,.18);--bad:#d70015;--bad-bg:rgba(255,59,48,.10);
+  --read:#0071e3;--write:#8a4dff}
+*{box-sizing:border-box}
+html{overflow-y:scroll;scrollbar-gutter:stable}
+body{margin:0;min-height:100vh;color:var(--ink);font:400 14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  background:linear-gradient(180deg,#fff 0%,#f4f2fc 45%,var(--lav2) 100%) fixed}
+.hidden{display:none!important}
+:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+
+/* menu bar: the nesiam.com logo, then the app */
+header{position:sticky;top:0;z-index:20;background:var(--head);color:var(--head-text);padding:7px 16px;display:flex;align-items:center;gap:4px 14px;flex-wrap:wrap}
+.logo{font:600 17.3px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;letter-spacing:-.025em;margin:0;color:#fff;isolation:isolate;text-decoration:none}
+.logo .lt{display:inline-block;position:relative}
+.logo .gap{color:transparent;margin:0 .02em}
+.logo i{position:absolute;left:50%;width:.26em;height:.26em;margin-left:-.13em;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.6)}
+.logo .blue{top:.16em;background:radial-gradient(circle at 32% 28%,#fff 0,#6fc3ff 10%,#0090ff 42%,#0060ff 100%)}
+.logo .green{top:.77em;background:radial-gradient(circle at 32% 28%,#fff 0,#7dffa8 10%,#00ff55 42%,#00d13f 100%)}
+.logo .red{top:.75em;left:-.037em;z-index:-1;background:radial-gradient(circle at 32% 28%,#fff 0,#ff8a80 10%,#ff1400 42%,#f00000 100%)}
+header .app{font:500 15px/1.2 Inter,sans-serif;color:#fff;padding-left:14px;border-left:1px solid #2c2d36}
+header .sub{color:var(--head-muted);font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* My Connections' buttons */
+.pbtn{font:inherit;font-size:11px;font-weight:500;line-height:1.5;border-radius:980px;padding:1px 9px;cursor:pointer;white-space:nowrap}
+.pbtn:disabled{opacity:.45;cursor:default}
+.pbtn.outline{color:var(--accent);background:transparent;border:1px solid var(--accent)}
+.pbtn.outline:not(:disabled):hover{background:rgba(0,113,227,.10)}
+header .pbtn.outline{color:#72a3f7;border-color:#4d74b5}
+header .jobbtn{display:inline-flex;align-items:center;gap:6px;max-width:min(420px,60vw);overflow:hidden;text-overflow:ellipsis}
+header .jobbtn .spin{width:9px;height:9px;margin:0;border-width:2px;flex:none}
+header .jobbtn.jb-done{color:#fff;background:var(--brand);border-color:var(--brand)}
+header .jobbtn.jb-fail{color:#fff;background:var(--red);border-color:var(--red)}
+.pbtn.outline.stop{color:var(--red);border-color:var(--red)}
+header .pbtn.outline:not(:disabled):hover{background:rgba(114,163,247,.14)}
+.pbtn.danger{color:#fff;background:var(--red);border:1px solid var(--red)}
+.pbtn.danger:not(:disabled):hover{background:var(--red-dark);border-color:var(--red-dark)}
+.bigbtn{font:inherit;font-weight:500;font-size:13px;color:#fff;background:var(--brand);border:0;border-radius:980px;padding:7px 18px;cursor:pointer;white-space:nowrap}
+.bigbtn:hover{background:var(--brand-dark)}
+.bigbtn:disabled{opacity:.5;cursor:default}
+.tabs{display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:980px;padding:3px}
+.tabs button{border:0;background:none;color:var(--muted);padding:4px 12px;border-radius:980px;font:inherit;font-size:13px;cursor:pointer}
+.tabs button.on{background:var(--brand);color:#fff}
+.tabs button:not(.on):hover{color:var(--ink)}
+.toggle{display:inline-flex;gap:7px;align-items:center;color:var(--muted);font-size:13px;cursor:pointer;white-space:nowrap}
+.toggle input{appearance:none;-webkit-appearance:none;flex:none;width:34px;height:18px;margin:0;border-radius:9px;background:#d1d1d6;position:relative;cursor:pointer;transition:background .15s}
+.toggle input::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+.toggle input:checked{background:var(--brand)}
+.toggle input:checked::after{left:18px}
+.toggle:has(input:checked){color:var(--ink)}
+
+main{max-width:1180px;margin:0 auto;padding:30px 32px 40px}
+.display{font:400 clamp(28px,3.2vw,40px)/1.08 Inter,sans-serif;letter-spacing:-.035em;margin:0 0 8px}
+.display .bar{font-weight:300;color:#b9b6cf;margin:0 .3em 0 .2em}
+.lede{font-size:16px;color:var(--muted);margin:0 0 20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* always one line */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:0 0 18px}
+.toolbar .grow{flex:1}
+
+/* the summary tiles */
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.tile{background:#fff;border-radius:16px;padding:13px 16px;box-shadow:0 20px 40px -26px rgba(50,40,140,.4),0 1px 3px rgba(20,20,40,.05);min-width:0}
+.tile span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile b{display:block;font:500 21px/1.25 Inter,sans-serif;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile small{display:block;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.notice{display:flex;gap:14px;align-items:center;background:#fff;border-radius:16px;padding:12px 16px;margin-bottom:18px;box-shadow:0 20px 40px -26px rgba(50,40,140,.4);border-left:4px solid var(--brand)}
+.notice p{margin:0;flex:1;font-size:13px;color:var(--muted)}
+.notice b{color:var(--ink);font-weight:600}
+
+/* one card per disk */
+.disk{background:#fff;border-radius:18px;padding:14px 18px 10px;margin-bottom:14px;box-shadow:0 30px 60px -34px rgba(50,40,140,.42),0 2px 6px rgba(20,20,40,.05)}
+.dhead{display:flex;gap:12px;align-items:center}
+.dicon{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--lav)}
+.dicon svg{width:18px;height:18px;stroke:#111114;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.dtitle{flex:1;min-width:0}
+.dtitle h3{margin:0;font:500 17px/1.25 Inter,sans-serif;letter-spacing:-.02em;overflow-wrap:anywhere}
+.dtitle .sub{display:flex;flex-wrap:wrap;align-items:center;gap:3px 8px;color:var(--muted);font-size:12.5px;margin-top:1px}
+.chips{display:inline-flex;flex-wrap:wrap;gap:5px}
+.chip{display:inline-block;font-size:12px;font-weight:500;color:var(--ink);background:var(--lav);border-radius:99px;padding:1px 9px;white-space:nowrap}
+.dsize{text-align:right;flex:none}
+.dsize b{display:block;font:500 20px/1.15 Inter,sans-serif;letter-spacing:-.03em}
+.dsize span{font-size:12px;color:var(--faint)}
+.verdict{display:inline-block;margin-top:3px;font-size:12px;font-weight:600;border-radius:99px;padding:1px 10px}
+.v-good{color:var(--good);background:var(--good-bg)}.v-watch{color:var(--watch);background:var(--watch-bg)}.v-bad{color:#fff;background:var(--bad)}.v-unknown{color:var(--muted);background:var(--lav)}
+
+/* the partition map: the disk from start to end, each partition to scale (tiny ones get a little room so they can be seen) */
+.map{display:flex;gap:3px;height:32px;margin:12px 0 8px}
+.seg{position:relative;min-width:0;border-radius:9px;overflow:hidden;background:var(--lav2);cursor:default}
+.seg .used{position:absolute;inset:0 auto 0 0;background:var(--seg,#3d3a52)}
+.seg .lbl{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 9px;font-size:11px;line-height:1.2;white-space:nowrap;overflow:hidden;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.seg .lbl b{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.seg .lbl span{opacity:.85;overflow:hidden;text-overflow:ellipsis}
+.seg.sys{background:repeating-linear-gradient(135deg,#dcd9ec 0 6px,#e9e7f5 6px 12px)}
+.seg.sys .lbl{color:var(--muted);text-shadow:none;padding:0 6px}
+.seg.free{background:transparent;border:1.5px dashed #c9c5e0}
+.seg.free .lbl{color:var(--faint);text-shadow:none}
+.seg.data .lbl.dark{color:var(--ink);text-shadow:none}
+.seg:hover{filter:brightness(1.04);box-shadow:0 0 0 2px var(--violet) inset}
+.seg[data-resize]{cursor:pointer}
+.vols td.act{text-align:right;width:1%;white-space:nowrap}
+.pbtn[data-h]{text-decoration:none}
+tr[data-menu],.seg[data-resize]{cursor:pointer}
+tr[data-menu]:hover td{background:var(--lav)}
+#ctx{position:fixed;z-index:35;min-width:250px;padding:5px;background:#fff;border-radius:12px;box-shadow:0 20px 44px -10px rgba(30,20,90,.4),0 0 0 1px rgba(30,20,90,.08)}
+#ctx .ctx-head{padding:6px 10px 5px;font-size:11.5px;font-weight:600;color:var(--faint);border-bottom:1px solid var(--line2);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ctx button{display:block;width:100%;padding:7px 10px;font:inherit;font-size:13px;text-align:left;color:var(--ink);background:none;border:0;border-radius:8px;cursor:pointer}
+#ctx button:hover:not(:disabled),#ctx button:focus-visible{background:var(--lav);outline:none}
+#ctx button:disabled{color:var(--faint);cursor:default}
+#ctx button small{display:block;font-size:11.5px;color:var(--faint)}
+#ctx .ctx-sep{padding:8px 10px 3px;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);border-top:1px solid var(--line2);margin-top:3px}
+.finds{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.finds li{padding:9px 12px 10px;border-radius:12px;border-left:4px solid;font-size:13px;line-height:1.45}
+.finds li b{display:block;color:var(--ink)}
+.finds li span{display:block;color:var(--muted);word-break:break-word}
+.finds li .pbtn{margin-top:7px}
+.finds .f-good{background:var(--good-bg);border-color:var(--good)}.finds .f-watch{background:var(--watch-bg);border-color:#c98a00}.finds .f-bad{background:var(--bad-bg);border-color:var(--bad)}
+.threats{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+.threats th{text-align:left;font-weight:500;color:var(--faint);font-size:11.5px;padding:4px 8px;border-bottom:1px solid var(--line2)}
+.threats td{padding:7px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
+.threats .tfile{font:11.5px Consolas,monospace;color:var(--muted);word-break:break-all;margin-top:2px}
+.threats .tbad{color:var(--bad);font-weight:500}.threats .tgood{color:var(--good)}
+.rz-prog{height:8px;border-radius:99px;background:var(--lav2);overflow:hidden;margin-top:10px}
+.rz-prog i{display:block;height:100%;width:0;background:var(--brand);border-radius:99px;transition:width .4s}
+#rzBody code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;padding:1px 6px}
+#rz{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;padding:0;background:#fff;color:var(--ink);border:0;border-radius:20px;font-size:13px;box-shadow:0 40px 90px -20px rgba(30,20,90,.55)}
+#rz::backdrop{background:rgba(20,18,40,.5)}
+.rz-head{display:flex;align-items:center;gap:12px;padding:20px 22px 4px}
+.rz-head h2{margin:0;font:500 19px/1.2 Inter,sans-serif;letter-spacing:-.02em;flex:1;min-width:0;overflow-wrap:anywhere}
+.rz-x{font:400 26px/1 Inter,sans-serif;color:var(--faint);background:none;border:0;padding:0 4px;cursor:pointer}
+.rz-x:hover{color:var(--ink)}
+#rzBody{padding:6px 22px 4px}
+#rzBody p{margin:8px 0 0;color:var(--muted)}
+#rzBody p b{color:var(--ink);font-weight:600}
+.rz-bar{position:relative;display:flex;height:30px;margin:12px 0 4px;border-radius:9px;overflow:hidden;background:repeating-linear-gradient(135deg,#f3f2fa 0 6px,#fff 6px 12px);border:1.5px dashed #c9c5e0}
+.rz-bar .u{background:#2b2940}.rz-bar .f{background:var(--lav2)}
+.rz-bar .now{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--violet)}
+.rz-keys{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--faint)}
+.rz-keys i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.rz-set{display:flex;align-items:center;gap:10px;margin-top:14px}
+.rz-set input[type=range]{flex:1;accent-color:var(--brand)}
+.rz-set input[type=number]{width:110px;font:inherit;font-size:14px;padding:5px 10px;border:1px solid #d3d0e6;border-radius:999px;text-align:right}
+.rz-quick{display:flex;gap:6px;margin-top:8px}
+.rz-change{margin-top:12px;padding:9px 12px;border-radius:12px;background:var(--lav);color:var(--ink)!important}
+.rz-warn{margin-top:10px;padding:9px 12px;border-radius:12px;background:var(--watch-bg);color:#6b4500!important}
+.rz-err{margin-top:10px;padding:9px 12px;border-radius:12px;background:var(--bad-bg);color:var(--bad)!important}
+.rz-ok{margin-top:10px;padding:9px 12px;border-radius:12px;background:var(--good-bg);color:var(--good)!important}
+.rz-check{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px;cursor:pointer}
+.rz-check input{margin-top:2px;accent-color:var(--brand)}
+.rz-foot{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px 20px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--lav2);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.maplegend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--faint);margin-bottom:14px}
+.maplegend i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+
+/* the drives on this disk */
+table{width:100%;border-collapse:collapse}
+.vols{margin:0 0 10px;border:1px solid var(--line2);border-radius:14px;overflow:hidden}
+.vols th{font-size:11.5px;font-weight:500;color:var(--faint);text-align:left;padding:4px 10px;background:#faf9fe;border-bottom:1px solid var(--line2);white-space:nowrap}
+.vols td{padding:5px 10px;border-bottom:1px solid var(--line2);vertical-align:middle;font-size:13px}
+.vols tr:last-child td{border-bottom:0}
+.vols tr.sysrow td{color:var(--muted)}
+.vols .letter{display:inline-grid;place-items:center;min-width:28px;height:22px;padding:0 6px;border-radius:7px;background:var(--ink);color:#fff;font-weight:600;font-size:13px}
+.vols tr.sysrow .letter{background:var(--lav2);color:var(--muted);font-weight:500;font-size:11px}
+.vols .name b{font-weight:500}
+.vols .name small{display:block;color:var(--faint);font-size:11.5px}
+.usebar{position:relative;height:8px;border-radius:99px;background:var(--lav2);overflow:hidden;min-width:120px}
+.usebar i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--ink)}
+.usebar i.watch{background:#e0a000}.usebar i.bad{background:var(--bad)}
+.usetext{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:99px;padding:0 8px;white-space:nowrap}
+.p-on{color:var(--good);background:var(--good-bg)}.p-off{color:var(--muted);background:var(--lav)}.p-watch{color:var(--watch);background:var(--watch-bg)}.p-bad{color:var(--bad);background:var(--bad-bg)}
+.num{white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* three boxes: the drive, its condition, what it is doing now */
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.box{background:#faf9fe;border:1px solid var(--line2);border-radius:12px;padding:8px 12px;min-width:0}
+.box h4{margin:0 0 3px;font:600 11px/1.3 Inter,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+dl.f{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 12px;margin:0;font-size:12.5px;line-height:1.45}
+dl.f dt{color:var(--muted);white-space:nowrap}
+dl.f dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.box .lock{font-size:12px;color:var(--muted);margin:4px 0 0}
+.notes{margin:4px 0 0;padding:4px 0 0;list-style:none;font-size:12px;line-height:1.4;border-top:1px solid var(--line2)}
+.notes li{padding:1px 0 1px 15px;position:relative}
+.notes li::before{content:'';position:absolute;left:2px;top:6px;width:7px;height:7px;border-radius:50%;background:var(--good)}
+.notes li.watch::before{background:#e0a000}.notes li.bad::before{background:var(--bad)}
+.live .speeds{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-bottom:4px}
+.live .speeds div span{display:block;font-size:11.5px;color:var(--muted)}
+.live .speeds div b{font:500 15px/1.2 Inter,sans-serif;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.live .speeds i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+.spark{display:block;width:100%;height:36px;border-radius:8px;background:#fff;border:1px solid var(--line2)}
+.busy{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:4px}
+.busy .usebar{flex:1;min-width:0;height:6px}
+.busy .usebar i{background:var(--brand)}
+
+details.info{margin-top:2px}
+details.info>summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:500;padding:2px 0 6px;width:max-content;max-width:100%}
+details.info>summary .peek{color:var(--muted);font-weight:400;margin-left:10px}
+details.info[open]>summary .peek{display:none}
+details.info:not([open])>summary{padding-bottom:0}
+details.tech{margin-top:8px;border-top:1px solid var(--line2);padding-top:6px}
+details.tech summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:500;width:max-content}
+details.tech .cols{margin-top:10px}
+.ptable th{font-size:12px;font-weight:500;color:var(--faint);text-align:left;padding:4px 8px 4px 0;white-space:nowrap}
+.ptable td{font-size:12.5px;padding:4px 8px 4px 0;border-top:1px solid var(--line2);vertical-align:top}
+.mono{font-family:Consolas,"Cascadia Mono",monospace;font-size:12px}
+
+.other{background:#fff;border-radius:20px;padding:16px 22px;margin-bottom:20px;box-shadow:0 30px 60px -34px rgba(50,40,140,.42)}
+.other h3{margin:0 0 8px;font:500 17px/1.25 Inter,sans-serif}
+.empty{background:#fff;border-radius:20px;padding:40px;text-align:center;color:var(--muted);box-shadow:0 30px 60px -34px rgba(50,40,140,.42)}
+footer{font-size:12px;color:var(--faint);text-align:center;margin-top:8px}
+
+/* hover help */
+[data-h]{cursor:help;text-decoration:underline dotted #c4c0dc;text-underline-offset:3px}
+.chip[data-h],.pill[data-h],.verdict[data-h],.seg[data-h],.spark[data-h],.map[data-h]{text-decoration:none}
+.box h4[data-h],th[data-h]{text-decoration-color:#d8d5ea}
+#tip{position:fixed;z-index:30;max-width:380px;background:#111114;color:#f4f4f8;border-radius:12px;padding:10px 13px;font-size:12.5px;line-height:1.5;box-shadow:0 18px 40px -8px rgba(0,0,0,.45);pointer-events:none;display:none}
+#tip b{color:#fff}
+#tip p{margin:0}#tip p+p{margin-top:6px}#tip .val{color:#9fd0ff;font-weight:500}#tip .how{color:#c9c9d4}
+
+#overlay{position:fixed;inset:0;z-index:40;background:rgba(20,18,40,.45);display:grid;place-items:center;padding:16px}
+#overlay div{background:#fff;border-radius:20px;padding:24px 26px;max-width:420px;box-shadow:0 40px 90px -20px rgba(30,20,90,.55)}
+#overlay h2{margin:0 0 6px;font:500 20px/1.2 Inter,sans-serif}
+#overlay p{margin:0;color:var(--muted)}
+
+@media (max-width:1000px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.cols{grid-template-columns:1fr 1fr}.cols .live{grid-column:1/-1}}
+@media (max-width:720px){main{padding:20px 14px 30px}.tiles{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}.dhead{flex-wrap:wrap}.dsize{text-align:left}
+  .vols .hide-s{display:none}header .sub{display:none}.disk{padding:16px 14px}.notice{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="https://nesiam.com/" target="nesiam-landing" title="Go to the Nesiam.com landing page" aria-label="nesiam.com"><span aria-hidden="true"><span class="lt">n<i class="red"></i></span>es<span class="lt">ı<i class="blue"></i></span>am<span class="lt gap">.<i class="green"></i></span>com</span></a>
+  <span class="app">My Disk</span>
+  <span class="sub" id="meta">Reading your disks…</span>
+  <span class="right">
+    <button class="pbtn outline jobbtn hidden" id="jobBtn" title="Open this task's window"></button>
+    <button class="pbtn outline" id="refresh" title="Read every disk again now (it also happens by itself every minute)">Refresh</button>
+    <button class="pbtn danger" id="quit" title="Stop My Disk and close the app">Exit</button>
+  </span>
+</header>
+
+<main>
+  <h2 class="display">My Disk<span class="bar">|</span><span id="headline">Your disks</span></h2>
+  <p class="lede" id="lede">Every disk in this PC, and everything Windows knows about it.</p>
+
+  <div class="notice hidden" id="adminNote">
+    <p><b>Temperature, wear and running hours are hidden.</b> Windows only shares them, and the BitLocker details, with apps that run as administrator.</p>
+    <button class="bigbtn" id="elevate">Restart as administrator</button>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs"><button data-t="all" class="on">All disks</button><button data-t="inside">Inside this PC</button><button data-t="plugged">Plugged in</button></div>
+    <span class="grow"></span>
+    <label class="toggle" title="Also list the small partitions Windows keeps for itself (start-up, recovery) under each disk"><input type="checkbox" id="showSys"> Windows' own partitions</label>
+    <label class="toggle" title="Serial numbers identify your drives. They are hidden so a screenshot doesn't give them away."><input type="checkbox" id="showSerial"> Serial numbers</label>
+  </div>
+
+  <div id="disks"></div>
+  <div id="other"></div>
+  <footer>My Disk only reads, unless you choose a resize, repair or fix and confirm it. What it reads stays on this PC.</footer>
+</main>
+<div id="tip" role="tooltip"></div>
+<div id="overlay" class="hidden"><div><h2 id="ovTitle"></h2><p id="ovText"></p></div></div>
+<div id="ctx" class="hidden" role="menu" aria-label="Drive actions"><div class="ctx-head" id="ctxHead"></div>
+  <button role="menuitem" data-ctx="resize">Resize…<small>Make the drive smaller, or bigger if there is room</small></button>
+  <div class="ctx-sep">Check</div>
+  <button role="menuitem" data-ctx="check">Check for errors…<small>Damaged files and folders (chkdsk)</small></button>
+  <button role="menuitem" data-ctx="structure">Check the structure…<small>Partition table and file system records</small></button>
+  <button role="menuitem" data-ctx="perms">Check permissions…<small id="ctxPermsNote">Who can open and change the drive</small></button>
+  <button role="menuitem" data-ctx="ransom">Check for ransomware…<small id="ctxRansomNote">Ransom notes, locked files, restore copies</small></button>
+  <button role="menuitem" data-ctx="virus">Scan for viruses and rootkits…<small id="ctxVirusNote">Microsoft Defender, including the start-up sectors</small></button>
+  <div class="ctx-sep">Windows</div>
+  <button role="menuitem" data-ctx="sfc">System File Checker…<small id="ctxSfcNote">Check and repair Windows' own files</small></button>
+  <button role="menuitem" data-ctx="dism">Windows image health…<small id="ctxDismNote">The store System File Checker repairs from (DISM)</small></button>
+</div>
+<dialog id="rz" aria-labelledby="rzTitle">
+  <div class="rz-head"><div class="dicon" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="4" y="10" width="24" height="12" rx="2.5"/><path d="M17 16h7M21.5 13.5L24 16l-2.5 2.5M8 13v6"/></svg></div><h2 id="rzTitle">Resize</h2><button class="rz-x" id="rzX" aria-label="Close">×</button></div>
+  <div id="rzBody"></div>
+  <div class="rz-foot" id="rzFoot"></div>
+</dialog>
+
+<script>
+const TOKEN = '__DISK_TOKEN__';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const S = {tab: 'all', sys: false, serial: false, open: new Set(), shown: new Set(), readAt: 0, data: null, gone: false};
+try { Object.assign(S, JSON.parse(localStorage.getItem('mydisk-view') || '{}'), {open: new Set(JSON.parse(localStorage.getItem('mydisk-open') || '[]'))}); } catch (e) {}
+const save = () => { try { localStorage.setItem('mydisk-view', JSON.stringify({tab: S.tab, sys: S.sys, serial: S.serial})); localStorage.setItem('mydisk-open', JSON.stringify([...S.open])); localStorage.removeItem('mydisk-shut'); } catch (e) {} };
+
+// ---- sizes the way Windows shows them (1 GB = 1024 MB), and the way the box says (1 GB = 1000 MB)
+function size(b, digits) {
+  if (b == null || isNaN(b)) return '—';
+  const u = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB']; let i = 0, v = b;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return (i === 0 ? v : v.toFixed(digits ?? (v >= 100 ? 0 : 1))) + ' ' + u[i];
+}
+function sold(b) {
+  const u = ['bytes', 'KB', 'MB', 'GB', 'TB']; let i = 0, v = b;
+  while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
+  return (Math.round(v * 10) / 10) + ' ' + u[i];
+}
+const speed = b => b < 1024 ? '0 KB/s' : size(b, b < 1024 * 1024 * 10 ? 1 : 0) + '/s';
+const n = v => v == null ? '—' : Number(v).toLocaleString();
+const hours = h => { if (h == null) return '—'; const y = h / 8766; return `${n(h)} h <small class="muted">(${y >= 1 ? y.toFixed(1) + ' years' : Math.round(h / 24) + ' days'} switched on)</small>`; };
+
+// ---- hover help for every property: [name, what it means, how it works]
+const HELP = {
+  // the disk's header and tags
+  verdict: ['How it\'s doing', 'My Disk\'s one-line summary of this disk.', 'It weighs what Windows says about the disk\'s health with wear, temperature, uncorrected errors and how full its drives are. Any serious problem makes it "Needs attention", a milder one "Worth a look". The notes in the Condition box list each reason.'],
+  soldAs: ['Size', 'How much the whole disk holds.', 'Windows counts in steps of 1024 (1 GB = 1024 × 1024 × 1024 bytes), drive makers in steps of 1000. So a disk sold as 512 GB shows as about 477 GB in Windows. Nothing is missing; it is the same number of bytes counted two ways.'],
+  internal: ['Inside this PC', 'The disk is built into or fitted inside the PC.', 'My Disk decides this from the connection: NVMe, SATA and similar are inside; USB, SD cards and FireWire are plugged in from outside.'],
+  external: ['Plugged in', 'A disk connected from outside, usually over USB.', 'Pulling it out while Windows is still saving can cut a file short, so use "Safely remove hardware" first. USB boxes often hide the drive\'s own health readings from Windows.'],
+  boot: ['Windows starts from it', 'This disk holds the start-up files the PC reads when it switches on.', 'The PC\'s firmware (UEFI) finds the EFI system partition on this disk and loads the Windows Boot Manager from it, which then starts Windows. Changing or wiping this disk can stop the PC from starting.'],
+  gpt: ['GPT partition table', 'The modern way a disk records how it is divided into partitions.', 'A table at the start of the disk, with a backup copy at the end, lists every partition, where it starts and its type. It handles disks far beyond 2 TB and up to 128 partitions, and is required for UEFI start-up and Windows 11.'],
+  mbr: ['MBR partition table', 'The older way a disk records how it is divided.', 'A single 512-byte block at the very start of the disk lists up to four partitions. It can only use the first 2 TB and has no backup copy, so damage to that block loses the layout. Fine for small USB drives.'],
+  readonly: ['Read-only', 'Windows will not save anything here.', 'The disk or partition carries a read-only flag (set by Windows, a policy or a write-protect switch), so every write request is refused.'],
+  offline: ['Offline', 'Windows sees the disk but is not using it.', 'An offline disk gets no drive letters. Windows takes a disk offline because of a policy, because its ID clashes with another disk, or when told to. Bring it online in Disk Management.'],
+  // the partition map
+  map: ['Partition map', 'The whole disk from start (left) to end (right).', 'Each block is a partition, drawn to scale; tiny ones are widened a little so they can be seen. Inside a drive\'s block, the dark part is used space and the light part is free.'],
+  dataSeg: ['Drive', 'A partition holding your files. Click it for what you can do with it: resize, checks, repairs, virus scan.', 'The dark part of the block is how much is used; the light part is free.'],
+  resize: ['Resize', 'Make this drive smaller, or bigger if there is room. Click a drive for more: checks, repairs, virus scan.', 'Windows can only move a partition\'s end, not its start. Shrinking frees space right after the drive, which becomes unallocated; growing needs unallocated space directly after it. Your files stay where they are. Needs administrator rights.'],
+  efi: ['EFI system partition', 'A small hidden part that holds the start-up files.', 'When the PC switches on, its firmware reads this FAT32 partition and runs the boot manager stored on it, which then loads Windows. Without it the PC will not start.'],
+  msr: ['Microsoft reserved partition', 'A tiny hidden space Windows keeps on GPT disks.', 'It holds no files. Windows sets it aside so it can later convert the disk or add its own structures without moving your partitions.'],
+  recovery: ['Windows recovery partition', 'Holds the repair tools (Windows RE).', 'When Windows fails to start twice in a row, the PC starts from this partition instead and offers Startup Repair, System Restore and Reset this PC.'],
+  free: ['Unallocated space', 'Part of the disk that no partition uses.', 'Windows can only store files inside partitions. To use this space, extend a neighbouring drive into it or create a new drive in Disk Management.'],
+  // the drives table
+  colDrive: ['Drive', 'The drive letter Windows gives this partition.', 'A letter is just a name pointing at a partition. Windows hands them out as drives appear; you can change them in Disk Management. Hidden partitions have none.'],
+  colName: ['Name', 'The drive\'s label, and which partition of the disk it is.', 'The label is stored inside the file system and is what Explorer shows next to the letter. Partition numbers count from the start of the disk.'],
+  fs: ['File system', 'How files are organised on the drive.', 'The file system keeps the index of every file: its name, folder, size and which blocks of the disk hold it. NTFS is Windows\' own (permissions, encryption, a journal that survives crashes); exFAT and FAT32 also work on Macs, cameras and TVs; FAT32 cannot hold files over 4 GB.'],
+  colSize: ['Size', 'How big this is, as Windows counts it.', 'For a drive: the space inside the partition that the file system can use, slightly less than the partition itself.'],
+  colSpace: ['Space', 'How much of the drive is used and free, updated every 2 seconds.', 'The bar turns amber above 88 % used and red above 95 %. Windows needs free room for updates, its page file and temporary files; with too little, things slow down or fail.'],
+  bitlocker: ['BitLocker', 'Windows\' built-in drive encryption.', 'Everything written to the drive is scrambled with a key. The key is unlocked at start-up by the PC\'s security chip (TPM), a PIN or a password, so someone who takes the drive out cannot read it. Keep the recovery key somewhere safe.'],
+  cluster: ['Cluster size', 'The smallest piece of space a file can take.', 'The file system hands out space in clusters, so a 1-byte file still takes one whole cluster. 4 KB is normal; bigger clusters waste space on small files but can be a little faster for huge ones.'],
+  colNotes: ['Notes', 'Special roles or states of this drive.', 'For example: Windows is installed here, the page file lives here, it is not indexed for search, or it is waiting for an error check.'],
+  system: ['Windows', 'Windows itself is installed on this drive.', 'It holds the Windows folder, Program Files and usually your user folders. It needs the most free room, for updates and temporary files.'],
+  pagefile: ['Page file', 'Space Windows uses as extra memory.', 'When the PC\'s memory (RAM) fills up, Windows moves parts that are not in use right now into pagefile.sys on this drive, and reads them back when needed.'],
+  dirty: ['Needs a check', 'Windows marked this drive as possibly damaged.', 'If a drive is unplugged or the power fails mid-save, NTFS sets a "dirty" flag. At the next start, or when you run chkdsk, Windows checks and repairs the file system, then clears the flag.'],
+  indexing: ['Not indexed', 'Windows Search does not keep a list of the files here.', 'The search indexer reads file names and contents in the background so searching is instant. Without it, searches on this drive are slower, but nothing else changes.'],
+  compressed: ['Compressed', 'NTFS compression is on for this drive.', 'Files are squeezed when saved and unpacked when read. It saves space at the cost of a little processor time.'],
+  // the drive box
+  boxDrive: ['The drive', 'What the drive is and how it is connected.', 'The drive reports its own maker, model, serial and firmware; Windows\' storage service adds the connection and layout.'],
+  maker: ['Maker', 'The company that made the drive.', 'Drives often only report a model code, so My Disk recognises the maker from it (for example "MZ…" is Samsung, "ST…" is Seagate).'],
+  model: ['Model', 'The drive\'s exact model code.', 'Use it to look up the drive\'s specifications, warranty and firmware updates on the maker\'s site. PC makers often fit OEM models whose code differs from the shop version.'],
+  serial: ['Serial number', 'The drive\'s unique number, needed for warranty claims.', 'Set at the factory and stored in the drive. Hidden by default so screenshots don\'t give it away; turn on "Serial numbers" at the top to see it.'],
+  firmware: ['Firmware', 'The version of the drive\'s own built-in software.', 'Every drive runs a small program that manages its memory cells or platters, error correction and caching. Makers release updates that fix bugs or performance problems; check the maker\'s support page for this version.'],
+  type: ['Type', 'Whether the drive is an SSD or a hard disk.', 'Reported by the drive. When a USB box hides it, My Disk guesses from the product name.'],
+  ssd: ['SSD (solid-state drive)', 'Stores data on flash memory chips.', 'There are no moving parts: a controller writes data into memory cells and spreads the writes evenly ("wear levelling"). Each cell survives a limited number of rewrites, which is what Wear counts. Fast and silent.'],
+  hdd: ['Hard disk', 'Stores data magnetically on spinning platters.', 'A read/write head floats a few nanometres above platters spinning at 5,400 to 7,200 rpm and moves to where the data is. Moving the head takes milliseconds, which is why hard disks are slower than SSDs and sensitive to knocks while running.'],
+  hddGuess: ['Probably a hard disk', 'The drive does not say what is inside.', 'Its product name belongs to a range of portable drives that contain spinning hard disks, so My Disk assumes it is one.'],
+  kindUnknown: ['Type not reported', 'The drive did not say whether it is an SSD or a hard disk.', 'Many USB boxes pass Windows only the bare minimum about the drive inside.'],
+  conn: ['Connection', 'How the drive talks to the PC.', 'The connection limits the speed: NVMe uses PCI Express lanes straight to the processor (several GB/s), SATA tops out around 550 MB/s, and USB depends on the port and cable.'],
+  nvme: ['NVMe', 'The fastest connection for SSDs.', 'The SSD sits on the PCI Express bus, the same fast lanes a graphics card uses, and Windows can send it thousands of requests at once in parallel queues.'],
+  sata: ['SATA', 'The usual cable connection for hard disks and 2.5-inch SSDs.', 'One queue of requests over a cable, at up to 6 Gbit/s (about 550 MB/s). Plenty for hard disks; it is what holds SATA SSDs back compared with NVMe.'],
+  usb: ['USB', 'A drive connected over USB.', 'A small chip in the box (a bridge) translates between USB and the drive inside. The speed depends on the port: USB 2 about 40 MB/s, USB 3 around 400 MB/s or more.'],
+  location: ['Location', 'Where the disk is connected.', 'The slot, bus, port and adapter Windows found the disk on, as reported by its controller.'],
+  rpm: ['Spin speed', 'How fast the hard disk\'s platters turn.', 'Faster platters bring the data under the head sooner: 7,200 rpm disks answer quicker than 5,400 rpm ones, but use more power and run warmer.'],
+  sector: ['Sector size', 'The smallest block the drive reads or writes: what Windows sees / what the drive uses inside.', 'Most modern drives store 4,096-byte sectors but present 512-byte ones for compatibility ("512e"). Partitions that start on a 4 KB boundary avoid extra work.'],
+  trim: ['TRIM', 'Windows tells SSDs which blocks no longer hold data.', 'When you delete a file, Windows sends the SSD a TRIM command for those blocks, so the SSD can erase them in the background. Without it, writing gets slower over time and wear is less even. It should be on.'],
+  // the condition box
+  boxCondition: ['Condition', 'How healthy the drive is.', 'The drive keeps its own counters for temperature, wear, hours and errors (known as SMART data). Windows reads them through its storage service, but only shares them with apps running as administrator.'],
+  health: ['Health', 'Windows\' own verdict on the drive.', 'Windows\' storage service combines the drive\'s self-assessment (SMART) with what it has seen itself. "Healthy" is normal; "Warning" or "Unhealthy" means back up now.'],
+  status: ['Status', 'Whether the drive is working normally right now.', '"OK" is normal. Other values, like "Predictive Failure", "Lost Communication" or "Degraded", come from the drive or its controller and mean trouble.'],
+  temp: ['Temperature', 'How warm the drive is now, and the limit its maker set.', 'A sensor inside the drive reports it. SSDs are comfortable up to about 70 °C and slow themselves down when hotter; hard disks prefer under 50 °C. Running hot for long makes drives age faster.'],
+  wear: ['Wear', 'How much of an SSD\'s rated rewrite life is used up.', 'Flash cells wear out a tiny bit each time they are rewritten. The SSD counts this against the amount its maker guarantees: 0 % is new, 100 % means that promise is used up. Many drives keep working beyond it, but back up.'],
+  hours: ['Running hours', 'How long the drive has been switched on in total.', 'The drive counts every hour it has power, over its whole life. Useful for judging the age of a used drive; hard disks are often rated for 3 to 5 years of continuous use.'],
+  starts: ['Start-ups', 'How many times the drive has been powered on.', 'Counted by the drive. Each start puts a little stress on a hard disk\'s motor; for SSDs it hardly matters.'],
+  loads: ['Head parks', 'How often a hard disk has parked its read heads.', 'To save power or protect itself, the disk moves its heads off the platters onto a ramp. Each park is a little mechanical wear; disks are rated for about 300,000 to 600,000.'],
+  readErrors: ['Read errors', 'Times the drive had trouble reading data back.', 'Every block is stored with error-correcting codes, so small errors are repaired on the fly ("fixed"). Errors the drive could not fix mean that some data may already be damaged.'],
+  writeErrors: ['Write errors', 'Times the drive had trouble saving data.', 'The drive checks what it writes. Failed writes are usually retried in a spare area; ones it could not fix mean data may not have been saved.'],
+  latency: ['Slowest response', 'The longest the drive has taken to answer a single request.', 'Recorded by the drive. A few tens of milliseconds is normal; seconds can mean a struggling drive retrying bad areas.'],
+  admin: ['Needs administrator', 'Windows only shares this with apps running as administrator.', 'Reading a drive\'s health counters sends commands straight to the drive, which Windows reserves for administrators. Use "Restart as administrator" at the top of the page.'],
+  // the activity box
+  boxActivity: ['Activity now', 'What the disk is doing right now, updated every 2 seconds.', 'Read from Windows\' performance counters, which count every byte and request sent to the disk. My Disk compares two readings 2 seconds apart to work out the speeds.'],
+  reading: ['Reading', 'How much data is being read from the disk per second.', 'Apps opening files, Windows loading programs and the search indexer all read. The blue line in the chart.'],
+  writing: ['Writing', 'How much data is being saved to the disk per second.', 'Saving files, downloads, updates, the page file and logs all write. The violet line in the chart.'],
+  chart: ['The last 2 minutes', 'Reading (blue) and writing (violet) over time, newest on the right.', 'The chart rescales to the busiest moment shown, given at the bottom right as "top of chart".'],
+  active: ['Busy', 'How much of the last 2 seconds the disk spent working.', 'Windows times how long the disk had requests in progress. Near 100 % for long means the disk is what the PC is waiting on.'],
+  ms: ['Response', 'How long each request took on average, in milliseconds.', 'The time from Windows sending a request to the disk answering it. SSDs answer in well under 1 ms; hard disks take 5 to 20 ms because the head has to move.'],
+  peak: ['Top of chart', 'The speed the top edge of the chart stands for.', 'It follows the busiest moment in the last 2 minutes, so small activity is still visible.'],
+  // technical details
+  boxIds: ['Identifiers', 'How Windows recognises and finds this disk.', 'Useful for troubleshooting, Disk Management, diskpart and scripts.'],
+  diskNumber: ['Windows disk number', 'The number Disk Management and diskpart show for this disk.', 'Windows numbers disks in the order it finds them at start-up, so the number can change when disks are added or removed.'],
+  diskId: ['Disk ID', 'The ID written in the disk\'s partition table.', 'GPT disks carry a long unique GUID; MBR disks an 8-digit signature. Windows uses it to recognise the disk and its start-up entries. Two disks with the same ID (for example after cloning) clash, and one goes offline.'],
+  uniqueId: ['Unique ID', 'The hardware ID the drive itself reports.', 'Often a worldwide name (EUI or NAA) set at the factory. Hidden along with the serial numbers.'],
+  devicePath: ['Device path', 'How Windows\' Device Manager names the drive.', 'It shows the connection type, the maker and model codes and an instance number. Hidden along with the serial numbers, because it can contain them.'],
+  driveMedia: ['Windows calls it', 'How Windows classes the drive.', '"Fixed hard disk media" for built-in drives, "External hard disk media" for most USB drives, "Removable media" for memory sticks and cards. Windows treats removable media differently, for example allowing fewer partitions.'],
+  provisioning: ['Provisioning', 'Whether the disk\'s full size really exists.', '"Fixed" means all of it is real space. "Thin" (virtual disks and storage pools) means space is only taken as it fills up.'],
+  storageSpaces: ['Storage Spaces', 'Whether this disk could be added to a Windows storage pool.', 'Storage Spaces combines several disks into one, optionally keeping copies for safety. A disk is only eligible when it has no partitions and is not the Windows disk.'],
+  largestFree: ['Largest free area', 'The biggest stretch of unallocated space on the disk.', 'The largest new partition you could create here without shrinking another one.'],
+  boxParts: ['Partitions', 'Every partition on this disk, in order from the start.', 'Read from the partition table (GPT or MBR) at the start of the disk.'],
+  pNumber: ['Partition number', 'Its number on this disk.', 'Windows numbers partitions by their entry in the partition table; diskpart uses the same numbers.'],
+  pType: ['Type', 'What the partition is for.', 'Decided by the type ID in the partition table, which tells Windows and other systems how to treat it.'],
+  pOffset: ['Starts at', 'How far from the start of the disk the partition begins.', 'On modern disks partitions start on 1 MB boundaries, which keeps them lined up with the drive\'s 4 KB sectors and SSD pages.'],
+  pFlags: ['Flags', 'Special markings on the partition.', 'Hidden: no drive letter by default. Boot: Windows started from it. System: the PC\'s start-up partition. Active: the start-up partition on MBR disks.'],
+  pTypeId: ['Type ID', 'The code in the partition table that says what the partition is for.', 'A GUID on GPT disks, a 2-digit number on MBR disks. For example c12a7328… is the EFI system partition and ebd0a0a2… a normal data partition.'],
+  // the tiles and other drives
+  tDisks: ['Disks', 'How many physical disks Windows sees.', 'It counts drives, not drive letters: one disk can hold several drives, and some hold none.'],
+  tSpace: ['Space in all', 'The total size of all disks together.', 'Shown the way Windows counts (steps of 1024), with the makers\' way (steps of 1000) underneath.'],
+  tFree: ['Free', 'Free space on all drives with a letter, added together.', 'Updated every 2 seconds. Hidden partitions are not counted.'],
+  tHealth: ['Health', 'How many disks need attention or are worth a look.', 'Each disk\'s verdict, counted. The reasons are in each disk\'s Condition box.'],
+  tEncrypted: ['Encrypted', 'How many drives have BitLocker on.', 'Only drives with a letter are counted. Underneath: the fullest drive.'],
+  otherDrives: ['Other drives', 'Drive letters that are not on a disk inside or plugged into this PC.', 'Network drives point to a shared folder on another computer or a NAS; CD/DVD drives and card readers show their disc or card when one is inserted.']
+};
+const tip = $('#tip');
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('[data-h]');
+  if (!el) { tip.style.display = 'none'; return; }
+  const [title, text, how] = HELP[el.dataset.h] || [el.dataset.h, '', ''];
+  tip.innerHTML = `<p><b>${esc(el.dataset.title || title)}</b></p>${el.dataset.x ? `<p class="val">${esc(el.dataset.x)}</p>` : ''}${text ? `<p>${esc(text)}</p>` : ''}${how ? `<p class="how"><b>How it works:</b> ${esc(how)}</p>` : ''}`;
+  tip.style.display = 'block';
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left)) + 'px';
+  tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + 'px';
+});
+const H = (key, text, extra) => `<span data-h="${key}"${extra ? ` data-x="${esc(extra)}"` : ''}>${text}</span>`;
+
+// ---- icons: outlines only, like nesiam.com's tool icons
+const ICON = {
+  SSD: '<svg viewBox="0 0 32 32"><rect x="4" y="9" width="24" height="14" rx="2.5"/><path d="M9 13.5h5v5H9zM17 13.5h6M17 16h6M17 18.5h4"/></svg>',
+  HDD: '<svg viewBox="0 0 32 32"><rect x="6" y="3.5" width="20" height="25" rx="3"/><circle cx="16" cy="13" r="6"/><circle cx="16" cy="13" r="1.4"/><path d="M19.5 23.5l3-3M10 24.5h3"/></svg>',
+  USB: '<svg viewBox="0 0 32 32"><rect x="9" y="11" width="14" height="18" rx="3"/><path d="M12 11V4.5h8V11M14.3 7h.01M17.7 7h.01M13 21h6"/></svg>',
+  disk: '<svg viewBox="0 0 32 32"><rect x="4" y="8" width="24" height="16" rx="3"/><path d="M9 19h3M22 19h1"/></svg>',
+  net: '<svg viewBox="0 0 32 32"><rect x="5" y="5" width="22" height="9" rx="2"/><rect x="5" y="18" width="22" height="9" rx="2"/><path d="M9 9.5h2M9 22.5h2"/></svg>'
+};
+
+// ---- the verdict for one disk, and the plain-words notes behind it
+function judge(d, free) {
+  const notes = [], add = (lvl, text) => notes.push({lvl, text});
+  const r = d.reliability || {}, ssd = d.kind === 'SSD';
+  if (d.health === 'Unhealthy') add('bad', 'Windows reports this disk as unhealthy. Back up what is on it now and plan to replace it.');
+  else if (d.health === 'Warning') add('watch', 'Windows has a warning about this disk. Back up what matters on it.');
+  for (const s of d.status || []) if (/predictive|lost|failed|degraded|stressed/i.test(s)) add('bad', `The disk reports "${s}". Back up now.`);
+  if (d.offline) add('watch', `The disk is offline${d.offlineReason ? ` (${d.offlineReason})` : ''}: Windows is not using it.`);
+  if (r.Wear != null) {
+    if (r.Wear >= 90) add('bad', `It has used ${r.Wear} % of its rated life. Back up and plan a replacement.`);
+    else if (r.Wear >= 70) add('watch', `It has used ${r.Wear} % of its rated life. Fine for now, worth watching.`);
+    else if (ssd) add('good', `Only ${r.Wear} % of its rated life is used.`);
+  }
+  if (r.Temp) {
+    const hot = ssd ? 70 : 50, warm = ssd ? 60 : 45;
+    if (r.Temp >= hot) add('bad', `It is running hot (${r.Temp} °C). Check the airflow around it.`);
+    else if (r.Temp >= warm) add('watch', `It is warm (${r.Temp} °C).`);
+    else add('good', `The temperature is fine (${r.Temp} °C).`);
+  }
+  const unfixed = (r.ReadUnfixed || 0) + (r.WriteUnfixed || 0);
+  if (unfixed > 0) add('bad', `${n(unfixed)} read or write errors could not be fixed. Some files may be damaged; back up now.`);
+  else if (d.reliability && (r.ReadErrors || r.WriteErrors)) add('good', `${n((r.ReadErrors || 0) + (r.WriteErrors || 0))} small read or write errors, all fixed by the drive itself.`);
+  else if (d.reliability && (r.ReadErrors != null || r.WriteErrors != null)) add('good', 'No read or write errors.');
+  for (const p of d.partitions) {
+    const v = p.volume; if (!v || !p.letter || !v.size) continue;
+    const f = free[p.letter] ?? v.free, pct = f / v.size * 100;
+    if (pct < 5) add('bad', `${p.letter}: is almost full (${size(f)} free). Windows and apps slow down or fail without room.`);
+    else if (pct < 12) add('watch', `${p.letter}: is getting full (${size(f)} free, ${pct.toFixed(0)} %).`);
+    if (v.dirty) add('watch', `${p.letter}: was not closed properly and is waiting for an error check.`);
+  }
+  if (d.health === 'Healthy' && !notes.some(x => x.lvl !== 'good') && !d.reliability) add('good', 'Windows reports it as healthy.');
+  const level = notes.some(x => x.lvl === 'bad') ? 'bad' : notes.some(x => x.lvl === 'watch') ? 'watch' : d.health ? 'good' : 'unknown';
+  return {level, notes, label: {good: 'In good shape', watch: 'Worth a look', bad: 'Needs attention', unknown: 'Unknown'}[level]};
+}
+
+function kindText(d) {
+  if (d.kind === 'SSD') return H('ssd', d.bus === 'NVMe' ? 'NVMe SSD' : 'SSD');
+  if (d.kind === 'HDD') return d.kindSure ? H('hdd', 'Hard disk') : H('hddGuess', 'Hard disk (probably)');
+  return H('kindUnknown', 'Type not reported');
+}
+const busHelp = b => ({NVMe: 'nvme', SATA: 'sata', USB: 'usb'})[b] || 'location';
+const fillClass = pct => pct >= 95 ? 'bad' : pct >= 88 ? 'watch' : '';
+const masked = s => !s ? '—' : S.serial ? esc(s) : esc(s.slice(0, 3)) + '•'.repeat(Math.max(4, Math.min(10, s.length - 3)));
+const PALETTE = ['#2b2940', '#5b4bff', '#0090c8', '#118a4a', '#a05a00', '#8a4dff'];
+
+// ---- the partition map: each part to scale, tiny ones widened just enough to be seen
+function mapHtml(d, free) {
+  const segs = [];
+  let at = 0;
+  for (const p of d.partitions) {
+    if (p.offset - at > 16 * 1024 * 1024 && at > 0) segs.push({gap: true, size: p.offset - at});
+    segs.push({p, size: p.size});
+    at = p.offset + p.size;
+  }
+  if (d.size - at > 16 * 1024 * 1024) segs.push({gap: true, size: d.size - at});
+  const minPct = 2.2, raw = segs.map(s => s.size / d.size * 100);
+  const small = raw.reduce((a, v) => a + (v < minPct ? minPct : 0), 0), big = raw.reduce((a, v) => a + (v >= minPct ? v : 0), 0) || 1;
+  let k = 0;
+  return segs.map((s, i) => {
+    const w = raw[i] < minPct ? minPct : raw[i] * (100 - small) / big;
+    if (s.gap) return `<div class="seg free" style="flex:0 0 calc(${w}% - 3px)" data-h="free" data-x="${esc(size(s.size))} not used by any partition."><div class="lbl">${w > 9 ? `<b>Unallocated</b><span>${size(s.size)}</span>` : ''}</div></div>`;
+    const p = s.p, v = p.volume;
+    if (p.role !== 'data' || !v) {
+      const key = {efi: 'efi', msr: 'msr', recovery: 'recovery'}[p.role] || 'efi';
+      return `<div class="seg sys" style="flex:0 0 calc(${w}% - 3px)" data-h="${key}" data-x="${esc(p.type)} · ${esc(size(p.size))}${p.letter ? ' · ' + p.letter + ':' : ''}"><div class="lbl">${w > 8 ? `<b>${esc(p.type)}</b><span>${size(p.size)}</span>` : ''}</div></div>`;
+    }
+    const color = PALETTE[k++ % PALETTE.length], f = p.letter ? (free[p.letter] ?? v.free) : v.free, used = v.size ? (v.size - f) / v.size * 100 : 0;
+    const label = `${p.letter ? p.letter + ': ' : ''}${v.label || 'No name'}`;
+    return `<div class="seg data" data-resize="${d.number}:${p.number}" style="flex:0 0 calc(${w}% - 3px);--seg:${color}" data-h="dataSeg" data-title="${esc(label)}" data-x="${esc(v.fs)} · ${esc(size(v.size - f))} used of ${esc(size(v.size))} · ${esc(size(f))} free"><div class="used" style="width:${used.toFixed(1)}%;${used >= 95 ? 'background:var(--bad)' : ''}"></div>
+      <div class="lbl${used < 30 ? ' dark' : ''}">${w > 6 ? `<b>${esc(label)}</b><span>${w > 14 ? `${size(f)} free of ${size(v.size)}` : size(v.size)}</span>` : `<b>${esc(p.letter)}</b>`}</div></div>`;
+  }).join('');
+}
+
+function volumeRows(d, free) {
+  const rows = d.partitions.filter(p => p.volume && p.role === 'data' && (p.letter || p.mounts.length) || S.sys).map(p => {
+    const v = p.volume, sys = p.role !== 'data' || !v;
+    if (!v) return `<tr class="sysrow"><td><span class="letter">—</span></td><td class="name">${H({efi: 'efi', msr: 'msr', recovery: 'recovery'}[p.role] || 'efi', esc(p.type))}<small>Partition ${p.number}</small></td><td class="hide-s">—</td><td class="num">${size(p.size)}</td><td colspan="5" class="hide-s"><span class="usetext">${p.role === 'msr' ? 'Holds no files' : 'Windows does not show what is inside without administrator rights'}</span></td></tr>`;
+    const f = p.letter ? (free[p.letter] ?? v.free) : v.free, used = v.size - f, pct = v.size ? used / v.size * 100 : 0;
+    const bl = v.bitlocker, blCls = !bl ? 'p-off' : /^on|encrypting|fullyencrypted/i.test(bl) ? 'p-on' : /suspend|waiting|decrypting/i.test(bl) ? 'p-watch' : 'p-off';
+    const blText = !bl ? (S.data && !S.data.view.admin ? 'Needs admin' : '—') : bl === 'FullyEncrypted' ? 'On' : bl === 'FullyDecrypted' ? 'Off' : bl;
+    const flags = [v.windows && H('system', 'Windows'), v.pagefile && H('pagefile', 'Page file'), v.dirty && `<span class="pill p-watch" data-h="dirty">Needs a check</span>`,
+                   v.indexing === false && H('indexing', 'Not indexed'), v.compressed && H('compressed', 'Compressed'), p.readOnly && H('readonly', 'Read-only')].filter(Boolean).join(' · ');
+    return `<tr class="${sys ? 'sysrow' : ''}"${sys ? '' : ` data-menu="${d.number}:${p.number}"`}><td><span class="letter">${p.letter ? esc(p.letter) + ':' : '—'}</span></td>
+      <td class="name"><b>${esc(v.label || (sys ? p.type : 'No name'))}</b><small>${sys ? esc(p.type) : 'Partition ' + p.number}${p.mounts.filter(m => !/^[A-Z]:\\$/.test(m)).map(m => ' · ' + esc(m)).join('')}</small></td>
+      <td class="hide-s">${H('fs', esc(v.fs || '—'))}</td>
+      <td class="num">${size(v.size)}</td>
+      <td style="width:26%"><div class="usebar"><i class="${fillClass(pct)}" style="width:${pct.toFixed(1)}%"></i></div><div class="usetext" data-free="${esc(p.letter)}">${size(used)} used · <b>${size(f)} free</b> (${(100 - pct).toFixed(0)} %)</div></td>
+      <td class="hide-s"><span class="pill ${blCls}" data-h="bitlocker"${v.bitlockerPercent != null ? ` data-x="Encrypted: ${v.bitlockerPercent} %${v.bitlockerMethod ? ', ' + esc(v.bitlockerMethod) : ''}${v.bitlockerKeys.length ? '. Unlocks with: ' + esc(v.bitlockerKeys.join(', ')) : ''}"` : ''}>BitLocker ${esc(blText)}</span></td>
+      <td class="hide-s num">${H('cluster', v.cluster ? size(v.cluster) : '—')}</td>
+      <td class="hide-s" style="font-size:12px;color:var(--muted)">${flags || ''}</td>
+      <td class="act">${sys ? '' : `<button class="pbtn outline" data-resize="${d.number}:${p.number}" data-h="resize">Resize</button>`}</td></tr>`;
+  });
+  if (!rows.length) return '<p class="usetext" style="margin:0 0 14px">No drive letters on this disk.</p>';
+  return `<table class="vols"><thead><tr><th data-h="colDrive">Drive</th><th data-h="colName">Name</th><th class="hide-s" data-h="fs">File system</th><th data-h="colSize">Size</th><th data-h="colSpace">Space</th><th class="hide-s" data-h="bitlocker">Encryption</th><th class="hide-s" data-h="cluster">Cluster</th><th class="hide-s" data-h="colNotes">Notes</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+
+function conditionHtml(d, verdict, admin) {
+  const r = d.reliability, ssd = d.kind === 'SSD';
+  let rows;
+  if (r) {
+    rows = [[H('health', 'Health'), esc(d.health || '—')], [H('temp', 'Temperature'), r.Temp ? `${r.Temp} °C${r.TempMax ? ` <small class="muted">(limit ${r.TempMax} °C)</small>` : ''}` : '—'],
+            ssd || r.Wear != null ? [H('wear', 'Wear'), r.Wear != null ? `${r.Wear} % used` : '—'] : null,
+            [H('hours', 'Running hours'), hours(r.Hours)],
+            [H('starts', 'Start-ups'), n(r.Starts)],
+            !ssd && r.LoadCycles != null ? [H('loads', 'Head parks'), n(r.LoadCycles)] : null,
+            [H('readErrors', 'Errors'), r.ReadErrors == null && r.WriteErrors == null ? '—' :
+              `${H('readErrors', n(r.ReadErrors) + ' read')}${r.ReadErrors ? ` <small class="muted">(${n(r.ReadFixed)} fixed)</small>` : ''} · ${H('writeErrors', n(r.WriteErrors) + ' write')}${r.WriteUnfixed ? ` <small class="muted">(${n(r.WriteUnfixed)} not fixed)</small>` : ''}`],
+            [H('latency', 'Slowest response'), r.ReadLatencyMax != null ? `${n(r.ReadLatencyMax)} ms read · ${n(r.WriteLatencyMax)} ms write` : '—']].filter(Boolean);
+  } else {
+    rows = [[H('health', 'Health'), esc(d.health || '—')], [H('status', 'Status'), esc((d.status || []).join(', ') || '—')]];
+  }
+  const lock = !r ? (admin ? '<p class="lock">This drive does not report temperature, wear or running hours (common for USB drives).</p>'
+                           : `<p class="lock" data-h="admin">Temperature, wear, running hours and error counts need administrator rights.</p>`) : '';
+  return `<div class="box"><h4 data-h="boxCondition">Condition</h4><dl class="f">${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl>${lock}
+    <ul class="notes">${verdict.notes.map(x => `<li class="${x.lvl}">${esc(x.text)}</li>`).join('')}</ul></div>`;
+}
+
+function driveHtml(d, trim) {
+  const rows = [d.model && d.model !== d.name ? [H('model', 'Model'), esc(d.model)] : null, [H('serial', 'Serial number'), `<span class="mono" data-serial="${esc(d.serial)}">${masked(d.serial)}</span>`],
+    [H('firmware', 'Firmware'), esc(d.firmware || '—')],
+    d.rpm ? [H('rpm', 'Spin speed'), `${n(d.rpm)} rpm`] : null,
+    [H(d.style === 'MBR' ? 'mbr' : 'gpt', 'Partition table'), esc(d.style || '—')], [H('sector', 'Sector size'), d.logicalSector ? `${d.logicalSector} / ${n(d.physicalSector)} bytes` : '—'],
+    d.kind === 'SSD' && trim != null ? [H('trim', 'TRIM'), trim ? '<span class="pill p-on">On</span>' : '<span class="pill p-watch">Off</span>'] : null].filter(Boolean);
+  return `<div class="box"><h4 data-h="boxDrive">The drive</h4><dl class="f">${rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></div>`;
+}
+
+const liveHtml = d => `<div class="box live" data-live="${d.number}"><h4 data-h="boxActivity">Activity now</h4>
+  <div class="speeds"><div><span data-h="reading"><i style="background:var(--read)"></i>Reading</span><b data-k="read">—</b></div><div><span data-h="writing"><i style="background:var(--write)"></i>Writing</span><b data-k="write">—</b></div></div>
+  <svg class="spark" data-h="chart" viewBox="0 0 300 56" preserveAspectRatio="none" aria-hidden="true"><path data-k="ra" fill="rgba(0,113,227,.12)"/><path data-k="rl" fill="none" stroke="var(--read)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><path data-k="wl" fill="none" stroke="var(--write)" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>
+  <div class="busy">${H('active', 'Busy')}<div class="usebar"><i data-k="busy" style="width:0"></i></div><b data-k="busyp" class="num">—</b></div>
+  <div class="busy">${H('ms', 'Response')} <b data-k="ms" class="num">—</b><span style="margin-left:auto" data-k="peak" data-h="peak"></span></div></div>`;
+
+function techHtml(d) {
+  const parts = d.partitions.map(p => `<tr><td>${p.number}</td><td>${esc(p.type)}${p.letter ? ` (${p.letter}:)` : ''}</td><td class="num">${size(p.size)}</td><td class="num">${size(p.offset)}</td>
+    <td>${[p.hidden && 'hidden', p.active && 'active', p.boot && 'boot', p.system && 'system', p.readOnly && 'read-only'].filter(Boolean).join(', ') || '—'}</td><td class="mono">${esc(p.gpt || (p.mbr != null ? '0x' + p.mbr.toString(16).toUpperCase().padStart(2, '0') : ''))}</td></tr>`).join('');
+  const ids = [[H('diskNumber', 'Windows disk number'), d.number], [H('location', 'Location'), esc(d.location || '—')], [H('diskId', 'Disk ID'), `<span class="mono">${esc(d.diskId || '—')}</span>`],
+    [H('uniqueId', 'Unique ID'), `<span class="mono">${S.serial ? esc(d.uniqueId || '—') : masked(d.uniqueId)}</span>`], [H('devicePath', 'Device path'), `<span class="mono">${S.serial ? esc(d.pnp || '—') : masked(d.pnp)}</span>`],
+    [H('driveMedia', 'Windows calls it'), esc(d.driveMedia || '—')], [H('provisioning', 'Provisioning'), esc(d.provisioning || '—')], [H('storageSpaces', 'Storage Spaces'), d.canPool ? 'Can be added to a pool' : 'In use or not eligible'],
+    [H('largestFree', 'Largest free area'), d.largestFree ? size(d.largestFree) : 'None']];
+  return `<details class="tech" data-tech="${d.number}"${S.open.has(String(d.number)) ? ' open' : ''}><summary>Technical details</summary><div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1.6fr)">
+    <div class="box"><h4 data-h="boxIds">Identifiers</h4><dl class="f">${ids.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></div>
+    <div class="box"><h4 data-h="boxParts">Partitions</h4><table class="ptable"><thead><tr><th data-h="pNumber">#</th><th data-h="pType">Type</th><th data-h="colSize">Size</th><th data-h="pOffset">Starts at</th><th data-h="pFlags">Flags</th><th data-h="pTypeId">Type ID</th></tr></thead><tbody>${parts || '<tr><td colspan="6">No partitions</td></tr>'}</tbody></table></div></div></details>`;
+}
+
+// shown next to the section's title while it is closed: the few facts worth seeing at a glance
+function infoPeek(d) {
+  const r = d.reliability || {};
+  return [d.health, r.Temp ? `${r.Temp} °C` : '', r.Wear != null ? `${r.Wear} % worn` : '', r.Hours != null ? `${n(r.Hours)} h` : '', d.firmware ? `firmware ${d.firmware}` : ''].filter(Boolean).join(' · ');
+}
+
+function diskHtml(d, view, free) {
+  const verdict = judge(d, free);
+  const icon = d.external ? ICON.USB : ICON[d.kind] || ICON.disk;
+  const chips = [d.external ? H('external', '<span class="chip">Plugged in</span>') : H('internal', '<span class="chip">Inside this PC</span>'),
+    d.boot || d.system ? `<span class="chip" data-h="boot">Windows starts from it</span>` : '', d.style ? `<span class="chip" data-h="${d.style === 'MBR' ? 'mbr' : 'gpt'}">${esc(d.style)}</span>` : '',
+    d.readOnly ? '<span class="chip" data-h="readonly">Read-only</span>' : '', d.offline ? '<span class="chip" data-h="offline">Offline</span>' : ''].join('');
+  return `<section class="disk" data-disk="${d.number}">
+    <div class="dhead"><div class="dicon" aria-hidden="true">${icon}</div>
+      <div class="dtitle"><h3>${esc(d.name)}</h3><div class="sub"><span>${H('maker', esc(d.maker || 'Unknown maker'))} · ${kindText(d)} · ${H(busHelp(d.bus), esc(d.bus || '?'))} · ${H('diskNumber', 'Disk ' + d.number)}</span><span class="chips">${chips}</span></div></div>
+      <div class="dsize"><b data-h="soldAs">${size(d.size)}</b><span>sold as ${sold(d.size)}</span> <span class="verdict v-${verdict.level}" data-h="verdict">${verdict.label}</span></div></div>
+    <div class="map" data-h="map">${mapHtml(d, free)}</div>
+    ${volumeRows(d, free)}
+    <details class="info" data-info="${d.number}"${S.shown.has(String(d.number)) ? ' open' : ''}><summary>The drive, condition and activity<span class="peek">${esc(infoPeek(d))}</span></summary>
+    <div class="cols">${driveHtml(d, view.trim)}${conditionHtml(d, verdict, view.admin)}${liveHtml(d)}</div></details>
+    ${techHtml(d)}</section>`;
+}
+
+function otherHtml(list) {
+  if (!list.length) return '';
+  return `<section class="other"><h3 data-h="otherDrives">Other drives</h3><table class="vols"><thead><tr><th data-h="colDrive">Drive</th><th>Kind</th><th data-h="colName">Name</th><th data-h="colSize">Size</th><th data-h="colSpace">Space</th></tr></thead><tbody>${list.map(o => {
+    const pct = o.size ? (o.size - o.free) / o.size * 100 : 0;
+    return `<tr><td><span class="letter">${esc(o.letter)}:</span></td><td>${esc(o.type)}</td><td class="name"><b>${esc(o.label || '—')}</b><small>${esc(o.provider || o.fs)}</small></td><td class="num">${o.size ? size(o.size) : 'No disc'}</td>
+      <td style="width:30%">${o.size ? `<div class="usebar"><i class="${fillClass(pct)}" style="width:${pct.toFixed(1)}%"></i></div><div class="usetext">${size(o.free)} free</div>` : ''}</td></tr>`;
+  }).join('')}</tbody></table></section>`;
+}
+
+function tilesHtml(view, free) {
+  const disks = view.disks, total = disks.reduce((a, d) => a + d.size, 0);
+  const vols = disks.flatMap(d => d.partitions.filter(p => p.volume && p.letter && p.role === 'data'));
+  const vtotal = vols.reduce((a, p) => a + p.volume.size, 0), vfree = vols.reduce((a, p) => a + (free[p.letter] ?? p.volume.free), 0);
+  const verdicts = disks.map(d => judge(d, free).level), bad = verdicts.filter(v => v === 'bad').length, watch = verdicts.filter(v => v === 'watch').length;
+  const enc = vols.filter(p => /^on|fullyencrypted/i.test(p.volume.bitlocker || '')).length, ssds = disks.filter(d => d.kind === 'SSD').length, hdds = disks.filter(d => d.kind === 'HDD').length;
+  const fullest = vols.map(p => ({p, pct: 1 - (free[p.letter] ?? p.volume.free) / (p.volume.size || 1)})).sort((a, b) => b.pct - a.pct)[0];
+  const t = [
+    ['tDisks', 'Disks', disks.length, [ssds && `${ssds} SSD`, hdds && `${hdds} hard disk${hdds > 1 ? 's' : ''}`, disks.length - ssds - hdds && `${disks.length - ssds - hdds} other`].filter(Boolean).join(' · ')],
+    ['tSpace', 'Space in all', size(total), `sold as ${sold(total)}`],
+    ['tFree', 'Free', size(vfree), vtotal ? `${(vfree / vtotal * 100).toFixed(0)} % of ${size(vtotal)}` : ''],
+    ['tHealth', 'Health', bad ? `${bad} need${bad > 1 ? '' : 's'} attention` : watch ? `${watch} worth a look` : 'All good', bad || watch ? 'See the notes on each disk' : 'No problems found'],
+    ['tEncrypted', 'Encrypted', `${enc} of ${vols.length}`, fullest ? `Fullest: ${fullest.p.letter}: ${(fullest.pct * 100).toFixed(0)} % used` : '']];
+  return t.map(([k, a, b, c]) => `<div class="tile"><span data-h="${k}">${a}</span><b>${esc(b)}</b><small>${esc(c)}</small></div>`).join('');
+}
+
+// ---- drawing: the whole page when the disks change, only the live parts every 2 seconds
+let drawnKey = '';
+function draw(force) {
+  const st = S.data; if (!st || !st.view) return;
+  const view = st.view, free = st.free || {};
+  const key = JSON.stringify([st.readAt, S.tab, S.sys, S.serial]);
+  if (force || key !== drawnKey) {
+    drawnKey = key;
+    const shown = view.disks.filter(d => S.tab === 'all' || (S.tab === 'plugged') === d.external);
+    $('#tiles').innerHTML = tilesHtml(view, free);
+    $('#disks').innerHTML = shown.length ? shown.map(d => diskHtml(d, view, free)).join('') : `<div class="empty">${S.tab === 'plugged' ? 'No drives are plugged in from outside.' : 'No disks found.'}</div>`;
+    $('#other').innerHTML = S.tab === 'inside' ? '' : otherHtml(view.other || []);
+    const total = view.disks.reduce((a, d) => a + d.size, 0);
+    $('#headline').textContent = view.disks.length === 1 ? 'Your disk' : `Your ${view.disks.length} disks`;
+    $('#lede').textContent = `${size(total)} of storage in all${view.disks.some(d => d.external) ? `, ${view.disks.filter(d => d.external).length} plugged in` : ''}. Hover underlined words for help, or click Resize to change a drive's size.`;
+    $('#lede').title = $('#lede').textContent;
+    $('#adminNote').classList.toggle('hidden', view.admin || st.mode === 'demo');
+  }
+  for (const box of document.querySelectorAll('[data-live]')) {
+    const pts = (st.live || {})[box.dataset.live] || [], last = pts[pts.length - 1];
+    const q = k => box.querySelector(`[data-k="${k}"]`);
+    if (!last) continue;
+    q('read').textContent = speed(last.read); q('write').textContent = speed(last.write);
+    q('busy').style.width = last.active + '%'; q('busyp').textContent = Math.round(last.active) + ' %';
+    q('ms').textContent = last.ops > 0 ? `${last.ms < 1 ? last.ms.toFixed(2) : last.ms.toFixed(1)} ms` : 'idle';
+    const max = Math.max(1024 * 1024, ...pts.map(p => Math.max(p.read, p.write)));
+    q('peak').textContent = `top of chart ${speed(max)}`;
+    const line = k => pts.map((p, i) => `${i ? 'L' : 'M'}${(300 - (pts.length - 1 - i) * 5).toFixed(1)},${(54 - p[k] / max * 50).toFixed(1)}`).join('');
+    q('rl').setAttribute('d', line('read')); q('wl').setAttribute('d', line('write'));
+    q('ra').setAttribute('d', pts.length ? line('read') + `L300,56L${300 - (pts.length - 1) * 5},56Z` : '');
+  }
+  for (const el of document.querySelectorAll('[data-free]')) {   // free space, live
+    const letter = el.dataset.free; if (!letter || free[letter] == null) continue;
+    const p = view.disks.flatMap(d => d.partitions).find(x => x.letter === letter); if (!p || !p.volume) continue;
+    const f = free[letter], used = p.volume.size - f, pct = used / p.volume.size * 100;
+    el.innerHTML = `${size(used)} used · <b>${size(f)} free</b> (${(100 - pct).toFixed(0)} %)`;
+    const bar = el.previousElementSibling.firstElementChild; bar.style.width = pct.toFixed(1) + '%'; bar.className = fillClass(pct);
+  }
+  const when = st.readAt ? new Date(st.readAt * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '';
+  $('#meta').textContent = st.error ? st.error : `${st.mode === 'demo' ? 'Demo: these disks are made up · ' : ''}${view.disks.length} disk${view.disks.length === 1 ? '' : 's'} · read at ${when}${st.reading ? ' · reading again…' : ''} · ${view.admin ? 'full details' : 'without administrator rights'} · ${st.version ? 'v' + st.version : ''}`;
+  $('#refresh').disabled = !!st.reading;
+}
+
+// ---- talking to the app
+const api = (path, method) => fetch(path, {method: method || 'GET', headers: {'X-Disk-Token': TOKEN}, cache: 'no-store'});
+let failures = 0;
+async function poll() {
+  if (S.gone) return;
+  try {
+    const r = await api('/state');
+    if (!r.ok) throw new Error(r.status);
+    S.data = await r.json(); failures = 0;
+    if (S.data.view) { draw(); resizeTick(); drawJob(); } else $('#meta').textContent = S.data.error || 'Reading your disks… (this takes a few seconds)';
+  } catch (e) {
+    if (++failures >= 3) return stopped('My Disk has stopped', 'You can close this tab. Start My Disk again to see your disks.');
+  }
+  setTimeout(poll, 2000);
+}
+function stopped(title, text) {
+  S.gone = true;
+  $('#ovTitle').textContent = title; $('#ovText').textContent = text; $('#overlay').classList.remove('hidden');
+  $('#meta').textContent = title;
+}
+
+$('#refresh').onclick = async () => { $('#refresh').disabled = true; await api('/refresh', 'POST').catch(() => {}); setTimeout(poll, 300); };
+$('#quit').onclick = async () => {
+  if (!confirm('Exit My Disk?\n\nThe app stops and this page stops updating.')) return;
+  await api('/quit', 'POST').catch(() => {});
+  stopped('My Disk has stopped', 'You can close this tab.');
+};
+$('#elevate').onclick = async () => {
+  $('#elevate').disabled = true;
+  try {
+    const r = await (await api('/elevate', 'POST')).json();
+    if (r.ok) return stopped('Restarting as administrator', 'My Disk opens again in a new tab with the full details. You can close this one.');
+  } catch (e) {}
+  $('#elevate').disabled = false;
+};
+// ---- resizing one drive: ask Windows for the limits, choose a size, confirm, then follow the job
+const post = (path, body) => fetch(path, {method: 'POST', headers: {'X-Disk-Token': TOKEN, 'Content-Type': 'application/json'}, cache: 'no-store', body: JSON.stringify(body)}).then(r => r.json());
+const MIB = 1024 * 1024, GIB = 1024 ** 3;
+let R = null;   // {d, p, info, size, ok, waiting, started}
+const rzName = p => `${p.letter ? p.letter + ': ' : ''}${p.volume && p.volume.label || 'No name'}`;
+function rzButtons(html) { $('#rzFoot').innerHTML = html; }
+async function openResize(dn, pn) {
+  const view = S.data && S.data.view; if (!view) return;
+  const d = view.disks.find(x => x.number === dn), p = d && d.partitions.find(x => x.number === pn);
+  if (!p) return;
+  R = {d, p, info: null, size: p.size, ok: false, waiting: false};
+  $('#rzTitle').textContent = `Resize ${rzName(p)}`;
+  $('#rzBody').innerHTML = `<p><span class="spin"></span>Asking Windows how far this drive can shrink and grow…</p>`;
+  rzButtons('<button class="pbtn outline" data-rz="close">Cancel</button>');
+  if (!$('#rz').open) $('#rz').showModal();
+  let res;
+  try { res = await post('/resize-info', {disk: dn, part: pn}); } catch (e) { res = {ok: false, error: 'My Disk did not answer.'}; }
+  if (!R || R.p !== p) return;
+  if (!res.ok) {
+    $('#rzBody').innerHTML = `<p class="rz-err">${esc(res.error || 'Windows did not give the limits for this drive.')}</p>${res.admin ? '<p>Windows only lets apps running as administrator change partitions.</p>' : ''}`;
+    rzButtons(`${res.admin && S.data.mode !== 'demo' ? '<button class="bigbtn" data-rz="admin">Restart as administrator</button>' : ''}<button class="pbtn outline" data-rz="close">Close</button>`);
+    return;
+  }
+  R.info = res; R.size = res.size;
+  rzForm();
+}
+function rzForm() {
+  const {d, p, info} = R, room = Math.max(info.max, info.size), used = p.volume.size - (S.data.free[p.letter] ?? p.volume.free);
+  const next = d.partitions.filter(q => q.offset > p.offset).sort((a, b) => a.offset - b.offset)[0];
+  const pct = v => (v / room * 100).toFixed(2) + '%';
+  const canGrow = info.max > info.size + MIB, canShrink = info.min < info.size - MIB;
+  const why = [];
+  if (!canGrow) why.push(`It can't grow: there is no unallocated space directly after it${next ? ` (right after it comes ${next.letter ? next.letter + ':' : 'the ' + esc(next.type)})` : ''}. Windows can only move a partition's end.`);
+  if (canShrink) why.push(`It can't shrink below <b>${size(info.min)}</b>: your files need ${size(used)}, and some files Windows can't move (the page file, hibernation and System Restore data) may sit further in.`);
+  else why.push(`It can't shrink: Windows can't move the files near its end right now.`);
+  $('#rzBody').innerHTML = `
+    <div class="rz-bar" aria-hidden="true"><span class="u" style="width:${pct(Math.min(used, R.size))}"></span><span class="f" style="width:${pct(Math.max(0, R.size - used))}"></span><span class="now" style="left:${pct(info.size)}"></span></div>
+    <div class="rz-keys"><span><i style="background:#2b2940"></i>Files</span><span><i style="background:var(--lav2)"></i>Free inside the drive</span><span><i style="border:1.5px dashed #c9c5e0"></i>Unallocated after it</span><span><i style="background:var(--violet);width:3px"></i>Size now</span></div>
+    <p>Now <b>${size(info.size)}</b> · smallest possible <b>${size(info.min)}</b> · largest possible <b>${size(info.max)}</b></p>
+    ${why.map(x => `<p>${x}</p>`).join('')}
+    ${canGrow || canShrink ? `<div class="rz-set"><input type="range" id="rzRange" min="${Math.ceil(info.min / MIB)}" max="${Math.floor(info.max / MIB)}" value="${Math.round(R.size / MIB)}" aria-label="New size">
+      <input type="number" id="rzGb" step="0.1" min="${(info.min / GIB).toFixed(1)}" max="${(info.max / GIB).toFixed(1)}" value="${(R.size / GIB).toFixed(1)}" aria-label="New size in GB"> GB</div>
+    <div class="rz-quick">${canShrink ? '<button class="pbtn outline" data-rz="min">Smallest</button>' : ''}<button class="pbtn outline" data-rz="now">As it is</button>${canGrow ? '<button class="pbtn outline" data-rz="max">Largest</button>' : ''}</div>` : ''}
+    <p class="rz-change" id="rzChange"></p>
+    <p class="rz-warn">Back up anything important first. A resize usually takes seconds, but shrinking a big or busy hard disk can take many minutes. Don't unplug the drive or switch off the PC while it runs.</p>
+    <label class="rz-check"><input type="checkbox" id="rzSure"> I have a backup of anything important on this drive.</label>`;
+  rzChanged();
+}
+function rzSet(bytes) {
+  const {info} = R;
+  bytes = bytes >= info.max ? info.max : bytes <= info.min ? info.min : Math.round(bytes / MIB) * MIB;
+  R.size = Math.min(info.max, Math.max(info.min, bytes));
+  rzForm();
+}
+function rzChanged() {
+  const {p, info} = R, delta = R.size - info.size, name = p.letter ? p.letter + ':' : 'The drive';
+  const change = $('#rzChange');
+  if (Math.abs(delta) < MIB) change.innerHTML = 'Choose a new size with the slider, the box or the buttons.';
+  else if (delta < 0) change.innerHTML = `<b>${name} shrinks by ${size(-delta)}</b> to ${size(R.size)}. The ${size(-delta)} become unallocated space right after it, which you can use for a new drive in Disk Management.`;
+  else change.innerHTML = `<b>${name} grows by ${size(delta)}</b> to ${size(R.size)}, using the unallocated space right after it. Its files stay where they are.`;
+  const ready = Math.abs(delta) >= MIB && $('#rzSure') && $('#rzSure').checked;
+  rzButtons(`<button class="pbtn outline" data-rz="close">Cancel</button><button class="bigbtn" data-rz="go"${ready ? '' : ' disabled'}>${Math.abs(delta) < MIB ? 'Resize' : `${delta < 0 ? 'Shrink' : 'Grow'} to ${size(R.size)}`}</button>`);
+}
+async function rzGo() {
+  const {d, p} = R, name = rzName(p);
+  if (!confirm(`${R.size < R.info.size ? 'Shrink' : 'Grow'} ${name} from ${size(R.info.size)} to ${size(R.size)}?\n\nDon't unplug the drive or switch off the PC until it's finished.`)) return;
+  let res;
+  try { res = await post('/resize', {disk: d.number, part: p.number, size: R.size}); } catch (e) { res = {ok: false, error: 'My Disk did not answer.'}; }
+  if (!res.ok) { $('#rzBody').insertAdjacentHTML('beforeend', `<p class="rz-err">${esc(res.error || 'It could not start.')}</p>`); return; }
+  R.waiting = true; R.started = Date.now();
+  $('#rzBody').innerHTML = `<p><span class="spin"></span><b>Resizing ${esc(name)}…</b></p><p>Don't unplug the drive or switch off the PC. You can close this window; the top bar shows when it's done.</p>`;
+  rzButtons('<button class="pbtn outline" data-rz="close">Close</button>');
+}
+function resizeTick() {   // called after every poll: finish the dialog when the job ends
+  if (R && R.kind) return taskTick();
+  const job = S.data.job;
+  if (!R || !R.waiting || !job || job.kind !== 'resize' || job.disk !== R.d.number || job.part !== R.p.number || job.status === 'running') return;
+  R.waiting = false;
+  const name = rzName(R.p);
+  $('#rzBody').innerHTML = job.status === 'done'
+    ? `<p class="rz-ok"><b>Done.</b> ${esc(name)} is now ${size(job.size || job.to)}.</p><p>The page shows the new layout once Windows has re-read the disk (a few seconds).</p>`
+    : `<p class="rz-err"><b>Windows did not resize it.</b> ${esc(job.message || '')}</p><p>Nothing was changed. If a shrink stopped early, Windows could not move some files; restarting the PC or turning off hibernation and System Restore for this drive can help.</p>`;
+  rzButtons('<button class="bigbtn" data-rz="close">Close</button>');
+  markSeen(job);
+}
+document.addEventListener('click', e => {
+  const open = e.target.closest('.pbtn[data-resize]');   // the Resize button goes straight to resizing
+  if (open && !S.gone) { const [dn, pn] = open.dataset.resize.split(':').map(Number); return openResize(dn, pn); }
+  const part = e.target.closest('tr[data-menu], .seg[data-resize]');   // a click anywhere else on a drive opens its menu
+  if (part && !e.target.closest('a, button, input, summary')) return openCtx(e, part);
+  const b = e.target.closest('[data-rz]'); if (!b || !R) return;
+  const act = b.dataset.rz;
+  if (act === 'close') return $('#rz').close();
+  if (act === 'stop') return stopJob();
+  if (act === 'admin') { $('#rz').close(); return $('#elevate').click(); }
+  if (act === 'min') return rzSet(R.info.min);
+  if (act === 'max') return rzSet(R.info.max);
+  if (act === 'now') return rzSet(R.info.size);
+  if (act === 'go') return rzGo();
+  if (['scan', 'fix', 'atboot', 'sfc', 'virus', 'offline', 'remove'].includes(act)) return taskGo(act);
+  if (act.startsWith('h:')) return healthGo(act.slice(2));
+  if (act.startsWith('open:')) return openTask(act.slice(5), R.d.number, R.p.number);
+});
+$('#rzX').onclick = () => $('#rz').close();
+$('#rz').addEventListener('input', e => {
+  if (!R || !R.info) return;
+  if (e.target.id === 'rzRange') { R.size = Math.min(R.info.max, Math.max(R.info.min, +e.target.value * MIB)); if (+e.target.value === +e.target.max) R.size = R.info.max; if (+e.target.value === +e.target.min) R.size = R.info.min;
+    $('#rzGb').value = (R.size / GIB).toFixed(1); const bar = $('#rzBody .rz-bar'), room = Math.max(R.info.max, R.info.size), used = R.p.volume.size - (S.data.free[R.p.letter] ?? R.p.volume.free);
+    bar.children[0].style.width = (Math.min(used, R.size) / room * 100) + '%'; bar.children[1].style.width = (Math.max(0, R.size - used) / room * 100) + '%'; rzChanged(); }
+  if (e.target.id === 'rzSure') rzChanged();
+});
+$('#rz').addEventListener('change', e => { if (R && R.info && e.target.id === 'rzGb') rzSet(parseFloat(e.target.value || '0') * GIB); });
+$('#rz').addEventListener('close', () => { if (R && !R.waiting && !$('#rz').open) R = null; });
+
+// ---- the right-click menu on a drive (its row or its block in the map)
+const ctx = $('#ctx');
+let ctxTarget = null;
+function closeCtx() { ctx.classList.add('hidden'); ctxTarget = null; }
+document.addEventListener('contextmenu', e => openCtx(e, e.target.closest('tr[data-menu], .seg[data-resize], .pbtn[data-resize]')));
+function openCtx(e, el) {
+  if (!el || S.gone || !S.data || !S.data.view) return closeCtx();
+  e.preventDefault();
+  const [dn, pn] = (el.dataset.menu || el.dataset.resize).split(':').map(Number);
+  const d = S.data.view.disks.find(x => x.number === dn), p = d && d.partitions.find(x => x.number === pn);
+  if (!p || !p.volume) return closeCtx();
+  ctxTarget = [dn, pn];
+  $('#ctxHead').textContent = `${rzName(p)} · ${size(p.volume.size)}`;
+  const sfc = ctx.querySelector('[data-ctx="sfc"]');
+  sfc.disabled = !p.volume.windows;
+  $('#ctxSfcNote').textContent = p.volume.windows ? "Check and repair Windows' own files" : 'Only for the Windows drive, where Windows is installed';
+  ctx.querySelector('[data-ctx="dism"]').disabled = !p.volume.windows;
+  $('#ctxDismNote').textContent = p.volume.windows ? 'The store System File Checker repairs from (DISM)' : 'Only for the Windows drive';
+  for (const [k, note] of [['perms', 'Who can open and change the drive'], ['ransom', 'Ransom notes, locked files, restore copies']]) {
+    ctx.querySelector(`[data-ctx="${k}"]`).disabled = !p.letter;
+    $(k === 'perms' ? '#ctxPermsNote' : '#ctxRansomNote').textContent = p.letter ? note : 'Give the drive a letter first';
+  }
+  const virus = ctx.querySelector('[data-ctx="virus"]');
+  const av = S.data.view.antivirus || {defender: true, others: []};
+  virus.disabled = !p.letter || !av.defender;
+  $('#ctxVirusNote').textContent = !av.defender ? `Microsoft Defender is off${av.others.length ? `; ${av.others.join(' and ')} protects this PC` : ''}`
+    : p.letter ? 'Microsoft Defender, including the start-up sectors' : 'Give the drive a letter first';
+  tip.style.display = 'none';
+  ctx.classList.remove('hidden');
+  const w = ctx.offsetWidth, h = ctx.offsetHeight;
+  ctx.style.left = Math.min(e.clientX, innerWidth - w - 8) + 'px';
+  ctx.style.top = Math.max(8, Math.min(e.clientY, innerHeight - h - 8)) + 'px';
+  ctx.querySelector('button:not(:disabled)').focus();
+}
+ctx.addEventListener('click', e => {
+  const b = e.target.closest('[data-ctx]'); if (!b || b.disabled || !ctxTarget) return;
+  const [dn, pn] = ctxTarget; closeCtx();
+  if (b.dataset.ctx === 'resize') openResize(dn, pn); else openTask(b.dataset.ctx, dn, pn);
+});
+document.addEventListener('mousedown', e => { if (!ctx.contains(e.target)) closeCtx(); });
+document.addEventListener('keydown', e => {
+  if (ctx.classList.contains('hidden')) return;
+  if (e.key === 'Escape') return closeCtx();
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const items = [...ctx.querySelectorAll('button:not(:disabled)')], i = items.indexOf(document.activeElement);
+    items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+  }
+});
+addEventListener('scroll', closeCtx, {passive: true});
+addEventListener('blur', closeCtx);
+
+// ---- checks and repairs (chkdsk, structure, permissions, ransomware, viruses, System File Checker, DISM), in the same dialog as Resize
+const SCAN_TEXT = {
+  SpotFixNeeded: 'Windows found a few small problems that it can fix quickly.',
+  FullRepairNeeded: 'Windows found problems that need a full repair.',
+  ScanNeeded: 'Windows needs a deeper check of this drive to be sure.'
+};
+function jobLine(job) {
+  const name = job.letter ? job.letter + ':' : 'a drive';
+  return {resize: `Resizing ${name}…`, scan: `Checking ${name} for errors…`, fix: `Repairing ${name}…`, atboot: `Scheduling a repair of ${name}…`,
+          virus: `Scanning ${name} for viruses…`, offline: 'Preparing the deep virus scan…', remove: 'Removing threats…',
+          structure: `Checking the structure of ${name}…`, perms: `Checking permissions on ${name}…`, ransom: `Checking ${name} for ransomware${job.live ? ` (${job.live})` : ''}…`,
+          dism: `Checking the Windows image ${job.progress != null ? job.progress + ' %' : ''}…`, dismfix: `Repairing the Windows image ${job.progress != null ? job.progress + ' %' : ''}…`,
+          selfheal: 'Turning self-healing on…', permfix: `Repairing permissions on ${name}…`, shadow: `Making a restore copy of ${name}…`, cfa: 'Turning on ransomware protection…',
+          sfc: `System File Checker ${job.progress != null ? job.progress + ' %' : 'starting'}…`}[job.kind] || 'Working…';
+}
+const SEVERITY = {1: 'Low', 2: 'Moderate', 4: 'High', 5: 'Severe'};
+const THREAT_STATUS = {1: 'Found, not dealt with yet', 2: 'Cleaned', 3: 'Quarantined (locked away)', 4: 'Removed', 5: 'Allowed by you', 6: 'Blocked',
+  102: 'Could not quarantine it', 103: 'Could not remove it', 104: 'Could not allow it', 105: 'Left as it was', 107: 'Could not block it'};
+const threatOpen = t => t.active || [1, 102, 103, 105, 107].includes(t.status);
+function threatTable(list) {
+  return `<table class="threats"><thead><tr><th>What it found</th><th>Danger</th><th>Now</th></tr></thead><tbody>${list.map(t => `<tr>
+    <td><b>${esc(t.name)}</b>${t.files.map(f => `<div class="tfile">${esc(f)}</div>`).join('')}</td>
+    <td>${esc(SEVERITY[t.severity] || 'Unknown')}</td>
+    <td class="${threatOpen(t) ? 'tbad' : 'tgood'}">${esc(THREAT_STATUS[t.status] || 'Unknown')}</td></tr>`).join('')}</tbody></table>`;
+}
+const HEALTH_ACTIONS = ['structure', 'perms', 'ransom', 'dism', 'dismfix', 'selfheal', 'permfix', 'shadow', 'cfa'];
+const HEALTH_INTRO = {
+  structure: [n => `Check the structure of ${n}`, l => `<p>Checks the disk's <b>partition table</b>: no partitions overlapping or running past the end of the disk, all lined up with the disk's blocks, the right layout for starting Windows.</p>
+    <p>Then the <b>file system's own records</b> on ${l}: whether Windows marked it as damaged, its list of known damaged records, and NTFS self-healing. <b>It changes nothing</b> and takes a few seconds.</p>`],
+  perms: [n => `Check permissions on ${n}`, l => `<p>Reads who may open and change files on ${l} and looks for trouble: Windows or administrators locked out, everyone (even guests) allowed to change files, folders nobody can open. <b>It changes nothing</b> and takes a few seconds.</p>`],
+  ransom: [n => `Check ${n} for ransomware`, l => `<p>Looks at the name of every file on ${l} for the signs ransomware leaves: ransom notes ("how to decrypt your files") and files renamed with known ransomware endings. It also checks whether Windows keeps restore copies of the drive, and whether ransomware protection is on.</p>
+    <p><b>It changes nothing and doesn't open your files.</b> A big, full drive takes a few minutes.</p><p style="font-size:12px">It spots known signs, not every attack. A virus scan and a backup on another disk are still the best defence.</p>`],
+  dism: [() => 'Windows image health', () => `<p>Windows keeps a store of clean copies of its own files, and System File Checker repairs from it. This checks that store for damage (<code>DISM /ScanHealth</code>).</p>
+    <p><b>It changes nothing.</b> It takes 5 to 15 minutes. If the store is damaged, you can repair it from Windows Update.</p>`]
+};
+const HEALTH_RUN = {structure: 'Checking the structure…', perms: 'Reading the permissions…', ransom: 'Looking for signs of ransomware…', dism: 'Checking the Windows image…',
+  dismfix: 'Repairing the Windows image from Windows Update…', selfheal: 'Turning self-healing on…', permfix: 'Repairing the permissions…', shadow: 'Making a restore copy…', cfa: 'Turning on ransomware protection…'};
+const FIX_LABEL = {selfheal: 'Turn self-healing on', permfix: 'Repair permissions', shadow: 'Make a restore copy now', cfa: 'Turn on ransomware protection',
+  dismfix: 'Repair from Windows Update', chkdsk: 'Check for errors…', sfc: 'Run System File Checker…'};
+const FIX_ASK = {
+  selfheal: n => `Turn NTFS self-healing back on for ${n}?\n\nWindows then repairs small damage in the background as it finds it. This is how Windows comes set up.`,
+  permfix: n => `Repair the permissions on ${n}?\n\nWindows and administrators get full control back, and Everyone, Guests and anonymous users lose their access to the drive. Windows passes the change on to every folder that inherits it, which can take several minutes on a full drive.\n\nIf you share this drive on purpose, share it with named people afterwards.`,
+  shadow: n => `Make a restore copy of ${n} now?\n\nWindows saves the drive's current state in some of its free space; old copies are deleted by themselves when space runs short. Earlier versions of files then come back from a file's Properties, Previous Versions.`,
+  cfa: () => `Turn on Microsoft Defender's ransomware protection (Controlled folder access)?\n\nApps Windows doesn't know are then blocked from changing files in Documents, Pictures, Desktop and other protected folders. If an app you use gets blocked, allow it in Windows Security, Ransomware protection.`,
+  dismfix: () => `Repair the Windows image from Windows Update?\n\nIt downloads clean copies of the damaged parts and takes 10 to 30 minutes. Keep the PC on and connected to the internet.`
+};
+function findingsHtml(list) {
+  return `<ul class="finds">${list.map(f => `<li class="f-${f.level}"><b>${esc(f.title)}</b><span>${esc(f.text)}</span>${f.fix
+    ? `<button class="pbtn outline" data-rz="${f.fix === 'chkdsk' ? 'open:check' : f.fix === 'sfc' ? 'open:sfc' : 'h:' + f.fix}">${esc(FIX_LABEL[f.fix])}</button>` : ''}</li>`).join('')}</ul>`;
+}
+async function healthGo(kind) {
+  const {d, p} = R, name = p.letter ? p.letter + ':' : 'the drive';
+  if (FIX_ASK[kind] && !confirm(FIX_ASK[kind](name))) return;
+  let res;
+  try { res = await post('/health', {disk: d.number, part: p.number, action: HEALTH_ACTIONS.indexOf(kind)}); } catch (e) { res = {ok: false, error: 'My Disk did not answer.'}; }
+  if (!res.ok) {
+    $('#rzBody').insertAdjacentHTML('beforeend', `<p class="rz-err">${esc(res.error || 'It could not start.')}</p>`);
+    if (res.admin && S.data.mode !== 'demo') rzButtons('<button class="pbtn outline" data-rz="close">Close</button><button class="bigbtn" data-rz="admin">Restart as administrator</button>');
+    return;
+  }
+  R.waiting = true; R.jobKind = kind;
+  $('#rzBody').innerHTML = runningHtml(kind, p);
+  rzButtons(runningButtons(kind));
+}
+function healthDone(job) {
+  const list = job.findings || [], level = job.result;
+  const fixed = !HEALTH_INTRO[job.kind];
+  let html = fixed ? '' : {good: '<p class="rz-ok"><b>All good.</b></p>', watch: '<p class="rz-warn"><b>Worth a look.</b></p>', bad: '<p class="rz-err"><b>Problems found.</b></p>'}[level] || '';
+  html += findingsHtml(list);
+  const again = job.again ? `<button class="pbtn outline" data-rz="h:${job.again}">Check again</button>` : '';
+  return [html, `${again}<button class="bigbtn" data-rz="close">Close</button>`];
+}
+const JOB_TITLE = {resize: 'Resize', scan: 'Error check', fix: 'Repair', atboot: 'Repair at restart', sfc: 'System File Checker', virus: 'Virus scan',
+  offline: 'Deep virus scan', remove: 'Threat removal', structure: 'Structure check', perms: 'Permission check', ransom: 'Ransomware check',
+  dism: 'Windows image health', dismfix: 'Windows image repair', selfheal: 'Self-healing', permfix: 'Permission repair', shadow: 'Restore copy', cfa: 'Ransomware protection'};
+const SEEN_KEY = 'mydisk-seen';
+function seenJob() { try { return +localStorage.getItem(SEEN_KEY) || 0; } catch (e) { return S.seen || 0; } }
+function markSeen(job) { if (!$('#rz').open) return drawJob(); S.seen = job.started; try { localStorage.setItem(SEEN_KEY, String(job.started)); } catch (e) {} drawJob(); }
+function runningHtml(kind, p) {
+  const name = esc(p.letter ? p.letter + ':' : 'the drive');
+  const what = HEALTH_RUN[kind] || {resize: `Resizing ${name}…`, scan: `Checking ${name} for errors…`, fix: `Repairing ${name}…`,
+    atboot: `Telling Windows to repair ${name} at the next restart…`, sfc: 'System File Checker is running…', virus: `Microsoft Defender is scanning ${name}…`,
+    offline: 'Preparing the deep scan…', remove: 'Removing what Microsoft Defender found…'}[kind] || 'Working…';
+  const bar = ['sfc', 'dism', 'dismfix'].includes(kind);
+  return `<p><span class="spin"></span><b>${what}</b></p>${bar ? `<div class="rz-prog"><i id="rzProg"></i></div><p id="rzProgText">${kind === 'sfc' ? 'Starting…' : 'Starting… DISM works for a minute or two before it shows how far it is.'}</p>` : ''}
+    <p id="rzLive"></p><p id="rzElapsed" style="font-size:12px"></p>
+    <p style="font-size:12px">You can close this window: the task keeps going, and the button at the top brings this window back.</p>`;
+}
+function runningButtons(kind) {
+  return `${['scan', 'virus', 'sfc', 'dism', 'ransom', 'structure', 'perms'].includes(kind) ? '<button class="pbtn outline stop" data-rz="stop">Stop</button>' : ''}<button class="bigbtn" data-rz="close">Close</button>`;
+}
+function drawJob() {
+  const b = $('#jobBtn'), job = S.data && S.data.job;
+  if (!job || S.gone || (job.status !== 'running' && seenJob() === job.started)) { b.classList.add('hidden'); return; }
+  b.classList.remove('hidden', 'jb-done', 'jb-fail');
+  if (job.status === 'running') {
+    b.innerHTML = `<span class="spin"></span>${esc(jobLine(job))}`;
+    b.title = "Open this task's window";
+  } else {
+    b.classList.add(job.status === 'failed' ? 'jb-fail' : 'jb-done');
+    b.textContent = `${JOB_TITLE[job.kind] || 'Task'} ${job.status === 'done' ? 'finished' : job.status === 'stopped' ? 'stopped' : "didn't finish"} · See result`;
+    b.title = 'See what it found';
+  }
+}
+function openJob() {   // the top-bar button: the running task's window, or its result
+  const job = S.data && S.data.job; if (!job || !S.data.view) return;
+  const d = S.data.view.disks.find(x => x.number === job.disk), p = d && d.partitions.find(x => x.number === job.part);
+  if (!p) { markSeen(job); return; }
+  R = job.kind === 'resize' ? {d, p, waiting: true} : {kind: job.kind, d, p, waiting: true, jobKind: job.kind};
+  $('#rzTitle').textContent = `${JOB_TITLE[job.kind] || 'Task'} · ${rzName(p)}`;
+  if (job.status === 'running') { $('#rzBody').innerHTML = runningHtml(job.kind, p); rzButtons(runningButtons(job.kind)); }
+  if (!$('#rz').open) $('#rz').showModal();
+  resizeTick();
+}
+$('#jobBtn').onclick = openJob;
+async function stopJob() {
+  const job = S.data.job; if (!job || job.status !== 'running') return;
+  if (!confirm(`Stop ${JOB_TITLE[job.kind] || 'this task'}?\n\nWhat it has checked so far is lost. Nothing on the drive is changed.`)) return;
+  let res; try { res = await post('/stop', {}); } catch (e) { res = {ok: false, error: 'My Disk did not answer.'}; }
+  if (!res.ok) return $('#rzBody').insertAdjacentHTML('beforeend', `<p class="rz-err">${esc(res.error || 'It could not be stopped.')}</p>`);
+  $('#rzBody').insertAdjacentHTML('beforeend', '<p class="rz-warn">Stopping…</p>');
+}
+function openTask(kind, dn, pn) {
+  const d = S.data.view.disks.find(x => x.number === dn), p = d && d.partitions.find(x => x.number === pn);
+  if (!p || !p.volume) return;
+  R = {kind, d, p, waiting: false};
+  const name = rzName(p), letter = p.letter ? `<b>${esc(p.letter)}:</b>` : 'this drive';
+  if (HEALTH_INTRO[kind]) {
+    $('#rzTitle').textContent = HEALTH_INTRO[kind][0](name);
+    $('#rzBody').innerHTML = HEALTH_INTRO[kind][1](letter);
+    rzButtons(`<button class="pbtn outline" data-rz="close">Cancel</button><button class="bigbtn" data-rz="h:${kind}">Check now</button>`);
+  } else if (kind === 'check') {
+    $('#rzTitle').textContent = `Check ${name} for errors`;
+    $('#rzBody').innerHTML = `<p>Windows reads the file system on ${letter} and looks for damage: broken folder entries, lost pieces of files, faulty index records. <b>It changes nothing</b>, and you can keep using the drive meanwhile.</p>
+      <p>Small drives take seconds; big, full drives can take several minutes. It is the same check as <code>chkdsk /scan</code>.</p>
+      ${p.volume.dirty ? '<p class="rz-warn">Windows has already marked this drive as needing a check.</p>' : ''}`;
+    rzButtons('<button class="pbtn outline" data-rz="close">Cancel</button><button class="bigbtn" data-rz="scan">Check now</button>');
+  } else if (kind === 'virus') {
+    $('#rzTitle').textContent = `Scan ${name} for viruses`;
+    $('#rzBody').innerHTML = `<p><b>Microsoft Defender</b> checks every file on ${letter} and the drive's start-up sectors (the boot sector, where some rootkits hide). You can keep working. It changes nothing by itself: if it finds something, you see what and where, and choose to remove it.</p>
+      <p>A nearly empty drive takes a minute; a big, full one can take an hour or more.</p>
+      ${p.volume.windows ? `<p><b>Deep rootkit scan:</b> some rootkits hide from anything that runs inside Windows. <b>Restart and deep scan</b> restarts the PC about a minute after you choose it and runs Microsoft Defender Offline before Windows loads. It takes about 15 minutes, then Windows starts as usual; see the result in Windows Security, Protection history.</p>` : ''}
+      <p style="font-size:12px">If you use another antivirus instead of Microsoft Defender, scan with that one.</p>`;
+    rzButtons(`<button class="pbtn outline" data-rz="close">Cancel</button>${p.volume.windows ? '<button class="pbtn outline" data-rz="offline">Restart and deep scan</button>' : ''}<button class="bigbtn" data-rz="virus">Scan now</button>`);
+  } else {
+    $('#rzTitle').textContent = 'System File Checker';
+    $('#rzBody').innerHTML = `<p><b>System File Checker</b> compares Windows' own system files on ${letter} with the original copies Windows keeps, and replaces any that are damaged or missing.</p>
+      <p>It usually takes 10 to 30 minutes and keeps the disk busy. You can keep working. Your own files, apps and settings are not touched.</p>`;
+    rzButtons('<button class="pbtn outline" data-rz="close">Cancel</button><button class="bigbtn" data-rz="sfc">Start</button>');
+  }
+  if (!$('#rz').open) $('#rz').showModal();
+}
+async function taskGo(act) {
+  const {d, p} = R, name = p.letter ? p.letter + ':' : 'the drive';
+  if (act === 'fix' && !confirm(`Repair ${name} now?\n\n${name} is taken offline for a moment. Save your work and close any files on it first: apps using it can lose unsaved changes.`)) return;
+  if (act === 'offline' && !confirm('Restart the PC for a deep virus and rootkit scan?\n\nWindows restarts in about a minute and scans for about 15 minutes before it starts again. Save your work and close your apps first.')) return;
+  if (act === 'remove' && !confirm('Remove what Microsoft Defender found?\n\nThe infected files are deleted. If one of them is something you need, restore it from a backup.')) return;
+  let res;
+  try {
+    res = ['virus', 'offline', 'remove'].includes(act) ? await post('/virus', {disk: d.number, part: p.number, action: {virus: 0, offline: 1, remove: 2}[act]}) : act === 'sfc' ? await post('/sfc', {disk: d.number, part: p.number}) : await post('/check', {disk: d.number, part: p.number, action: {scan: 0, fix: 1, atboot: 2}[act]});
+  } catch (e) { res = {ok: false, error: 'My Disk did not answer.'}; }
+  if (!res.ok) {
+    $('#rzBody').insertAdjacentHTML('beforeend', `<p class="rz-err">${esc(res.error || 'It could not start.')}</p>`);
+    if (res.admin && S.data.mode !== 'demo') rzButtons('<button class="pbtn outline" data-rz="close">Close</button><button class="bigbtn" data-rz="admin">Restart as administrator</button>');
+    return;
+  }
+  R.waiting = true; R.jobKind = act;
+  const what = {scan: `Checking ${esc(name)} for errors…`, fix: `Repairing ${esc(name)}…`, atboot: `Telling Windows to repair ${esc(name)} at the next restart…`, sfc: 'System File Checker is running…', virus: `Microsoft Defender is scanning ${esc(name)}…`, offline: 'Preparing the deep scan…', remove: 'Removing what Microsoft Defender found…'}[act];
+  $('#rzBody').innerHTML = runningHtml(act, p);
+  rzButtons(runningButtons(act));
+}
+function taskTick() {
+  const job = S.data.job, {d, p} = R;
+  if (!R.waiting || !job || job.kind !== R.jobKind || job.disk !== d.number || job.part !== p.number) return;
+  if (job.status === 'running') {
+    const m = Math.floor((Date.now() / 1000 - job.started) / 60);
+    if ($('#rzElapsed')) $('#rzElapsed').textContent = m < 1 ? 'Started less than a minute ago.' : `Running for ${m} minute${m === 1 ? '' : 's'}.`;
+    if ($('#rzLive')) $('#rzLive').textContent = job.live || '';
+    if ($('#rzProg') && job.progress != null) { $('#rzProg').style.width = job.progress + '%'; $('#rzProgText').textContent = `${job.progress} % done`; }
+    return;
+  }
+  R.waiting = false;
+  const name = esc(p.letter ? p.letter + ':' : 'The drive'), detail = job.detail && job.kind !== 'virus' ? `<p style="font-size:12px">Windows said: ${esc(job.detail)}</p>` : '';
+  let html, buttons = '<button class="bigbtn" data-rz="close">Close</button>';
+  if (job.status === 'stopped') {
+    html = '<p class="rz-warn"><b>Stopped.</b> Nothing on the drive was changed. Run it again whenever it suits you.</p>';
+  } else if (job.status === 'failed') {
+    html = `<p class="rz-err"><b>It did not finish.</b> ${esc(job.message || '')}</p>`;
+  } else if (HEALTH_RUN[job.kind]) {
+    [html, buttons] = healthDone(job);
+  } else if (job.kind === 'scan' && job.result === 'NoErrorsFound') {
+    html = `<p class="rz-ok"><b>No errors found.</b> The file system on ${name} is in good order.</p>`;
+  } else if (job.kind === 'scan') {
+    html = `<p class="rz-warn"><b>${esc(SCAN_TEXT[job.result] || `Windows reported: ${job.result}.`)}</b></p>`;
+    if (p.volume.windows) {
+      html += `<p>Windows can't repair the drive it is running from while it runs. It can repair ${name} the next time the PC restarts, before Windows starts. That can take a while on a big drive.</p>`;
+      buttons = '<button class="pbtn outline" data-rz="close">Not now</button><button class="bigbtn" data-rz="atboot">Repair at next restart</button>';
+    } else {
+      html += `<p>Repairing takes ${name} offline for a moment, so save your work and close any files on it first. Back up anything important if you can.</p>`;
+      buttons = '<button class="pbtn outline" data-rz="close">Not now</button><button class="bigbtn" data-rz="fix">Repair now</button>';
+    }
+  } else if (job.kind === 'fix') {
+    html = job.result === 'NoErrorsFound' ? `<p class="rz-ok"><b>Repaired.</b> ${name} has no errors now.</p>` : `<p class="rz-warn"><b>Windows reported: ${esc(job.result)}.</b> Check it again; if problems remain, restart the PC and repeat.</p>`;
+  } else if (job.kind === 'atboot') {
+    html = `<p class="rz-ok"><b>Done.</b> Windows will check and repair ${name} the next time the PC restarts. Restart when it suits you.</p>`;
+  } else if (job.kind === 'virus' || job.kind === 'remove') {
+    const list = job.threats || [], open = list.filter(threatOpen);
+    if (job.kind === 'virus' && job.result === 'clean') {
+      html = `<p class="rz-ok"><b>Nothing found.</b> Microsoft Defender found no viruses or rootkits on ${name} or in its start-up sectors.</p>`;
+    } else {
+      html = job.kind === 'remove'
+        ? (open.length ? `<p class="rz-err"><b>${open.length === 1 ? 'One threat is' : open.length + ' threats are'} still there.</b> Restart the PC and scan again; if it stays, run the deep scan on the Windows drive.</p>`
+                       : '<p class="rz-ok"><b>Removed.</b> Microsoft Defender dealt with everything it found. Restart the PC to be sure nothing is left running.</p>')
+        : `<p class="rz-err"><b>Microsoft Defender found ${list.length === 1 ? 'one threat' : list.length ? list.length + ' threats' : 'something'} on ${name}.</b></p>`;
+      html += list.length ? threatTable(list) : '<p>Windows did not say what it was. Open <b>Windows Security → Virus &amp; threat protection → Protection history</b> to see it.</p>';
+      if (open.length) buttons = '<button class="pbtn outline" data-rz="close">Not now</button><button class="bigbtn" data-rz="remove">Remove them</button>';
+    }
+  } else if (job.kind === 'offline') {
+    html = '<p class="rz-ok"><b>The deep scan is set.</b> Windows restarts in about a minute, scans for about 15 minutes, then starts as usual. See the result in Windows Security, Protection history.</p>';
+  } else if (job.kind === 'sfc') {
+    html = {
+      clean: '<p class="rz-ok"><b>No problems.</b> Windows\' system files are all intact.</p>',
+      repaired: '<p class="rz-ok"><b>Repaired.</b> Windows found damaged system files and replaced them. Restart the PC to finish.</p>',
+      unfixed: '<p class="rz-err"><b>Some damaged files could not be repaired.</b></p><p>The store it repairs from is probably damaged too. Check <b>Windows image health</b> and repair it, then run System File Checker again. Details are in <code>C:\\Windows\\Logs\\CBS\\CBS.log</code>.</p>',
+      restart: '<p class="rz-warn"><b>A repair is waiting for a restart.</b> Restart the PC, then run this again.</p>'
+    }[job.result] || '<p class="rz-warn"><b>System File Checker finished.</b> See what Windows said below.</p>';
+    if (job.result === 'unfixed') buttons = '<button class="pbtn outline" data-rz="close">Close</button><button class="bigbtn" data-rz="open:dism">Windows image health…</button>';
+  }
+  $('#rzBody').innerHTML = html + detail;
+  rzButtons(buttons);
+  markSeen(job);
+}
+
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.tab = b.dataset.t; for (const x of $('#tabs').children) x.classList.toggle('on', x === b); save(); draw(); };
+for (const x of $('#tabs').children) x.classList.toggle('on', x.dataset.t === S.tab);
+$('#showSys').checked = S.sys; $('#showSerial').checked = S.serial;
+$('#showSys').onchange = e => { S.sys = e.target.checked; save(); draw(); };
+$('#showSerial').onchange = e => { S.serial = e.target.checked; save(); draw(); };
+document.addEventListener('toggle', e => {
+  const ds = e.target.dataset || {};
+  if (ds.tech != null) e.target.open ? S.open.add(ds.tech) : S.open.delete(ds.tech);
+  else if (ds.info != null) e.target.open ? S.shown.add(ds.info) : S.shown.delete(ds.info);   // kept while the page is open; every start begins collapsed
+  else return;
+  save();
+}, true);
+poll();
+</script>
+</body>
+</html>

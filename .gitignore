@@ -24,3 +24,6 @@ MyNetworkPy/dist/
 /iT-Toolset/
 /SecurityMonitorPy/dist-test*/
 AuthWorker/.wrangler/
+
+MyDiskPy/build/
+MyDiskPy/dist/
