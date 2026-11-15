@@ -32,7 +32,7 @@ import webbrowser
 import winreg
 
 APP_NAME = 'My Disk'
-APP_VERSION = '0.2'
+APP_VERSION = '0.3'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)       # running as MyDisk.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -216,6 +216,22 @@ class Disks:
         self.free = {}        # drive letter -> free bytes, live
         self.job = None       # the one task that may be running, and how it ended
         self.demo_log = []    # the activity log while trying the demo (never saved)
+        self.quit_after = False   # Exit was clicked during a task: stop once it has finished
+        self.closing = False      # about to stop: the open page sees this and closes its tab
+
+    def close_soon(self):
+        """Stop in a few seconds, so the page (it asks every 2 seconds) sees it is closing and closes its tab."""
+        self.closing = True
+        threading.Timer(3, self.stop.set).start()
+
+    def quit(self):
+        """Exit, or during a task, exit once it has finished: never in the middle of one."""
+        with self.lock:
+            busy = bool(self.job and self.job['status'] == 'running')
+            self.quit_after = busy
+        if not busy:
+            self.close_soon()
+        return {'ok': True, 'waiting': busy}
         self.last_client = time.time()
 
     def refresh(self):
@@ -224,7 +240,7 @@ class Disks:
     def state(self):
         with self.lock:
             return {'app': APP_NAME, 'version': APP_VERSION, 'mode': self.mode, 'readAt': self.read_at, 'reading': self.reading, 'error': self.error,
-                    'view': self.view, 'live': self.live, 'free': self.free, 'job': self.job, 'now': time.time()}
+                    'view': self.view, 'live': self.live, 'free': self.free, 'job': self.job, 'quitAfter': self.quit_after, 'closing': self.closing, 'now': time.time()}
 
     def _target(self, disk, part, need_resizable=True):
         with self.lock:
@@ -428,6 +444,8 @@ class Disks:
                 else:
                     write_log(read_log() + [entry])
             self.refresh()
+            if self.quit_after:   # Exit was clicked while this ran
+                self.close_soon()
         threading.Thread(target=run, daemon=True, name=kind).start()
         return {'ok': True}
 
@@ -1174,13 +1192,15 @@ def make_handler(disks, page, token, port, launch_key, nonce):
                 if not self.host_ok() or not headers:
                     return self.send_json(403, {'ok': False})
                 self.send_json(200, {'ok': True}, headers)
-                disks.stop.set()
+                disks.quit()
                 return
             if not (self.host_ok() and self.token_ok()):
                 return self.send_json(403, {'ok': False})
             if self.path == '/quit':
+                self.send_json(200, disks.quit())
+            elif self.path == '/quit-cancel':
+                disks.quit_after = False
                 self.send_json(200, {'ok': True})
-                disks.stop.set()
             elif self.path == '/activity-clear':
                 self.send_json(200, disks.clear_activity())
             elif self.path == '/stop':
@@ -1266,7 +1286,8 @@ def open_view(url):
     try:
         handle, path = tempfile.mkstemp(prefix='my_disk_', suffix='.html')
         with os.fdopen(handle, 'w', encoding='utf-8') as f:
-            f.write(f'<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open My Disk</a>')
+            f.write(f'<!doctype html><meta charset=utf-8><script>location.replace({json.dumps(url)})</script>'
+                    f'<meta http-equiv=refresh content="0;url={url}"><a href="{url}">Open My Disk</a>')
         subprocess.Popen([os.path.join(WINDIR, 'explorer.exe'), path])
     except OSError:
         return False

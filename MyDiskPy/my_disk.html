@@ -710,11 +710,18 @@ async function poll() {
     const r = await api('/state');
     if (!r.ok) throw new Error(r.status);
     S.data = await r.json(); failures = 0;
-    if (S.data.view) { draw(); resizeTick(); drawJob(); } else $('#meta').textContent = S.data.error || 'Reading your disks… (this takes a few seconds)';
+    if (S.data.closing) return closeTab('My Disk has stopped');   // Exit here, or STOP on the website
+    if (S.data.view) { draw(); resizeTick(); drawJob(); drawQuit(); } else $('#meta').textContent = S.data.error || 'Reading your disks… (this takes a few seconds)';
   } catch (e) {
-    if (++failures >= 3) return stopped('My Disk has stopped', 'You can close this tab. Start My Disk again to see your disks.');
+    if (++failures >= 3 && S.exiting) return closeTab('My Disk has stopped');
+    if (failures >= 3) return stopped('My Disk has stopped', 'You can close this tab. Start My Disk again to see your disks.');
   }
   setTimeout(poll, 2000);
+}
+function closeTab(title) {
+  S.gone = true;
+  try { window.close(); } catch (e) {}
+  setTimeout(() => stopped(title, 'You can close this tab.'), 400);   // still here: the browser kept the tab open
 }
 function stopped(title, text) {
   S.gone = true;
@@ -724,10 +731,26 @@ function stopped(title, text) {
 
 $('#refresh').onclick = async () => { $('#refresh').disabled = true; await api('/refresh', 'POST').catch(() => {}); setTimeout(poll, 300); };
 $('#quit').onclick = async () => {
-  if (!confirm('Exit My Disk?\n\nThe app stops and this page stops updating.')) return;
-  await api('/quit', 'POST').catch(() => {});
-  stopped('My Disk has stopped', 'You can close this tab.');
+  const job = S.data && S.data.job, busy = job && job.status === 'running';
+  if (S.data && S.data.quitAfter) {   // already waiting: clicking again cancels the exit
+    await api('/quit-cancel', 'POST').catch(() => {});
+    S.exiting = false; S.data.quitAfter = false; drawQuit(); return;
+  }
+  const name = busy ? (JOB_TITLE[job.kind] || 'The task') : '';
+  if (!confirm(busy ? `Exit My Disk?\n\n${name} is still running. My Disk waits until it has finished, then exits and closes this tab.`
+                    : 'Exit My Disk?\n\nThe app stops and this tab closes.')) return;
+  let res = {};
+  try { res = await (await api('/quit', 'POST')).json(); } catch (e) {}
+  S.exiting = true;
+  if (res.waiting) { S.data.quitAfter = true; drawQuit(); return; }
+  closeTab('My Disk has stopped');   // the app stops a few seconds later
 };
+function drawQuit() {   // Exit while a task runs: the button says it is waiting, and a click cancels
+  const q = $('#quit'), waiting = !!(S.data && S.data.quitAfter);
+  if (waiting) S.exiting = true;
+  q.textContent = waiting ? 'Exits when finished · Cancel' : 'Exit';
+  q.title = waiting ? 'My Disk exits once the running task has finished. Click to keep it open.' : 'Stop My Disk and close the app';
+}
 $('#elevate').onclick = async () => {
   $('#elevate').disabled = true;
   try {
