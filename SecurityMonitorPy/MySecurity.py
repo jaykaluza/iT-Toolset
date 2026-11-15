@@ -50,7 +50,7 @@ import browsertest as B   # the browser security self-test (modelled on BrowserA
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.18'
+APP_VERSION = '0.1.19'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -371,6 +371,8 @@ class App:
         return chain
 
     def _add_event(self, pid, name, ppid, parent, path, cmd, sev, reasons, sign, initial, parent_path='', chain=None):
+        if S.nesiam_app(path or '') or S.about_nesiam_app({'Evidence': cmd}):
+            return   # never list My Connections, My Security, My Network or My Disk, wherever they run from
         with self.lock:
             self.event_seq += 1
             self.events.insert(0, {'Id': self.event_seq, 'PID': pid, 'Name': name, 'Parent': parent, 'PPID': ppid, 'Path': path, 'ParentPath': parent_path, 'Chain': chain or [], 'Cmd': cmd[:4000], 'Decoded': S.decode_encoded(cmd)[:4000], 'Sev': sev,
