@@ -194,6 +194,7 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
 .launch-x:hover{color:#111}
 .launch-note{display:block;margin-top:10px}
 .launch-foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px!important;margin-bottom:22px!important}
+.launch-foot .btn,.launch-foot .launch-close{font-size:13px;padding:7px 16px;white-space:nowrap}
 #launchSteps > p:first-child{margin-top:16px}
 
 /* step-by-step popup shown on hover (or keyboard focus or tap) */
@@ -406,7 +407,7 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
       <p class="muted">Check it's genuine: compare <span class="hint" tabindex="0"><code>Get-FileHash .\<span class="exeName">MyConnections.exe</span></code><span class="pop"><b>How to check, step by step:</b><span>1. In File Explorer, open the folder where you saved <b><span class="exeName">MyConnections.exe</span></b>.</span><span>2. Click the address bar at the top of that window, type <code>powershell.exe</code> and press <b>Enter</b>. A PowerShell window opens in that folder.</span><span>3. Type or paste <code>Get-FileHash .\<span class="exeName">MyConnections.exe</span></code> and press <b>Enter</b>.</span><span id="fpStep">4. Open the <a class="relLink" href="https://github.com/jaykaluza/iT-Toolset/releases/latest" style="color:#6fc3ff">release page</a> and find the fingerprint under <b>Check it's genuine</b>.</span><span>5. Compare it with the long line of letters and numbers next to <b>Hash</b>. They must match exactly. If they don't, don't run the file.</span></span></span> with the fingerprint on the <a class="relLink" href="https://github.com/jaykaluza/iT-Toolset/releases/latest">release page</a>.</p>
     </div>
     <div class="launch-foot">
-      <button type="button" class="btn" id="launchSetup">Complete first-time setup</button>
+      <button type="button" class="btn" id="launchSetup">First-time setup</button>
       <button type="button" class="launch-close" id="launchRetry">Try again</button>
       <button class="launch-close">Close</button>
     </div>
