@@ -49,6 +49,7 @@ body:has(#signin.hidden) .lede,body:has(#signin.hidden) .hero-side{display:none}
 body:has(#signin.hidden) .hero{display:block}
 body:has(#signin.hidden) .display{margin-bottom:26px}
 body:has(#signin.hidden) #tools{margin-top:0!important}
+body:has(#signin.hidden) .showcase{display:none}
 
 .hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center}
 /* sign-in: no box, just the field and a black pill */
@@ -96,15 +97,27 @@ input::placeholder{color:#a3a1b6}
 
 /* signed in: the tools */
 .section-title{display:none}
-.tool-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
-.tool{display:flex;flex-direction:column;background:#fff;border-radius:18px;padding:20px 20px 18px;box-shadow:0 20px 40px -26px rgba(50,40,140,.4),0 1px 3px rgba(20,20,40,.05)}
-.tool .icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--lav);margin-bottom:14px}
-.tool .icon svg{width:20px;height:20px;stroke:#111114;stroke-width:1.7}
-.tool .info{flex:1}
-.tool h3{margin:0 0 6px;font:500 18px/1.2 Inter,sans-serif;letter-spacing:-.02em}
-.tool .muted{font-size:13px;line-height:1.55}
-.tool-actions{display:flex;align-items:center;gap:8px;margin-top:16px}
-.tool-actions .run{flex:1}
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,210px));gap:12px}
+.tool{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto 1fr auto;column-gap:9px;background:#fff;border-radius:14px;padding:12px 12px 11px;box-shadow:0 14px 30px -22px rgba(50,40,140,.4),0 1px 3px rgba(20,20,40,.05)}
+.tool .icon{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--lav)}
+.tool .icon svg{width:15px;height:15px;stroke:#111114;stroke-width:1.8}
+.tool .info{display:contents}
+.tool h3{align-self:center;margin:0;font:500 14.5px/1.2 Inter,sans-serif;letter-spacing:-.015em}
+.tool .muted{grid-column:1/-1;margin-top:7px;font-size:11.5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tool-actions{grid-column:1/-1;display:flex;align-items:center;gap:6px;margin-top:10px}
+.tool-actions .run{flex:1;font-size:12.5px;padding:5px 14px}
+.tool-actions .more-btn{width:28px;height:28px;font-size:13px}
+/* the cards in Stanford red with white text */
+.tool{background:#8c1515;color:#fff;box-shadow:0 14px 30px -18px rgba(140,21,21,.6)}
+.tool .muted{color:rgba(255,255,255,.82)}
+.tool .icon{background:rgba(255,255,255,.16)}
+.tool .icon svg{stroke:#fff}
+.tool .run{background:#fff;color:#8c1515;border-color:#fff;font-weight:600}
+.tool .run:hover{background:#f3e3e3;border-color:#f3e3e3}
+.tool .run.stop{background:rgba(255,255,255,.2);color:#fff;border-color:transparent}
+.tool .more-btn{background:rgba(255,255,255,.16);color:#fff}
+.tool .more-btn:hover,.tool .more-btn[aria-expanded="true"]{background:rgba(255,255,255,.3);color:#fff}
+.tool .more-menu{color:#111}
 .more{position:relative}
 .more-btn{display:grid;place-items:center;width:36px;height:36px;padding:0;font:600 15px/1 Inter,sans-serif;color:#55555f;background:#ebe9f6;border:0;border-radius:50%;cursor:pointer}
 .more-btn:hover,.more-btn[aria-expanded="true"]{background:#dedbf0;color:#111}
@@ -207,10 +220,10 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
 /* small windows: compact rows instead of cards */
 @media (max-width:900px){
   .tool-grid{grid-template-columns:1fr;gap:10px}
-  .tool{flex-direction:row;align-items:center;gap:12px;padding:10px 14px;border-radius:16px}
+  .tool{display:flex;flex-direction:row;align-items:center;gap:12px;padding:10px 14px;border-radius:16px}
   .tool .icon{width:34px;height:34px;margin:0;flex:none}
   .tool .icon svg{width:17px;height:17px}
-  .tool .info{min-width:0}
+  .tool .info{display:block;flex:1;min-width:0}
   .tool h3{font-size:15px;margin:0}
   .tool .muted{display:none}
   .tool-actions{margin:0}
@@ -417,7 +430,7 @@ const TOOLS = [
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
    download: `${REPO}/releases/download/network-v0.4/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.4', events: false},
   {name: 'My Disk', exe: 'MyDisk.exe', scheme: 'mydisk', ports: [8811, 8812, 8813], apps: ['My Disk'], key: 'mydisk-setup', run: '#runDisk', remove: '#removeDiskLink',
-   download: `${REPO}/releases/download/disk-v0.1/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.1', events: false}
+   download: `${REPO}/releases/download/disk-v0.2/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.2`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.2', events: false}
 ];
 for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
 let current = TOOLS[0];   // the tool the popup is showing
@@ -517,10 +530,13 @@ function explainLinkTab(w, t) {
 }
 const openLink = (link, t) => {
   closeLinkTab();
-  const w = window.open(link, '_blank');
+  // open the tab blank, write the explanation, then send it to the link: some browsers (Opera) leave a tab
+  // that was opened straight at an app link blank and unwritable
+  const w = window.open('', '_blank');
   if (w) {
     linkTab = w;
     if (t) explainLinkTab(w, t);
+    try { w.location.href = link; } catch (e) { closeLinkTab(); window.location.href = link; return; }
     setTimeout(() => { if (linkTab === w) closeLinkTab(); }, LAUNCH_WAIT_MS);
     return;
   }
