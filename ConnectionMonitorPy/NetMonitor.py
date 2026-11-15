@@ -58,7 +58,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.16'
+APP_VERSION = '1.17'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -946,10 +946,19 @@ def is_this_app(pid, path):
     return pid == os.getpid() or (FROZEN and pid == os.getppid() and path.lower() == sys.executable.lower())
 
 
+NESIAM_APPS = {'myconnections': 'My Connections', 'mysecurity': 'My Security', 'mynetwork': 'My Network', 'mydisk': 'My Disk'}
+
+
+def is_nesiam_app(info):
+    """True for the Nesiam tools (My Connections, My Security, My Network, My Disk): their exe name and version details match."""
+    return (info.get('Company') == 'Nesiam.com'
+            and NESIAM_APPS.get((info.get('Name') or '').lower()) == info.get('Product'))
+
+
 def app_issues(info, admin, pid):
     issues = []
     p, name = info['Path'], info['Name']
-    if is_this_app(pid, p):   # it may be running from a download folder, but it shouldn't warn about itself
+    if is_this_app(pid, p) or is_nesiam_app(info):   # it may be running from a download folder, but it shouldn't warn about itself or its sibling tools
         return issues
     if p:
         if UNUSUAL_FOLDER.search(p):
