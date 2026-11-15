@@ -427,7 +427,7 @@ const TOOLS = [
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
    download: `${REPO}/releases/download/network-v0.5/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.5`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.5', events: false},
   {name: 'My Disk', exe: 'MyDisk.exe', scheme: 'mydisk', ports: [8811, 8812, 8813], apps: ['My Disk'], key: 'mydisk-setup', run: '#runDisk', remove: '#removeDiskLink',
-   download: `${REPO}/releases/download/disk-v0.3/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.3`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.3', events: false}
+   download: `${REPO}/releases/download/disk-v0.4/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.4', events: false}
 ];
 for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
 let current = TOOLS[0];   // the tool the popup is showing
@@ -555,7 +555,7 @@ const startApp = t => {
     }
     openLaunch(`Waiting for ${t.name} to start. If your browser asks, choose <b>Open</b>.${setupLink}`);
     openLink(`${t.scheme}://run`, t);   // starts the app through the link it set up; still within the click's few seconds, so the browser allows the tab
-    launchTimer = setTimeout(() => { closeLinkTab(); openLaunch(`${t.name} wasn&#39;t detected. If the Microsoft Store opened, close it. If this is the first time on this PC, or the app was moved or deleted, complete the one-time setup.`, true, true); }, LAUNCH_WAIT_MS);
+    launchTimer = setTimeout(() => { closeLinkTab(); openLaunch(`${t.name} wasn&#39;t detected. If it opened anyway, this browser is blocking this site from reaching apps on this device: click the icon left of the address, open the site settings and allow <b>apps on this device</b> (local network access). If the Microsoft Store opened, close it. If this is the first time on this PC, or the app was moved or deleted, complete the one-time setup.`, true, true); }, LAUNCH_WAIT_MS);
   };
   tick();
 };
@@ -570,7 +570,7 @@ async function findApp(t) {
   for (const p of t.ports) {
     try {
       const r = await fetch(`http://localhost:${p}/status`, {cache: 'no-store', signal: AbortSignal.timeout(1500)});
-      if (r.ok) { const s = await r.json(); if (t.apps.includes(s.app) && !s.stopping) return p; }
+      if (r.ok) { const s = await r.json(); if (t.apps.includes(s.app) && !s.stopping) { t.openCode = s.open || ''; return p; } }
     } catch (e) { /* not running on this port, or the browser didn't allow the check */ }
   }
   return null;
@@ -589,7 +589,14 @@ async function checkApp(t) {
   t.checking = true;
   t.appPort = await findApp(t);
   t.checking = false;
-  if (t.appPort) { setup.set(t, true); if (t === current) closeLinkTab(); closeLaunch(t); }   // seeing it run proves setup worked
+  if (t.appPort) {   // seeing it run proves setup worked
+    setup.set(t, true);
+    if (t === current && t.openCode && /^[\w-]{16,64}$/.test(t.openCode) && linkTab && !linkTab.closed) {
+      // the app was just started by this RUN: this browser's tab becomes its view, so it opens where RUN was clicked
+      try { linkTab.location.href = `http://localhost:${t.appPort}/open?t=${t.openCode}`; linkTab = null; } catch (e) { closeLinkTab(); }
+    } else if (t === current) closeLinkTab();
+    closeLaunch(t);
+  }
   else t.stopRequested = false;
   // while My Connections runs, it knows this page is open and can ask it to refresh (the dashboard's title link)
   if (t.events && t.appPort && !t.siteEvents) {
