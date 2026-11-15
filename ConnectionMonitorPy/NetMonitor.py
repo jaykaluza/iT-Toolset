@@ -58,7 +58,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.14'
+APP_VERSION = '1.15'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -1081,7 +1081,7 @@ class Monitor:
         self.dashboard_pids = frozenset()
         self.last_client = time.time()     # when a dashboard last asked for data
         self.tab_closed_at = 0             # when a dashboard tab last said it was closing
-        self.stop = threading.Event()      # set by the dashboard's Stop monitor button
+        self.stop = threading.Event()      # set by the dashboard's Exit button
         self.stopping = False              # the website's STOP: dashboards close their tab, then the app exits
         self.site_changed = threading.Condition()   # guards the two below
         self.site_tabs = 0                 # landing pages open now (each keeps a /site-events connection)
@@ -1789,7 +1789,7 @@ class Monitor:
         with self.lock:
             path = self.proc_cache.get(pid, {}).get('Path', '')
             if pid in (os.getpid(), os.getppid()) or (FROZEN and path.lower() == sys.executable.lower()):
-                return {'ok': False, 'message': 'That is this app itself. Use the Stop monitor button to stop it.'}
+                return {'ok': False, 'message': 'That is this app itself. Use the Exit button to close it.'}
             if name.lower() in SHARED_HOSTS or not path:
                 return self.end_process(pid, name)
             if pid not in self.dashboard_pids:
@@ -2279,7 +2279,7 @@ def main():
     print(f'CSV log:   {monitor.csv_path}')
     if not monitor.admin:
         print('Tip: run as Administrator to resolve paths for all processes and to end elevated programs.')
-    print('Press Ctrl+C or use Stop monitor on the dashboard to stop.')
+    print('Press Ctrl+C or use Exit on the dashboard to stop.')
 
     opened = False
     try:
