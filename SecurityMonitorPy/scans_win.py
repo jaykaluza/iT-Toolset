@@ -295,8 +295,16 @@ def reg_subkeys(hive, path):
 HKLM, HKCU = winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER
 
 
-NESIAM_APPS = ('My Connections', 'My Security', 'My Network', 'My Disk')
-NESIAM_EXES = ('myconnections.exe', 'mysecurity.exe', 'mynetwork.exe', 'mydisk.exe')
+# Every Nesiam tool, now and future, is built with CompanyName 'Nesiam.com', a ProductName 'My <Thing>' and the file
+# name My<Thing>.exe (see each build_exe.py). Those three together mark one of our own apps, which is never alerted on.
+NESIAM_EXE_NAME = re.compile(r'^My[A-Z][A-Za-z0-9]*( \(\d+\))?\.exe$')   # MyDisk.exe, or a browser's second copy MyDisk (2).exe
+
+
+def is_nesiam_product(company, product, path):
+    """True when the version details say Nesiam.com and 'My <Thing>', and the file is named My<Thing>.exe."""
+    base = re.sub(r' \(\d+\)$', '', os.path.splitext(os.path.basename(path or ''))[0])
+    return (company == 'Nesiam.com' and str(product or '').startswith('My ')
+            and base.lower() == str(product).replace(' ', '').lower())
 
 
 def file_company_product(path):
@@ -345,7 +353,7 @@ def nesiam_app(path):
         return ''
     if stamp not in _NESIAM_SEEN:
         company, product = file_company_product(path)
-        _NESIAM_SEEN[stamp] = product if company == 'Nesiam.com' and product in NESIAM_APPS else ''
+        _NESIAM_SEEN[stamp] = product if is_nesiam_product(company, product, path) else ''
     return _NESIAM_SEEN[stamp]
 
 
@@ -684,7 +692,7 @@ def scan_system(ctx):
                 out.append(F('system', 'tamper', 'medium', 'Defender Tamper Protection is off', 'Tamper Protection stops programs from switching Defender off.', 'Malware commonly disables antivirus first.', fix='Windows Security > Virus & threat protection > Manage settings > Tamper Protection. Windows only allows this to be changed by hand. If the switch is greyed out and says "managed by your administrator", an organisation or another security product controls it and only they can change it.', action=A('open_settings', 'Open settings', 'Open Windows Security?', page='windowsdefender://threatsettings')))
     for x in as_list(p.get('exclusions')):
         x = str(x)
-        if nesiam_app(x) or (not os.path.exists(x) and os.path.basename(x).lower() in NESIAM_EXES):
+        if nesiam_app(x) or (not os.path.exists(x) and NESIAM_EXE_NAME.match(os.path.basename(x))):
             continue   # one of the Nesiam tools, excluded on purpose because Defender's guesswork kept removing it
         if re.match(r'^[a-z]:\\?$', x, re.I) or USER_WRITABLE.search(x) or x.lower().lstrip('.*') in ('exe', 'dll', 'ps1', 'bat', 'js', 'vbs'):
             out.append(F('system', 'excl:' + x, 'high', f'Defender is told to ignore: {x}', 'Exclusions tell antivirus not to look somewhere.', 'Malware adds exclusions like this so that it can hide.', x, 'Remove it unless you added it for a specific reason.', A('defender_remove_exclusion', 'Remove', f'Remove this Defender exclusion?\n\n{x}', value=x), Active=True))

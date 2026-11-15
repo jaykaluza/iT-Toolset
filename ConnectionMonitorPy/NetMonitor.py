@@ -58,7 +58,7 @@ if sys.platform != 'win32':
 
 APP_NAME = "My Connections"
 EXE_NAME = 'MyConnections.exe'   # the packaged app's file name
-APP_VERSION = '1.17'
+APP_VERSION = '1.18'
 HERE = os.path.dirname(os.path.abspath(__file__))
 WINDIR = os.environ.get('WINDIR', r'C:\Windows')
 FROZEN = getattr(sys, 'frozen', False)                    # running as the packaged MyConnections.exe
@@ -946,13 +946,17 @@ def is_this_app(pid, path):
     return pid == os.getpid() or (FROZEN and pid == os.getppid() and path.lower() == sys.executable.lower())
 
 
-NESIAM_APPS = {'myconnections': 'My Connections', 'mysecurity': 'My Security', 'mynetwork': 'My Network', 'mydisk': 'My Disk'}
+# Every Nesiam tool, now and future, is built with CompanyName 'Nesiam.com', a ProductName 'My <Thing>' and the file
+# name My<Thing>.exe (see each build_exe.py). Those three together mark one of our own apps, which is never alerted on.
 
 
 def is_nesiam_app(info):
-    """True for the Nesiam tools (My Connections, My Security, My Network, My Disk): their exe name and version details match."""
-    return (info.get('Company') == 'Nesiam.com'
-            and NESIAM_APPS.get((info.get('Name') or '').lower()) == info.get('Product'))
+    """True for any Nesiam tool (My Connections, My Security, My Network, My Disk and any added later):
+    the version details say Nesiam.com and 'My <Thing>', and the program is named My<Thing>."""
+    product = str(info.get('Product') or '')
+    base = re.sub(r' \(\d+\)$', '', os.path.splitext(os.path.basename(info.get('Path') or ''))[0] or str(info.get('Name') or ''))
+    return (info.get('Company') == 'Nesiam.com' and product.startswith('My ')
+            and base.lower() == product.replace(' ', '').lower())
 
 
 def app_issues(info, admin, pid):
