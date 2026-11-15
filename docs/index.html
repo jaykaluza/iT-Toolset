@@ -106,17 +106,10 @@ input::placeholder{color:#a3a1b6}
 .tool-actions{grid-column:1/-1;display:flex;align-items:center;gap:6px;margin-top:10px}
 .tool-actions .run{flex:1;font-size:12.5px;padding:5px 14px}
 .tool-actions .more-btn{width:28px;height:28px;font-size:13px}
-/* the cards in Stanford red with white text */
-.tool{background:#8c1515;color:#fff;box-shadow:0 14px 30px -18px rgba(140,21,21,.6)}
-.tool .muted{color:rgba(255,255,255,.82)}
-.tool .icon{background:rgba(255,255,255,.16)}
-.tool .icon svg{stroke:#fff}
-.tool .run{background:#fff;color:#8c1515;border-color:#fff;font-weight:600}
-.tool .run:hover{background:#f3e3e3;border-color:#f3e3e3}
-.tool .run.stop{background:rgba(255,255,255,.2);color:#fff;border-color:transparent}
-.tool .more-btn{background:rgba(255,255,255,.16);color:#fff}
-.tool .more-btn:hover,.tool .more-btn[aria-expanded="true"]{background:rgba(255,255,255,.3);color:#fff}
-.tool .more-menu{color:#111}
+/* RUN buttons in Stanford red with white text; the cards stay white */
+.tool .run{background:#8c1515;color:#fff;border-color:#8c1515;font-weight:600}
+.tool .run:hover{background:#a51c1c;border-color:#a51c1c}
+.tool .run.stop{background:#ebe9f6;color:#111;border-color:#ebe9f6}
 .more{position:relative}
 .more-btn{display:grid;place-items:center;width:36px;height:36px;padding:0;font:600 15px/1 Inter,sans-serif;color:#55555f;background:#ebe9f6;border:0;border-radius:50%;cursor:pointer}
 .more-btn:hover,.more-btn[aria-expanded="true"]{background:#dedbf0;color:#111}
