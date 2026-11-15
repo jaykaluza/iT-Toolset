@@ -200,11 +200,11 @@ code{font:12px Consolas,monospace;background:var(--lav);border-radius:5px;paddin
 /* step-by-step popup shown on hover (or keyboard focus or tap) */
 .hint{position:relative;display:inline-block;cursor:help;outline:none}
 .hint:focus-visible code{outline:2px solid #5b4bff}
-.hint .pop{display:none;position:absolute;z-index:10;top:100%;left:0;width:440px;padding:12px 14px;background:#111114;color:#f4f4f8;border-radius:12px;font-size:12.5px;line-height:1.5;box-shadow:0 18px 40px -8px rgba(0,0,0,.45);cursor:auto}
+.hint .pop{display:none;position:absolute;z-index:10;top:100%;left:0;width:440px;padding:12px 14px;background:#fff;color:#1d1d1f;border:1px solid #e3e1ee;border-radius:12px;font-size:12.5px;line-height:1.5;box-shadow:0 18px 40px -8px rgba(30,20,90,.3);cursor:auto}
 .hint:hover .pop,.hint:focus .pop,.hint:focus-within .pop{display:block}
 .hint .pop span{display:block;margin-top:5px;padding-left:18px;text-indent:-18px}
-.hint .pop code{color:inherit;background:rgba(255,255,255,.14)}
-.hint .pop b{color:#fff}
+.hint .pop code{color:inherit;background:#ebe9f6}
+.hint .pop b{color:#111114}
 #launch .hint{position:static}#launch .hint .pop{left:16px;right:16px;width:auto;top:auto}
 
 @media (max-width:800px){.hint{position:static}.hint .pop{left:8px;right:8px;width:auto;top:auto}}
