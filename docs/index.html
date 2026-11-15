@@ -425,9 +425,9 @@ const TOOLS = [
   {name: 'My Security', exe: 'MySecurity.exe', scheme: 'mysecurity', ports: [8775, 8776, 8777], apps: ['MySecurity'], key: 'mysecurity-setup', run: '#runSecurity', remove: '#removeSecurityLink',
    download: `${REPO}/releases/download/security-v0.1/MySecurity.exe`, release: `${REPO}/releases/tag/security-v0.1`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/security-v0.1', events: false},
   {name: 'My Network', exe: 'MyNetwork.exe', scheme: 'mynetwork', ports: [8801, 8802, 8803], apps: ['My Network', 'My_network'], key: 'mynetwork-setup', run: '#runNetwork', remove: '#removeNetworkLink',
-   download: `${REPO}/releases/download/network-v0.5/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.5`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.5', events: false},
+   download: `${REPO}/releases/download/network-v0.6/MyNetwork.exe`, release: `${REPO}/releases/tag/network-v0.6`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/network-v0.6', events: false},
   {name: 'My Disk', exe: 'MyDisk.exe', scheme: 'mydisk', ports: [8811, 8812, 8813], apps: ['My Disk'], key: 'mydisk-setup', run: '#runDisk', remove: '#removeDiskLink',
-   download: `${REPO}/releases/download/disk-v0.4/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.4`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.4', events: false}
+   download: `${REPO}/releases/download/disk-v0.5/MyDisk.exe`, release: `${REPO}/releases/tag/disk-v0.5`, api: 'https://api.github.com/repos/jaykaluza/iT-Toolset/releases/tags/disk-v0.5', events: false}
 ];
 for (const t of TOOLS) Object.assign(t, {appPort: null, stopRequested: false, watching: false, checking: false, siteEvents: null, row: $(t.run).closest('.tool')});
 let current = TOOLS[0];   // the tool the popup is showing
