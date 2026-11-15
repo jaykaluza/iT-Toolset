@@ -50,7 +50,7 @@ import browsertest as B   # the browser security self-test (modelled on BrowserA
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.15'
+APP_VERSION = '0.1.16'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -947,7 +947,8 @@ def main():
         if FROZEN:
             user32.MessageBoxW(None, f'The RUN button link was removed. Running {EXE_NAME} again sets it up again.', APP_NAME, 0x40)
         return
-    if FROZEN and args.app and (not link_target() or not os.path.isfile(link_target())):
+    # the copy you run takes over the RUN link, so the website starts this exe and not an older or moved one
+    if FROZEN and args.app and os.path.normcase(os.path.abspath(link_target() or '')) != os.path.normcase(os.path.abspath(exe)):
         try:
             register_link(exe)
         except OSError:
