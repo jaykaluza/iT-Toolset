@@ -644,7 +644,7 @@ function draw(force) {
     $('#other').innerHTML = S.tab === 'inside' ? '' : otherHtml(view.other || []);
     const total = view.disks.reduce((a, d) => a + d.size, 0);
     $('#headline').textContent = view.disks.length === 1 ? 'Your disk' : `Your ${view.disks.length} disks`;
-    $('#lede').textContent = `${size(total)} of storage in all${view.disks.some(d => d.external) ? `, ${view.disks.filter(d => d.external).length} plugged in` : ''}. Hover underlined words for help, or click Resize to change a drive's size.`;
+    $('#lede').textContent = `${size(total)} of storage in all${view.disks.some(d => d.external) ? `, ${view.disks.filter(d => d.external).length} plugged in` : ''}. Hover underlined words for help; click a drive to resize, check or repair it.`;
     $('#lede').title = $('#lede').textContent;
     $('#adminNote').classList.toggle('hidden', view.admin || st.mode === 'demo');
   }
