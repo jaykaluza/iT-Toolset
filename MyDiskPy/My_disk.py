@@ -32,7 +32,7 @@ import webbrowser
 import winreg
 
 APP_NAME = 'My Disk'
-APP_VERSION = '0.3'
+APP_VERSION = '0.4'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)       # running as MyDisk.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -41,6 +41,7 @@ POWERSHELL = os.path.join(WINDIR, 'System32', 'WindowsPowerShell', 'v1.0', 'powe
 APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'MyDisk')
 SITE_ORIGINS = ('https://nesiam.com', 'https://www.nesiam.com', 'https://jaykaluza.github.io')
 LINK_SCHEME = 'mydisk'
+HANDOFF_S = 12   # seconds the website's RUN tab has to open the view before the app opens it itself
 LINK_PATTERN = re.compile(r'^mydisk:(//)?(run|unregister)?/?$', re.I)
 DASHBOARD_URL = re.compile(r'^http://localhost:\d{1,5}/\?k=[\w-]{20,}$')
 INVENTORY_EVERY = 60    # seconds between full re-reads
@@ -218,6 +219,7 @@ class Disks:
         self.demo_log = []    # the activity log while trying the demo (never saved)
         self.quit_after = False   # Exit was clicked during a task: stop once it has finished
         self.closing = False      # about to stop: the open page sees this and closes its tab
+        self.handoff = None       # started by the website's RUN: (one-time code, expiry) so that browser's tab opens the view
 
     def close_soon(self):
         """Stop in a few seconds, so the page (it asks every 2 seconds) sees it is closing and closes its tab."""
@@ -1162,7 +1164,17 @@ def make_handler(disks, page, token, port, launch_key, nonce):
                 headers = self.site_headers()
                 if not headers:
                     return self.send_json(403, {'ok': False})
-                return self.send_json(200, {'app': APP_NAME, 'version': APP_VERSION, 'stopping': disks.stop.is_set()}, headers)
+                answer = {'app': APP_NAME, 'version': APP_VERSION, 'stopping': disks.stop.is_set() or disks.closing}
+                hand = disks.handoff
+                if hand and time.time() < hand[1]:
+                    answer['open'] = hand[0]   # only the website can read this (see site_headers), and only for a few seconds
+                return self.send_json(200, answer, headers)
+            if url.path == '/open':   # the website's RUN tab, with the one-time code from /status: becomes the view
+                hand, code = disks.handoff, urllib.parse.parse_qs(url.query).get('t', [''])[0]
+                if not (hand and time.time() < hand[1] and secrets.compare_digest(code.encode(), hand[0].encode())):
+                    return self.send(403, 'text/plain; charset=utf-8', b'This link has expired. Click RUN on the website again.')
+                disks.handoff = None
+                return self.send(302, 'text/plain; charset=utf-8', b'', {'Location': f'/?k={launch_key}'})
             if not self.token_ok():
                 return self.send_json(403, {'ok': False})
             disks.last_client = time.time()
@@ -1430,7 +1442,17 @@ def main():
             f.write(url)
     print(f'{APP_NAME} is running: {url}')
     print('Close with the Exit button on the page, or Ctrl+C here.')
-    if not args.no_browser:
+    if args.link and not args.no_browser:
+        # started by the website's RUN: its tab, in whichever browser clicked RUN, picks up the view. If that
+        # browser can't reach the app (it may block the site from reaching apps on this PC), open it here instead.
+        disks.handoff = (secrets.token_urlsafe(18), time.time() + HANDOFF_S)
+
+        def fallback():
+            if disks.handoff:
+                disks.handoff = None
+                open_view(url)
+        threading.Timer(HANDOFF_S, fallback).start()
+    elif not args.no_browser:
         open_view(url)
     disks.last_client = time.time()
     try:
