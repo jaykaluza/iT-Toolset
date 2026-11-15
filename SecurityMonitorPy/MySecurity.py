@@ -50,7 +50,7 @@ import browsertest as B   # the browser security self-test (modelled on BrowserA
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.17'
+APP_VERSION = '0.1.18'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -204,6 +204,7 @@ class App:
             start = time.time()
             try:
                 findings, status = fns[key](self.ctx), 'done'
+                findings = [f for f in findings if not S.about_nesiam_app(f)]   # never list My Connections, My Security, My Network or My Disk
             except Exception:
                 detail = traceback.format_exc()
                 self._write_error(detail)

@@ -296,6 +296,7 @@ HKLM, HKCU = winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER
 
 
 NESIAM_APPS = ('My Connections', 'My Security', 'My Network', 'My Disk')
+NESIAM_EXES = ('myconnections.exe', 'mysecurity.exe', 'mynetwork.exe', 'mydisk.exe')
 
 
 def file_company_product(path):
@@ -322,12 +323,30 @@ def file_company_product(path):
         return '', ''
 
 
+OWN_EXE_PATH = re.compile(r'[A-Za-z]:\\[^"<>|\r\n*?]*?\.exe', re.I)
+
+
+def about_nesiam_app(finding):
+    """True when a finding is about one of the Nesiam tools themselves (by a program path in it), so it is left out."""
+    text = ' '.join(str(finding.get(k) or '') for k in ('Title', 'Evidence', 'What'))
+    return any(nesiam_app(m.group(0)) for m in OWN_EXE_PATH.finditer(text))
+
+
+_NESIAM_SEEN = {}
+
+
 def nesiam_app(path):
     """The app's name when this path is one of the Nesiam tools (My Connections, My Security, ...), else ''."""
     if not path.lower().endswith('.exe') or not os.path.isfile(path):
         return ''
-    company, product = file_company_product(path)
-    return product if company == 'Nesiam.com' and product in NESIAM_APPS else ''
+    try:
+        stamp = (os.path.normcase(path), os.path.getmtime(path))
+    except OSError:
+        return ''
+    if stamp not in _NESIAM_SEEN:
+        company, product = file_company_product(path)
+        _NESIAM_SEEN[stamp] = product if company == 'Nesiam.com' and product in NESIAM_APPS else ''
+    return _NESIAM_SEEN[stamp]
 
 
 def F(cat, key, sev, title, what, risk='', evidence='', fix='', action=None, **extra):
@@ -665,14 +684,9 @@ def scan_system(ctx):
                 out.append(F('system', 'tamper', 'medium', 'Defender Tamper Protection is off', 'Tamper Protection stops programs from switching Defender off.', 'Malware commonly disables antivirus first.', fix='Windows Security > Virus & threat protection > Manage settings > Tamper Protection. Windows only allows this to be changed by hand. If the switch is greyed out and says "managed by your administrator", an organisation or another security product controls it and only they can change it.', action=A('open_settings', 'Open settings', 'Open Windows Security?', page='windowsdefender://threatsettings')))
     for x in as_list(p.get('exclusions')):
         x = str(x)
-        app = nesiam_app(x)
-        if app:
-            # one of these tools, which Defender's guesswork sometimes removes: expected, not an attacker hiding
-            out.append(F('system', 'excl:' + x, 'low', f'Defender skips {app}: {x}', f'You told Defender not to check {app}, most likely because it kept removing it.',
-                         'Anything saved under this exact name is skipped too, so keep only the file from nesiam.com there.', x,
-                         f"Keep it while Defender flags {app}. Check the file's fingerprint (Get-FileHash) against its release page, and remove the exclusion once Defender stops flagging it.",
-                         A('defender_remove_exclusion', 'Remove', f'Remove this Defender exclusion?\n\n{x}', value=x)))
-        elif re.match(r'^[a-z]:\\?$', x, re.I) or USER_WRITABLE.search(x) or x.lower().lstrip('.*') in ('exe', 'dll', 'ps1', 'bat', 'js', 'vbs'):
+        if nesiam_app(x) or (not os.path.exists(x) and os.path.basename(x).lower() in NESIAM_EXES):
+            continue   # one of the Nesiam tools, excluded on purpose because Defender's guesswork kept removing it
+        if re.match(r'^[a-z]:\\?$', x, re.I) or USER_WRITABLE.search(x) or x.lower().lstrip('.*') in ('exe', 'dll', 'ps1', 'bat', 'js', 'vbs'):
             out.append(F('system', 'excl:' + x, 'high', f'Defender is told to ignore: {x}', 'Exclusions tell antivirus not to look somewhere.', 'Malware adds exclusions like this so that it can hide.', x, 'Remove it unless you added it for a specific reason.', A('defender_remove_exclusion', 'Remove', f'Remove this Defender exclusion?\n\n{x}', value=x), Active=True))
     active = {str(a).replace('DomainAuthenticated', 'Domain') for a in as_list(p.get('active'))}
     profiles = [x for x in as_list(p.get('profiles')) if isinstance(x, dict)]
