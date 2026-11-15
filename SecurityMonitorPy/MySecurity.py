@@ -50,7 +50,7 @@ import browsertest as B   # the browser security self-test (modelled on BrowserA
 
 APP_NAME = 'My Security'
 EXE_NAME = 'MySecurity.exe'
-APP_VERSION = '0.1.13'
+APP_VERSION = '0.1.14'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -693,7 +693,7 @@ class App:
 # ---------------------------------------------------------------- local dashboard server (same rules as My Connections)
 
 CSP = "default-src 'none'; script-src 'nonce-{}'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
-EXPIRED_PAGE = b'<!doctype html><meta charset=utf-8><title>my_security</title><body style="font:16px sans-serif;padding:40px">This dashboard address has expired or is incomplete. Start My Security again to open it.'
+EXPIRED_PAGE = b'<!doctype html><meta charset=utf-8><title>My Security</title><body style="font:16px sans-serif;padding:40px">This dashboard address has expired or is incomplete. Start My Security again to open it.'
 SITE_ORIGINS = ('https://nesiam.com', 'https://www.nesiam.com', 'https://jaykaluza.github.io')
 
 

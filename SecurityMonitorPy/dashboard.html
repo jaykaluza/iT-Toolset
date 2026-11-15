@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="only light">
-<title>my_security</title>
+<title>My Security</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23161617%22/%3E%3Cpath d=%22M16 4.5l9.5 3.4v7.3c0 6-3.9 10.3-9.5 12.3-5.600-2-9.500-6.300-9.500-12.300V7.900z%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222.400%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M11.500 15.800l3.200 3.200 6-6.400%22 fill=%22none%22 stroke=%22%2300e04a%22 stroke-width=%222.800%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
 <style>
 :root{color-scheme:only light;--bg:#f5f5f7;--panel:#fff;--panel-2:#e8e8ed;--text:#1d1d1f;--muted:#6e6e73;--line:#d2d2d7;--accent:#0066cc;--brand:#0071e3;--head:#161617;--head-text:#f5f5f7;--head-muted:#a1a1a6;
@@ -96,7 +96,7 @@ a.link{color:var(--accent);text-decoration:none;cursor:pointer}a.link:hover{text
 </style>
 </head>
 <body>
-<header><h1><a href="https://jaykaluza.github.io/iT-Toolset/" target="nesiam-landing" title="Go to the Nesiam.com landing page">my_security</a></h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every detection, fix, block and undo from the last 30 days">Activity log</button><button id="quit" title="Exit My Security and close the app">Exit</button></header>
+<header><h1><a href="https://jaykaluza.github.io/iT-Toolset/" target="nesiam-landing" title="Go to the Nesiam.com landing page">My Security</a></h1><span class="sub" id="meta">Starting up…</span><button id="openlog" title="Open activity-log.txt: every detection, fix, block and undo from the last 30 days">Activity log</button><button id="quit" title="Exit My Security and close the app">Exit</button></header>
 <div class="stats" id="stats"></div>
 <div class="bar"><div class="tabs" id="tabs"></div><input type="search" id="q" placeholder="Filter…"><label class="tog" title="Show only Medium, High and Critical items. Low and informational items are hidden."><input type="checkbox" id="problems"> Problems only</label><button class="btn" id="rescan">Scan this tab</button></div>
 <div class="wrap" id="view"></div>
@@ -610,7 +610,7 @@ $('#view').onclick = async e => {
   if (t.dataset.undo) { if (!confirm('Undo this change?')) return; toast(await post('/undo', {id: t.dataset.undo})); return poll(true); }
 };
 let stopped = false;
-function closed() { stopped = true; window.close(); setTimeout(() => { document.body.innerHTML = '<header><h1>my_security</h1></header><div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.</div>'; }, 300); }
+function closed() { stopped = true; window.close(); setTimeout(() => { document.body.innerHTML = '<header><h1>My Security</h1></header><div class="empty" style="font-size:16px;padding:60px 20px">The app has stopped. You can close this tab.</div>'; }, 300); }
 $('#quit').onclick = async () => { if (!confirm('Exit My Security?\n\nLive watching of programs and browser tabs stops too.')) return; try { await fetch('/quit', {method: 'POST', headers: {'X-MySec-Token': TOKEN}}); } catch(e) {} closed(); };
 addEventListener('pagehide', e => { if (!e.persisted && !stopped) navigator.sendBeacon('/tab-closed', TOKEN); });
 let timer = null;

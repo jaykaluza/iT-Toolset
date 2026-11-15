@@ -31,7 +31,7 @@ var q=new URLSearchParams(location.search),i=new Image(),done=function(){parent.
 i.onload=done;i.onerror=done;i.src='__TARGET__/bt/pixel?n=__NAME__&r='+encodeURIComponent(q.get('r'));
 </script>'''
 
-RUNNER = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><title>my_security browser test</title>
+RUNNER = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><title>My Security browser test</title>
 <style>body{font:14px -apple-system,"Segoe UI",system-ui,sans-serif;background:#f5f5f7;color:#1d1d1f;margin:0;padding:24px}main{max-width:860px;margin:auto}
 h1{font-size:20px;margin:0 0 4px}p{color:#6e6e73;margin:4px 0 14px}.row{display:flex;gap:10px;align-items:baseline;background:#fff;border:1px solid #d2d2d7;border-radius:10px;padding:7px 13px;margin:4px 0}
 .mk{font-weight:800;width:16px;flex:none;text-align:center}.ok .mk{color:#1a9d4b}.bad .mk{color:#c0392b}.bad{border-color:#e0b33a;background:#fdf6e3}.na .mk{color:#6e6e73}
