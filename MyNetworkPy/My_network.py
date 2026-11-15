@@ -41,7 +41,7 @@ import webbrowser
 import winreg
 
 APP_NAME = 'My Network'
-APP_VERSION = '0.5'
+APP_VERSION = '0.6'
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN = getattr(sys, 'frozen', False)       # running as MyNetwork.exe
 RESOURCES = getattr(sys, '_MEIPASS', HERE)
@@ -49,6 +49,7 @@ WINDIR = os.environ.get('SystemRoot', r'C:\Windows')
 APP_DIR = os.path.join(os.environ.get('LOCALAPPDATA', HERE), 'My_network')
 SITE_ORIGINS = ('https://nesiam.com', 'https://www.nesiam.com', 'https://jaykaluza.github.io')
 LINK_SCHEME = 'mynetwork'
+CLOSED_GRACE_S = 8   # seconds after the page's tab closes or hides before the app stops; a hidden tab's next check cancels it
 LINK_PATTERN = re.compile(r'^mynetwork:(//)?(run|unregister)?/?$', re.I)
 DASHBOARD_URL = re.compile(r'^http://localhost:\d{1,5}/\?k=[\w-]{20,}$')
 
@@ -1004,6 +1005,7 @@ class Network:
         self.npcap_error = ''
         self.scapy_install = {'state': 'idle', 'message': ''}
         self.last_client = 0.0
+        self.tab_closed_at = 0.0   # when the page's tab last said it was closing
         self.stop = threading.Event()
         self.stopping = False   # STOP on the website: the open page sees this and closes its tab
         self.rdns = cf.ThreadPoolExecutor(8, thread_name_prefix='rdns')
@@ -1870,6 +1872,19 @@ def make_handler(net, page, token, port, launch_key, nonce):
             self.send_json(404, {'ok': False})
 
         def do_POST(self):
+            if self.path == '/tab-closed':
+                # the page's tab is closing or reloading (a browser can't add the usual header here, so the key is the body)
+                origin = self.headers.get('Origin')
+                try:
+                    length = int(self.headers.get('Content-Length') or 0)
+                except ValueError:
+                    length = 0
+                body = self.rfile.read(length) if 0 < length <= 200 else b''
+                if (self.host_ok() and secrets.compare_digest(body, token.encode())
+                        and (not origin or origin in (f'http://localhost:{port}', f'http://127.0.0.1:{port}'))):
+                    net.tab_closed_at = time.time()
+                    return self.send(204, 'text/plain', b'')
+                return self.send_json(403, {'ok': False})
             if self.path == '/site-stop':   # the website's STOP button
                 headers = self.site_headers()
                 if not self.host_ok() or not headers:
@@ -2063,13 +2078,18 @@ def main():
         with open(url_file, 'w', encoding='utf-8') as f:
             f.write(url)
     print(f'{APP_NAME} is running: {url}')
-    print('Close with the Stop button on the page, or Ctrl+C here.')
+    print('Close with the Exit button on the page, or Ctrl+C here.')
     if not args.no_browser:
         open_view(url)
     net.last_client = time.time()
     try:
         while not net.stop.wait(1):
             net.tick()
+            if args.idle_exit and net.tab_closed_at > net.last_client and time.time() - net.tab_closed_at > CLOSED_GRACE_S:
+                # the tab was closed: stop within seconds. A reload says so too, but the reloaded page asks again
+                # straight away, which cancels it.
+                print('The page was closed, stopping.')
+                break
             if args.idle_exit and time.time() - net.last_client > args.idle_exit * 60:
                 print('The page has been closed for a while, stopping.')
                 break
