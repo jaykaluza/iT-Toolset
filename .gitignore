@@ -27,3 +27,4 @@ AuthWorker/.wrangler/
 
 MyDiskPy/build/
 MyDiskPy/dist/
+ConnectionMonitorPy/store/out/
