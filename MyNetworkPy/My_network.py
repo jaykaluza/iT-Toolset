@@ -57,6 +57,8 @@ SNAP = 1600            # bytes kept per packet for the detail view
 RING = 24              # packets kept per connection
 MAX_FLOWS = 1500       # connections remembered
 MAX_DRAW = 400         # connections sent to the view
+MAX_NODES = 3000       # devices and groups remembered (a spoofed flood must not grow memory without limit)
+MAX_RDNS = 64          # reverse-DNS lookups waiting at once
 MAX_EXTERNAL = 60      # internet hosts drawn
 FLOW_TTL = 300         # seconds an idle connection is remembered
 EVENT_GAP = 0.04       # at most one animated packet per connection in this many seconds
@@ -1009,6 +1011,7 @@ class Network:
         self.stop = threading.Event()
         self.stopping = False   # STOP on the website: the open page sees this and closes its tab
         self.rdns = cf.ThreadPoolExecutor(8, thread_name_prefix='rdns')
+        self.rdns_waiting = 0
         self.blocklists = Blocklists()
         self.vendors = Vendors()
         if ip:
@@ -1031,12 +1034,15 @@ class Network:
             name = 'This PC' if kind == 'me' else GROUPS.get(ip, 'Subnet broadcast' if ip == self.broadcast else '')
             n = self.nodes[ip] = {'ip': ip, 'kind': kind, 'name': name, 'names': {}, 'mac': '', 'first': now, 'last': 0.0, 'seen': 0.0,
                                   'tx': 0, 'rx': 0, 'txb': 0, 'rxb': 0, 'info': {}, 'ttl': 0}
-            if kind == 'external':
+            if kind == 'external' and self.rdns_waiting < MAX_RDNS:
+                self.rdns_waiting += 1
                 self.rdns.submit(self._name_external, ip)
         return n
 
     def _name_external(self, ip):
         name = reverse_dns(ip)
+        with self.lock:
+            self.rdns_waiting = max(0, self.rdns_waiting - 1)
         if name:
             with self.lock:
                 if ip in self.nodes:
@@ -1257,6 +1263,10 @@ class Network:
             used = {f.a for f in self.flows.values()} | {f.b for f in self.flows.values()}
             for ip in [ip for ip, n in self.nodes.items() if n['kind'] == 'external' and ip not in used]:
                 del self.nodes[ip]
+            if len(self.nodes) > MAX_NODES:   # forget the quietest unused ones first; this PC and the gateway stay
+                spare = sorted((n for ip, n in self.nodes.items() if ip not in used and n['kind'] not in ('me', 'gateway')), key=lambda n: max(n['last'], n['seen'], n['first']))
+                for n in spare[:len(self.nodes) - MAX_NODES]:
+                    del self.nodes[n['ip']]
             if self.engine == 'raw' and not self.note and now - self.started > 20 and self.total['out'] > 50 and self.total['in'] == 0:
                 self.note = 'Only outgoing packets are arriving. Windows Firewall may be hiding incoming ones; the Npcap upgrade avoids that.'
 

@@ -29,9 +29,17 @@ First Microsoft Store release.
 ## Search terms (up to 7)
 network monitor, connections, firewall, netstat, block program, internet activity, security
 
-## Notes for certification (Partner Center, "Notes for certification")
-The app is a desktop (full trust) app and asks for Administrator rights (requireAdministrator, rescap allowElevation). It needs them to read the connections of every process and to add Windows Firewall block rules when the user presses Block. It sends no data to the publisher. It makes ordinary DNS lookups, and a GitHub version check only when the user hovers over the app's name.
-To test: open the app, accept the Windows prompt, and the connections list appears. No sign-in needed.
+## Notes for certification
+IMPORTANT: this app requires Administrator rights, so it does not start until the Windows User Account Control (UAC) prompt is approved. If the prompt is not approved, or cannot be shown to the test account, nothing opens and it can look like a crash at launch. Please approve the prompt ("Yes") when it appears. The test account must be an administrator, or be able to enter an administrator's credentials.
+
+Why: the app reads the network connections of every process (including system ones) and adds Windows Firewall block rules when the user presses Block (restricted capabilities runFullTrust and allowElevation, requireAdministrator).
+
+How to test:
+1. Launch My Connections from the Start menu.
+2. Approve the Windows UAC prompt.
+3. A dashboard opens in the default browser at http://localhost:8765 showing the live list of connections. No sign-in needed.
+
+Privacy: the app sends no data to the publisher. It makes ordinary DNS lookups, and a GitHub version check only when the user hovers over the app's own name. Policy: https://nesiam.com/privacy.html
 
 ## Screenshots
 Needed (at least 1, 1366x768 or larger PNG). Existing ones in docs/shots can be used if current.

@@ -797,7 +797,7 @@ function rzForm() {
   const pct = v => (v / room * 100).toFixed(2) + '%';
   const canGrow = info.max > info.size + MIB, canShrink = info.min < info.size - MIB;
   const why = [];
-  if (!canGrow) why.push(`It can't grow: there is no unallocated space directly after it${next ? ` (right after it comes ${next.letter ? next.letter + ':' : 'the ' + esc(next.type)})` : ''}. Windows can only move a partition's end.`);
+  if (!canGrow) why.push(`It can't grow: there is no unallocated space directly after it${next ? ` (right after it comes ${next.letter ? esc(next.letter) + ':' : 'the ' + esc(next.type)})` : ''}. Windows can only move a partition's end.`);
   if (canShrink) why.push(`It can't shrink below <b>${size(info.min)}</b>: your files need ${size(used)}, and some files Windows can't move (the page file, hibernation and System Restore data) may sit further in.`);
   else why.push(`It can't shrink: Windows can't move the files near its end right now.`);
   $('#rzBody').innerHTML = `
@@ -820,7 +820,7 @@ function rzSet(bytes) {
   rzForm();
 }
 function rzChanged() {
-  const {p, info} = R, delta = R.size - info.size, name = p.letter ? p.letter + ':' : 'The drive';
+  const {p, info} = R, delta = R.size - info.size, name = p.letter ? esc(p.letter) + ':' : 'The drive';
   const change = $('#rzChange');
   if (Math.abs(delta) < MIB) change.innerHTML = 'Choose a new size with the slider, the box or the buttons.';
   else if (delta < 0) change.innerHTML = `<b>${name} shrinks by ${size(-delta)}</b> to ${size(R.size)}. The ${size(-delta)} become unallocated space right after it, which you can use for a new drive in Disk Management.`;
